@@ -41,6 +41,13 @@ int main(int argc, char** argv)
   {
     num_levels = boost::lexical_cast<uint32_t>(argv[1]);
   }
+  double time_interval = 1.0;
+  if (argc > 2)
+  {
+    time_interval = boost::lexical_cast<double>(argv[2]);
+  }
+
+  console_bridge::setLogLevel(console_bridge::CONSOLE_BRIDGE_LOG_INFO);
 
   tf2::BufferCore bc;
   geometry_msgs::TransformStamped t;
@@ -53,9 +60,9 @@ int main(int argc, char** argv)
   t.header.stamp = ros::Time(2);
   bc.setTransform(t, "me");
 
-  for (uint32_t i = 1; i < num_levels/2; ++i)
+  for (uint32_t i = 1; i < num_levels / 2; ++i)
   {
-    for (uint32_t j = 1; j < 3; ++j)
+    for (double j = time_interval; j < 2.0 + time_interval; j += time_interval)
     {
       std::stringstream parent_ss;
       parent_ss << (i - 1);
@@ -80,7 +87,7 @@ int main(int argc, char** argv)
 
   for (uint32_t i = num_levels/2 + 1; i < num_levels; ++i)
   {
-    for (uint32_t j = 1; j < 3; ++j)
+    for (double j = time_interval; j < 2.0 + time_interval; j += time_interval)
     {
       std::stringstream parent_ss;
       parent_ss << (i - 1);
@@ -98,11 +105,11 @@ int main(int argc, char** argv)
 
   std::string v_frame0 = boost::lexical_cast<std::string>(num_levels - 1);
   std::string v_frame1 = boost::lexical_cast<std::string>(num_levels/2 - 1);
-  logInform("%s to %s", v_frame0.c_str(), v_frame1.c_str());
+  CONSOLE_BRIDGE_logInform("%s to %s", v_frame0.c_str(), v_frame1.c_str());
   geometry_msgs::TransformStamped out_t;
 
   const uint32_t count = 1000000;
-  logInform("Doing %d %d-level tests", count, num_levels);
+  CONSOLE_BRIDGE_logInform("Doing %d %d-level %lf-interval tests", count, num_levels, time_interval);
 
 #if 01
   {
@@ -114,7 +121,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("lookupTransform at Time(0) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("lookupTransform at Time(0) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 
@@ -128,7 +135,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("lookupTransform at Time(1) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("lookupTransform at Time(1) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 
@@ -142,7 +149,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("lookupTransform at Time(1.5) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("lookupTransform at Time(1.5) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 
@@ -156,7 +163,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("lookupTransform at Time(2) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("lookupTransform at Time(2) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 
@@ -170,7 +177,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("canTransform at Time(0) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("canTransform at Time(0) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 
@@ -184,7 +191,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("canTransform at Time(1) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("canTransform at Time(1) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 
@@ -198,7 +205,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("canTransform at Time(1.5) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("canTransform at Time(1.5) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 
@@ -212,7 +219,7 @@ int main(int argc, char** argv)
     ros::WallTime end = ros::WallTime::now();
     ros::WallDuration dur = end - start;
     //ROS_INFO_STREAM(out_t);
-    logInform("canTransform at Time(2) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
+    CONSOLE_BRIDGE_logInform("canTransform at Time(2) took %f for an average of %.9f", dur.toSec(), dur.toSec() / (double)count);
   }
 #endif
 }

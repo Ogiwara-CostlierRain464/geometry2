@@ -37,9 +37,13 @@
 #include <assert.h>
 #include <console_bridge/console.h>
 #include "tf2/LinearMath/Transform.h"
+#include <boost/foreach.hpp>
 
 namespace tf2
 {
+
+// Tolerance for acceptable quaternion normalization
+static double QUATERNION_NORMALIZATION_TOLERANCE = 10e-3;
 
 /** \brief convert Transform msg to Transform */
 void transformMsgToTF2(const geometry_msgs::Transform& msg, tf2::Transform& tf2)
@@ -119,7 +123,7 @@ bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& f
   {
     std::stringstream ss;
     ss << "Invalid argument passed to "<< function_name_arg <<" in tf2 frame_ids cannot be empty";
-    logWarn("%s",ss.str().c_str());
+    CONSOLE_BRIDGE_logWarn("%s",ss.str().c_str());
     return true;
   }
 
@@ -127,7 +131,7 @@ bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& f
   {
     std::stringstream ss;
     ss << "Invalid argument \"" << frame_id << "\" passed to "<< function_name_arg <<" in tf2 frame_ids cannot start with a '/' like: ";
-    logWarn("%s",ss.str().c_str());
+    CONSOLE_BRIDGE_logWarn("%s",ss.str().c_str());
     return true;
   }
 
@@ -214,30 +218,43 @@ bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_i
   bool error_exists = false;
   if (stripped.child_frame_id == stripped.header.frame_id)
   {
-    logError("TF_SELF_TRANSFORM: Ignoring transform from authority \"%s\" with frame_id and child_frame_id  \"%s\" because they are the same",  authority.c_str(), stripped.child_frame_id.c_str());
+    CONSOLE_BRIDGE_logError("TF_SELF_TRANSFORM: Ignoring transform from authority \"%s\" with frame_id and child_frame_id  \"%s\" because they are the same",  authority.c_str(), stripped.child_frame_id.c_str());
     error_exists = true;
   }
 
   if (stripped.child_frame_id == "")
   {
-    logError("TF_NO_CHILD_FRAME_ID: Ignoring transform from authority \"%s\" because child_frame_id not set ", authority.c_str());
+    CONSOLE_BRIDGE_logError("TF_NO_CHILD_FRAME_ID: Ignoring transform from authority \"%s\" because child_frame_id not set ", authority.c_str());
     error_exists = true;
   }
 
   if (stripped.header.frame_id == "")
   {
-    logError("TF_NO_FRAME_ID: Ignoring transform with child_frame_id \"%s\"  from authority \"%s\" because frame_id not set", stripped.child_frame_id.c_str(), authority.c_str());
+    CONSOLE_BRIDGE_logError("TF_NO_FRAME_ID: Ignoring transform with child_frame_id \"%s\"  from authority \"%s\" because frame_id not set", stripped.child_frame_id.c_str(), authority.c_str());
     error_exists = true;
   }
 
   if (std::isnan(stripped.transform.translation.x) || std::isnan(stripped.transform.translation.y) || std::isnan(stripped.transform.translation.z)||
       std::isnan(stripped.transform.rotation.x) ||       std::isnan(stripped.transform.rotation.y) ||       std::isnan(stripped.transform.rotation.z) ||       std::isnan(stripped.transform.rotation.w))
   {
-    logError("TF_NAN_INPUT: Ignoring transform for child_frame_id \"%s\" from authority \"%s\" because of a nan value in the transform (%f %f %f) (%f %f %f %f)",
+    CONSOLE_BRIDGE_logError("TF_NAN_INPUT: Ignoring transform for child_frame_id \"%s\" from authority \"%s\" because of a nan value in the transform (%f %f %f) (%f %f %f %f)",
               stripped.child_frame_id.c_str(), authority.c_str(),
               stripped.transform.translation.x, stripped.transform.translation.y, stripped.transform.translation.z,
               stripped.transform.rotation.x, stripped.transform.rotation.y, stripped.transform.rotation.z, stripped.transform.rotation.w
               );
+    error_exists = true;
+  }
+
+  bool valid = std::abs((stripped.transform.rotation.w * stripped.transform.rotation.w
+                        + stripped.transform.rotation.x * stripped.transform.rotation.x
+                        + stripped.transform.rotation.y * stripped.transform.rotation.y
+                        + stripped.transform.rotation.z * stripped.transform.rotation.z) - 1.0f) < QUATERNION_NORMALIZATION_TOLERANCE;
+
+  if (!valid) 
+  {
+    CONSOLE_BRIDGE_logError("TF_DENORMALIZED_QUATERNION: Ignoring transform for child_frame_id \"%s\" from authority \"%s\" because of an invalid quaternion in the transform (%f %f %f %f)",
+             stripped.child_frame_id.c_str(), authority.c_str(),
+             stripped.transform.rotation.x, stripped.transform.rotation.y, stripped.transform.rotation.z, stripped.transform.rotation.w);
     error_exists = true;
   }
 
@@ -257,7 +274,7 @@ bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_i
     }
     else
     {
-      logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at http://wiki.ros.org/tf/Errors%%20explained", stripped.child_frame_id.c_str(), stripped.header.stamp.toSec(), authority.c_str());
+      CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at http://wiki.ros.org/tf/Errors%%20explained", stripped.child_frame_id.c_str(), stripped.header.stamp.toSec(), authority.c_str());
       return false;
     }
   }
@@ -410,7 +427,10 @@ int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
       f.finalize(SourceParentOfTarget, time);
       if (frame_chain)
       {
+        // Use the walk we just did
         frame_chain->swap(reverse_frame_chain);
+        // Reverse it before returning because this is the reverse walk.
+        std::reverse(frame_chain->begin(), frame_chain->end());
       }
       return tf2_msgs::TF2Error::NO_ERROR;
     }
@@ -451,6 +471,10 @@ int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
     createConnectivityErrorString(source_id, target_id, error_string);
     return tf2_msgs::TF2Error::CONNECTIVITY_ERROR;
   }
+  else if (frame_chain){
+    // append top_parent to reverse_frame_chain for easier matching/trimming
+    reverse_frame_chain.push_back(frame);
+  }
 
   f.finalize(FullPath, time);
   if (frame_chain)
@@ -461,12 +485,16 @@ int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
     for (; m >= 0 && n >= 0; --m, --n)
     {
       if ((*frame_chain)[n] != reverse_frame_chain[m])
+      {
         break;
+      }
     }
     // Erase all duplicate items from frame_chain
     if (n > 0)
-      frame_chain->erase(frame_chain->begin() + (n-1), frame_chain->end());
-
+    {
+      // N is offset by 1 and leave the common parent for this result
+      frame_chain->erase(frame_chain->begin() + (n + 2), frame_chain->end());
+    }
     if (m < reverse_frame_chain.size())
     {
       for (int i = m; i >= 0; --i)
@@ -605,7 +633,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(const std::string& t
     case tf2_msgs::TF2Error::LOOKUP_ERROR:
       throw LookupException(error_string);
     default:
-      logError("Unknown error code: %d", retval);
+      CONSOLE_BRIDGE_logError("Unknown error code: %d", retval);
       assert(0);
     }
   }
@@ -729,6 +757,21 @@ bool BufferCore::canTransformNoLock(CompactFrameID target_id, CompactFrameID sou
 {
   if (target_id == 0 || source_id == 0)
   {
+    if (error_msg)
+      {
+        if (target_id == 0)
+        {
+          *error_msg += std::string("target_frame: " + lookupFrameString(target_id ) + " does not exist.");
+        }
+        if (source_id == 0)
+        {
+          if (target_id == 0)
+          {
+              *error_msg += std::string(" ");
+          }
+          *error_msg += std::string("source_frame: " + lookupFrameString(source_id) + " " + lookupFrameString(source_id ) + " does not exist.");
+        }
+      }
     return false;
   }
 
@@ -770,6 +813,25 @@ bool BufferCore::canTransform(const std::string& target_frame, const std::string
   CompactFrameID target_id = lookupFrameNumber(target_frame);
   CompactFrameID source_id = lookupFrameNumber(source_frame);
 
+  if (target_id == 0 || source_id == 0)
+  {
+    if (error_msg)
+      {
+        if (target_id == 0)
+        {
+          *error_msg += std::string("canTransform: target_frame " + target_frame + " does not exist.");
+        }
+        if (source_id == 0)
+        {
+          if (target_id == 0)
+          {
+              *error_msg += std::string(" ");
+          }
+          *error_msg += std::string("canTransform: source_frame " + source_frame + " does not exist.");
+        }
+      }
+    return false;
+  }
   return canTransformNoLock(target_id, source_id, time, error_msg);
 }
 
@@ -784,7 +846,39 @@ bool BufferCore::canTransform(const std::string& target_frame, const ros::Time& 
   if (warnFrameId("canTransform argument fixed_frame", fixed_frame))
     return false;
 
-  return canTransform(target_frame, fixed_frame, target_time) && canTransform(fixed_frame, source_frame, source_time, error_msg);
+  boost::mutex::scoped_lock lock(frame_mutex_);
+  CompactFrameID target_id = lookupFrameNumber(target_frame);
+  CompactFrameID source_id = lookupFrameNumber(source_frame);
+  CompactFrameID fixed_id = lookupFrameNumber(fixed_frame);
+
+  if (target_id == 0 || source_id == 0 || fixed_id == 0)
+  {
+    if (error_msg)
+      {
+        if (target_id == 0)
+        {
+          *error_msg += std::string("canTransform: target_frame " + target_frame + " does not exist.");
+        }
+        if (source_id == 0)
+        {
+          if (target_id == 0)
+          {
+              *error_msg += std::string(" ");
+          }
+          *error_msg += std::string("canTransform: source_frame " + source_frame + " does not exist.");
+        }
+        if (source_id == 0)
+        {
+          if (target_id == 0 || source_id == 0)
+          {
+              *error_msg += std::string(" ");
+          }
+          *error_msg += std::string("fixed_frame: " + fixed_frame + "does not exist.");
+        }
+      }
+    return false;
+  }
+  return canTransformNoLock(target_id, fixed_id, target_time, error_msg) && canTransformNoLock(fixed_id, source_id, source_time, error_msg);
 }
 
 
@@ -1075,7 +1169,7 @@ std::string BufferCore::allFramesAsYAML(double current_time) const
   TransformStorage temp;
 
   if (frames_.size() ==1)
-    mstream <<"[]";
+    mstream <<"{}";
 
   mstream.precision(3);
   mstream.setf(std::ios::fixed,std::ios::floatfield);
@@ -1312,6 +1406,11 @@ void BufferCore::testTransformableRequests()
 {
   boost::mutex::scoped_lock lock(transformable_requests_mutex_);
   V_TransformableRequest::iterator it = transformable_requests_.begin();
+
+  typedef boost::tuple<TransformableCallback&, TransformableRequestHandle, std::string,
+                       std::string, ros::Time&, TransformableResult&> TransformableTuple;
+  std::vector<TransformableTuple> transformables;
+
   for (; it != transformable_requests_.end();)
   {
     TransformableRequest& req = *it;
@@ -1351,8 +1450,12 @@ void BufferCore::testTransformableRequests()
         M_TransformableCallback::iterator it = transformable_callbacks_.find(req.cb_handle);
         if (it != transformable_callbacks_.end())
         {
-          const TransformableCallback& cb = it->second;
-          cb(req.request_handle, lookupFrameString(req.target_id), lookupFrameString(req.source_id), req.time, result);
+          transformables.push_back(boost::make_tuple(boost::ref(it->second),
+                                                     req.request_handle,
+                                                     lookupFrameString(req.target_id),
+                                                     lookupFrameString(req.source_id),
+                                                     boost::ref(req.time),
+                                                     boost::ref(result)));
         }
       }
 
@@ -1369,8 +1472,13 @@ void BufferCore::testTransformableRequests()
     }
   }
 
-  // unlock before allowing possible user callbacks to avoid potential detadlock (#91)
+  // unlock before allowing possible user callbacks to avoid potential deadlock (#91)
   lock.unlock();
+
+  BOOST_FOREACH (TransformableTuple tt, transformables)
+  {
+    tt.get<0>()(tt.get<1>(), tt.get<2>(), tt.get<3>(), tt.get<4>(), tt.get<5>());
+  }
 
   // Backwards compatability callback for tf
   _transforms_changed_();
@@ -1496,56 +1604,53 @@ void BufferCore::_chainAsVector(const std::string & target_frame, ros::Time targ
     case tf2_msgs::TF2Error::LOOKUP_ERROR:
       throw LookupException(error_string);
     default:
-      logError("Unknown error code: %d", retval);
+      CONSOLE_BRIDGE_logError("Unknown error code: %d", retval);
       assert(0);
     }
   }
-  if (source_time != target_time)
+
+  std::vector<CompactFrameID> target_frame_chain;
+  retval = walkToTopParent(accum, target_time, target_id, fixed_id, &error_string, &target_frame_chain);
+
+  if (retval != tf2_msgs::TF2Error::NO_ERROR)
   {
-    std::vector<CompactFrameID> target_frame_chain;
-    retval = walkToTopParent(accum, target_time, target_id, fixed_id, &error_string, &target_frame_chain);
-
-    if (retval != tf2_msgs::TF2Error::NO_ERROR)
+    switch (retval)
     {
-      switch (retval)
-      {
-      case tf2_msgs::TF2Error::CONNECTIVITY_ERROR:
-        throw ConnectivityException(error_string);
-      case tf2_msgs::TF2Error::EXTRAPOLATION_ERROR:
-        throw ExtrapolationException(error_string);
-      case tf2_msgs::TF2Error::LOOKUP_ERROR:
-        throw LookupException(error_string);
-      default:
-        logError("Unknown error code: %d", retval);
-        assert(0);
-      }
-    }
-    int m = target_frame_chain.size()-1;
-    int n = source_frame_chain.size()-1;
-    for (; m >= 0 && n >= 0; --m, --n)
-    {
-      if (source_frame_chain[n] != target_frame_chain[m])
-        break;
-    }
-    // Erase all duplicate items from frame_chain
-    if (n > 0)
-      source_frame_chain.erase(source_frame_chain.begin() + (n-1), source_frame_chain.end());
-
-    if (m < target_frame_chain.size())
-    {
-      for (unsigned int i = 0; i <= m; ++i)
-      {
-        source_frame_chain.push_back(target_frame_chain[i]);
-      }
+    case tf2_msgs::TF2Error::CONNECTIVITY_ERROR:
+      throw ConnectivityException(error_string);
+    case tf2_msgs::TF2Error::EXTRAPOLATION_ERROR:
+      throw ExtrapolationException(error_string);
+    case tf2_msgs::TF2Error::LOOKUP_ERROR:
+      throw LookupException(error_string);
+    default:
+      CONSOLE_BRIDGE_logError("Unknown error code: %d", retval);
+      assert(0);
     }
   }
+  // If the two chains overlap clear the overlap
+  if (source_frame_chain.size() > 0 && target_frame_chain.size() > 0 &&
+      source_frame_chain.back() == target_frame_chain.front())
+  {
+    source_frame_chain.pop_back();
+  }
+  // Join the two walks
+  for (unsigned int i = 0; i < target_frame_chain.size(); ++i)
+  {
+    source_frame_chain.push_back(target_frame_chain[i]);
+  }
+
 
   // Write each element of source_frame_chain as string
   for (unsigned int i = 0; i < source_frame_chain.size(); ++i)
   {
     output.push_back(lookupFrameString(source_frame_chain[i]));
- }
+  }
 }
 
+int TestBufferCore::_walkToTopParent(BufferCore& buffer, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const
+{
+  TransformAccum accum;
+  return buffer.walkToTopParent(accum, time, target_id, source_id, error_string, frame_chain);
+}
 
 } // namespace tf2

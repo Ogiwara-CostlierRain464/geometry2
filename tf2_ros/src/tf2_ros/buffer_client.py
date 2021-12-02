@@ -34,8 +34,6 @@
 #* 
 #* Author: Eitan Marder-Eppstein
 #***********************************************************
-PKG = 'tf2_ros'
-import roslib; roslib.load_manifest(PKG)
 import rospy
 import actionlib
 import tf2_py as tf2
@@ -45,17 +43,48 @@ from tf2_msgs.msg import LookupTransformAction, LookupTransformGoal
 from actionlib_msgs.msg import GoalStatus
 
 class BufferClient(tf2_ros.BufferInterface):
-    def __init__(self, ns, check_frequency = 10.0, timeout_padding = rospy.Duration.from_sec(2.0)):
+    """
+    Action client-based implementation of BufferInterface.
+    """
+    def __init__(self, ns, check_frequency = None, timeout_padding = rospy.Duration.from_sec(2.0)):
+        """
+        .. function:: __init__(ns, check_frequency = None, timeout_padding = rospy.Duration.from_sec(2.0))
+
+            Constructor.
+
+            :param ns: The namespace in which to look for a BufferServer.
+            :param check_frequency: How frequently to check for updates to known transforms.
+            :param timeout_padding: A constant timeout to add to blocking calls.
+        """
         tf2_ros.BufferInterface.__init__(self)
         self.client = actionlib.SimpleActionClient(ns, LookupTransformAction)
-        self.check_frequency = check_frequency
         self.timeout_padding = timeout_padding
 
+        if check_frequency is not None:
+            rospy.logwarn('Argument check_frequency is deprecated and should not be used.')
+
     def wait_for_server(self, timeout = rospy.Duration()):
+        """
+        Block until the action server is ready to respond to requests. 
+
+        :param timeout: Time to wait for the server.
+        :return: True if the server is ready, false otherwise.
+        :rtype: bool
+        """
         return self.client.wait_for_server(timeout)
 
     # lookup, simple api 
     def lookup_transform(self, target_frame, source_frame, time, timeout=rospy.Duration(0.0)):
+        """
+        Get the transform from the source frame to the target frame.
+
+        :param target_frame: Name of the frame to transform into.
+        :param source_frame: Name of the input frame.
+        :param time: The time at which to get the transform. (0 will get the latest) 
+        :param timeout: (Optional) Time to wait for the target frame to become available.
+        :return: The transform between the frames.
+        :rtype: :class:`geometry_msgs.msg.TransformStamped`
+        """
         goal = LookupTransformGoal()
         goal.target_frame = target_frame;
         goal.source_frame = source_frame;
@@ -67,6 +96,18 @@ class BufferClient(tf2_ros.BufferInterface):
 
     # lookup, advanced api 
     def lookup_transform_full(self, target_frame, target_time, source_frame, source_time, fixed_frame, timeout=rospy.Duration(0.0)):
+        """
+        Get the transform from the source frame to the target frame using the advanced API.
+
+        :param target_frame: Name of the frame to transform into.
+        :param target_time: The time to transform to. (0 will get the latest) 
+        :param source_frame: Name of the input frame.
+        :param source_time: The time at which source_frame will be evaluated. (0 will get the latest) 
+        :param fixed_frame: Name of the frame to consider constant in time.
+        :param timeout: (Optional) Time to wait for the target frame to become available.
+        :return: The transform between the frames.
+        :rtype: :class:`geometry_msgs.msg.TransformStamped`
+        """
         goal = LookupTransformGoal()
         goal.target_frame = target_frame;
         goal.source_frame = source_frame;
@@ -80,6 +121,17 @@ class BufferClient(tf2_ros.BufferInterface):
 
     # can, simple api
     def can_transform(self, target_frame, source_frame, time, timeout=rospy.Duration(0.0)):
+        """
+        Check if a transform from the source frame to the target frame is possible.
+
+        :param target_frame: Name of the frame to transform into.
+        :param source_frame: Name of the input frame.
+        :param time: The time at which to get the transform. (0 will get the latest) 
+        :param timeout: (Optional) Time to wait for the target frame to become available.
+        :param return_debug_type: (Optional) If true, return a tuple representing debug information.
+        :return: True if the transform is possible, false otherwise.
+        :rtype: bool
+        """
         try:
             self.lookup_transform(target_frame, source_frame, time, timeout)
             return True
@@ -89,32 +141,32 @@ class BufferClient(tf2_ros.BufferInterface):
     
     # can, advanced api
     def can_transform_full(self, target_frame, target_time, source_frame, source_time, fixed_frame, timeout=rospy.Duration(0.0)):
+        """
+        Check if a transform from the source frame to the target frame is possible (advanced API).
+
+        Must be implemented by a subclass of BufferInterface.
+
+        :param target_frame: Name of the frame to transform into.
+        :param target_time: The time to transform to. (0 will get the latest) 
+        :param source_frame: Name of the input frame.
+        :param source_time: The time at which source_frame will be evaluated. (0 will get the latest) 
+        :param fixed_frame: Name of the frame to consider constant in time.
+        :param timeout: (Optional) Time to wait for the target frame to become available.
+        :param return_debug_type: (Optional) If true, return a tuple representing debug information.
+        :return: True if the transform is possible, false otherwise.
+        :rtype: bool
+        """
         try:
             self.lookup_transform_full(target_frame, target_time, source_frame, source_time, fixed_frame, timeout)
             return True
         except tf2.TransformException:
             return False
 
-    def __is_done(self, state):
-        if state == GoalStatus.REJECTED or state == GoalStatus.ABORTED or \
-           state == GoalStatus.RECALLED or state == GoalStatus.PREEMPTED or \
-           state == GoalStatus.SUCCEEDED or state == GoalStatus.LOST:
-            return True
-        return False
-
     def __process_goal(self, goal):
         self.client.send_goal(goal)
-        r = rospy.Rate(self.check_frequency)
-        timed_out = False
-        start_time = rospy.Time.now()
-        while not rospy.is_shutdown() and not self.__is_done(self.client.get_state()) and not timed_out:
-            if rospy.Time.now() > start_time + goal.timeout + self.timeout_padding:
-                timed_out = True
-            r.sleep()
 
-        #This shouldn't happen, but could in rare cases where the server hangs
-        if timed_out:
-            self.client.cancel_goal()
+        if not self.client.wait_for_result(goal.timeout + self.timeout_padding):
+            #This shouldn't happen, but could in rare cases where the server hangs
             raise tf2.TimeoutException("The LookupTransform goal sent to the BufferServer did not come back in the specified time. Something is likely wrong with the server")
 
         if self.client.get_state() != GoalStatus.SUCCEEDED:
@@ -123,8 +175,10 @@ class BufferClient(tf2_ros.BufferInterface):
         return self.__process_result(self.client.get_result())
 
     def __process_result(self, result):
-        if result == None or result.error == None:
-            raise tf2.TransformException("The BufferServer returned None for result or result.error!  Something is likely wrong with the server.")
+        if not result:
+            raise tf2.TransformException("The BufferServer returned None for result!  Something is likely wrong with the server.")
+        if not result.error:
+            raise tf2.TransformException("The BufferServer returned None for result.error!  Something is likely wrong with the server.")
         if result.error.error != result.error.NO_ERROR:
             if result.error.error == result.error.LOOKUP_ERROR:
                 raise tf2.LookupException(result.error.error_string)
@@ -140,4 +194,3 @@ class BufferClient(tf2_ros.BufferInterface):
             raise tf2.TransformException(result.error.error_string)
 
         return result.transform
-

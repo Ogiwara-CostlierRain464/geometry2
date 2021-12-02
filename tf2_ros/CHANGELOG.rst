@@ -2,6 +2,138 @@
 Changelog for package tf2_ros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.6.7 (2020-03-09)
+------------------
+* [windows][melodic] more portable fixes. (`#443 <https://github.com/ros/geometry2/issues/443>`_)
+* [Windows][melodic-devel] Fix install locations (`#442 <https://github.com/ros/geometry2/issues/442>`_)
+* Fixed warnings in message_filter.h (`#434 <https://github.com/ros/geometry2/issues/434>`_)
+  the variables are not used in function body and caused -Wunused-parameter to trigger with -Wall
+* Contributors: Sean Yen, moooeeeep
+
+0.6.6 (2020-01-09)
+------------------
+* Remove roslib.load_manifest `#404 <https://github.com/ros/geometry2/issues/404>`_
+* Fix message filter `#402 <https://github.com/ros/geometry2/issues/402>`_
+* resolve virtual function call in destructor
+* remove pending callbacks in clear()
+* spelling fix: seperate -> separate `#372 <https://github.com/ros/geometry2/issues/372>`_
+* Fix dangling iterator references in buffer_server.cpp `#369 <https://github.com/ros/geometry2/issues/369>`_
+* Remove some useless code from buffer_server_main.cpp `#368 <https://github.com/ros/geometry2/issues/368>`_
+* Mark check_frequency as deprecated in docstring.
+* Follow `#337 <https://github.com/ros/geometry2/issues/337>`_: use actionlib API in BufferClient::processGoal()
+* Test for equality to None with 'is' instead of '==' `#355 <https://github.com/ros/geometry2/issues/355>`_
+* added parameter to advertise tf2-frames as a service, if needed
+* Contributors: Daniel Ingram, Emre Sahin, JonasTietz, Lucas Walter, Michael Grupp, Robert Haschke, Tamaki Nishino, Tully Foote
+
+0.6.5 (2018-11-16)
+------------------
+* Protect the time reset logic from a race condition.
+  Fixes `#341 <https://github.com/ros/geometry2/issues/341>`_
+  This could incorrectly trigger a buffer clear if two concurrent callbacks were invoked.
+* Contributors: Tully Foote
+
+0.6.4 (2018-11-06)
+------------------
+* fix(buffer-client): Use actionlib api for obtaining result
+  Use the API provided by actionlib for waiting for result. This will improve the response time and prevent problems with custom solutions (see `#178 <https://github.com/ros/geometry2/issues/178>`_). This change makes constructor parameter check_frequency obsolute and deprecates it.
+* Add check to buffer_client.py to make sure result is available
+  Related issue: `#178 <https://github.com/ros/geometry2/issues/178>`_
+* Add check to reset buffer when rostime goes backwards
+* Fixed the value of expected_success_count\_
+* Added a tf2_ros message filter unittest with multiple target frames and non-zero time tolerance
+* Contributors: Ewoud Pool, Jørgen Borgesen, Stephen Williams
+
+0.6.3 (2018-07-09)
+------------------
+
+0.6.2 (2018-05-02)
+------------------
+* update buffer_server_name (`#296 <https://github.com/ros/geometry2/issues/296>`_)
+  * use nodename as namespace
+  * Update `#209 <https://github.com/ros/geometry2/issues/209>`_ to provide backwards compatibility.
+* Contributors: Jihoon Lee, Tully Foote
+
+0.6.1 (2018-03-21)
+------------------
+
+0.6.0 (2018-03-21)
+------------------
+* tf2_ros::Buffer: canTransform can now deal with timeouts smaller than 10ms by using the hunderdth of the timeout for sleeping (`#286 <https://github.com/ros/geometry2/issues/286>`_)
+* More spinning to make sure the message gets through for `#129 <https://github.com/ros/geometry2/issues/129>`_ `#283 <https://github.com/ros/geometry2/issues/283>`_
+* Contributors: Tully Foote, cwecht
+
+0.5.17 (2018-01-01)
+-------------------
+* Merge pull request `#260 <https://github.com/ros/geometry2/issues/260>`_ from randoms/indigo-devel
+  fix python3 import error
+* Merge pull request `#257 <https://github.com/ros/geometry2/issues/257>`_ from delftrobotics-forks/python3
+  Make tf2_py python3 compatible again
+* Use python3 print function.
+* Contributors: Maarten de Vries, Tully Foote, randoms
+
+0.5.16 (2017-07-14)
+-------------------
+* Merge pull request `#144 <https://github.com/ros/geometry2/issues/144>`_ from clearpathrobotics/dead_lock_fix
+  Solve a bug that causes a deadlock in MessageFilter
+* Clear error string if it exists from the external entry points.
+  Fixes `#117 <https://github.com/ros/geometry2/issues/117>`_
+* Make buff_size and tcp_nodelay and subscriber queue size mutable.
+* Remove generate_rand_vectors() from a number of tests. (`#227 <https://github.com/ros/geometry2/issues/227>`_)
+  * Remove generate_rand_vectors() from a number of tests.
+* Log jump duration on backwards time jump detection. (`#234 <https://github.com/ros/geometry2/issues/234>`_)
+* replaced dependencies on tf2_msgs_gencpp by exported dependencies
+* Use new-style objects in python 2
+* Solve a bug that causes a deadlock in MessageFilter
+* Contributors: Adel Fakih, Chris Lalancette, Christopher Wecht, Eric Wieser, Koji Terada, Stephan, Tully Foote, koji_terada
+
+0.5.15 (2017-01-24)
+-------------------
+* tf2_ros: add option to unregister TransformListener (`#201 <https://github.com/ros/geometry2/issues/201>`_)
+* Contributors: Hans-Joachim Krauch
+
+0.5.14 (2017-01-16)
+-------------------
+* Drop roslib.load_manifest (`#191 <https://github.com/ros/geometry2/issues/191>`_)
+* Adds ability to load TF from the ROS parameter server.
+* Code linting & reorganization
+* Fix indexing beyond end of array
+* added a static transform broadcaster in python
+* lots more documentation
+* remove BufferCore doc, add BufferClient/BufferServer doc for C++, add Buffer/BufferInterface Python documentation
+* Better overview for Python
+* Contributors: Eric Wieser, Felix Duvallet, Jackie Kay, Mikael Arguedas, Mike Purvis
+
+0.5.13 (2016-03-04)
+-------------------
+* fix documentation warnings
+* Adding tests to package
+* Contributors: Laurent GEORGE, Vincent Rabaud
+
+0.5.12 (2015-08-05)
+-------------------
+* remove annoying gcc warning
+  This is because the roslog macro cannot have two arguments that are
+  formatting strings: we need to concatenate them first.
+* break canTransform loop only for non-tiny negative time deltas
+  (At least) with Python 2 ros.Time.now() is not necessarily monotonic
+  and one can experience negative time deltas (usually well below 1s)
+  on real hardware under full load. This check was originally introduced
+  to allow for backjumps with rosbag replays, and only there it makes sense.
+  So we'll add a small duration threshold to ignore backjumps due to
+  non-monotonic clocks.
+* Contributors: Vincent Rabaud, v4hn
+
+0.5.11 (2015-04-22)
+-------------------
+* do not short circuit waitForTransform timeout when running inside pytf. Fixes `#102 <https://github.com/ros/geometry_experimental/issues/102>`_
+  roscpp is not initialized inside pytf which means that ros::ok is not
+  valid. This was causing the timer to abort immediately.
+  This breaks support for pytf with respect to early breaking out of a loop re `#26 <https://github.com/ros/geometry_experimental/issues/26>`_.
+  This is conceptually broken in pytf, and is fixed in tf2_ros python implementation.
+  If you want this behavior I recommend switching to the tf2 python bindings.
+* inject timeout information into error string for canTransform with timeout
+* Contributors: Tully Foote
+
 0.5.10 (2015-04-21)
 -------------------
 * switch to use a shared lock with upgrade instead of only a unique lock. For `#91 <https://github.com/ros/geometry_experimental/issues/91>`_

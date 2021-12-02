@@ -28,12 +28,23 @@
  */
 
 #include <gtest/gtest.h>
+#include <thread>
+#include <chrono>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
-#include <sys/time.h>
 #include <rosgraph_msgs/Clock.h>
 
 using namespace tf2;
+
+void spin_for_a_second()
+{
+  ros::spinOnce();
+  for (uint8_t i = 0; i < 10; ++i)
+  {
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
+    ros::spinOnce();
+  }
+}
 
 TEST(tf2_ros_transform_listener, time_backwards)
 {
@@ -65,8 +76,7 @@ TEST(tf2_ros_transform_listener, time_backwards)
 
 
   // make sure it arrives
-  ros::spinOnce();
-  sleep(1);
+  spin_for_a_second();
 
   // verify it's been set
   ASSERT_TRUE(buffer.canTransform("foo", "bar", ros::Time(101, 0)));
@@ -75,18 +85,16 @@ TEST(tf2_ros_transform_listener, time_backwards)
   clock.publish(c);
 
   // make sure it arrives
-  ros::spinOnce();
-  sleep(1);
+  spin_for_a_second();
 
-  //Send anoterh message to trigger clock test on an unrelated frame
+  //Send another message to trigger clock test on an unrelated frame
   msg.header.stamp = ros::Time(110, 0);
   msg.header.frame_id = "foo2";
   msg.child_frame_id = "bar2";
   tfb.sendTransform(msg);
 
   // make sure it arrives
-  ros::spinOnce();
-  sleep(1);
+  spin_for_a_second();
 
   //verify the data's been cleared
   ASSERT_FALSE(buffer.canTransform("foo", "bar", ros::Time(101, 0)));

@@ -21,6 +21,8 @@ subject to the following restrictions:
 #include "Vector3.h"
 #include "QuadWord.h"
 
+#include <ros/macros.h>
+
 namespace tf2
 {
 
@@ -47,7 +49,7 @@ public:
    * @param yaw Angle around Y unless TF2_EULER_DEFAULT_ZYX defined then Z
    * @param pitch Angle around X unless TF2_EULER_DEFAULT_ZYX defined then Y
    * @param roll Angle around Z unless TF2_EULER_DEFAULT_ZYX defined then X */
-  Quaternion(const tf2Scalar& yaw, const tf2Scalar& pitch, const tf2Scalar& roll) __attribute__((deprecated))
+  ROS_DEPRECATED Quaternion(const tf2Scalar& yaw, const tf2Scalar& pitch, const tf2Scalar& roll)
 	{ 
 #ifndef TF2_EULER_DEFAULT_ZYX
 		setEuler(yaw, pitch, roll); 
@@ -110,7 +112,7 @@ public:
    * @param yaw Angle around Z
    * @param pitch Angle around Y
    * @param roll Angle around X */
-  void setEulerZYX(const tf2Scalar& yaw, const tf2Scalar& pitch, const tf2Scalar& roll) __attribute__((deprecated))
+  ROS_DEPRECATED void setEulerZYX(const tf2Scalar& yaw, const tf2Scalar& pitch, const tf2Scalar& roll)
 	{
           setRPY(roll, pitch, yaw);
 	}
@@ -224,18 +226,18 @@ public:
 		else 
 			return tf2Acos(dot(q) / s) * tf2Scalar(2.0);
 	}
-  /**@brief Return the angle of rotation represented by this quaternion */
+        /**@brief Return the angle [0, 2Pi] of rotation represented by this quaternion */
 	tf2Scalar getAngle() const 
 	{
 		tf2Scalar s = tf2Scalar(2.) * tf2Acos(m_floats[3]);
 		return s;
 	}
 
-	/**@brief Return the angle of rotation represented by this quaternion along the shortest path*/
+        /**@brief Return the angle [0, Pi] of rotation represented by this quaternion along the shortest path */
 	tf2Scalar getAngleShortestPath() const 
 	{
 	tf2Scalar s;
-		if (dot(*this) < 0)
+		if (m_floats[3] >= 0)
 			s = tf2Scalar(2.) * tf2Acos(m_floats[3]);
 		else
 			s = tf2Scalar(2.) * tf2Acos(-m_floats[3]);

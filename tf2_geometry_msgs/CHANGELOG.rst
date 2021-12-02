@@ -2,6 +2,87 @@
 Changelog for package tf2_geometry_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.6.7 (2020-03-09)
+------------------
+
+0.6.6 (2020-01-09)
+------------------
+* Make kdl headers available (`#419 <https://github.com/ros/geometry2/issues/419>`_)
+* Fix python3 compatibility for noetic (`#416 <https://github.com/ros/geometry2/issues/416>`_)
+* add <array> from STL (`#366 <https://github.com/ros/geometry2/issues/366>`_)
+* use ROS_DEPRECATED macro for portability (`#362 <https://github.com/ros/geometry2/issues/362>`_)
+* Contributors: James Xu, Shane Loretz, Tully Foote
+
+0.6.5 (2018-11-16)
+------------------
+* Fix python3 import error
+* Contributors: Timon Engelke
+
+0.6.4 (2018-11-06)
+------------------
+
+0.6.3 (2018-07-09)
+------------------
+* Changed access to Vector to prevent memory leak (`#305 <https://github.com/ros/geometry2/issues/305>`_)
+* Added WrenchStamped transformation (`#302 <https://github.com/ros/geometry2/issues/302>`_)
+* Contributors: Denis Štogl, Markus Grimm
+
+0.6.2 (2018-05-02)
+------------------
+
+0.6.1 (2018-03-21)
+------------------
+
+0.6.0 (2018-03-21)
+------------------
+* Boilerplate for Sphinx (`#284 <https://github.com/ros/geometry2/issues/284>`_)
+  Fixes `#264 <https://github.com/ros/geometry2/issues/264>`_
+* tf2_geometry_msgs added doTransform implementations for not stamped types (`#262 <https://github.com/ros/geometry2/issues/262>`_)
+  * tf2_geometry_msgs added doTransform implementations for not stamped Point, Quaterion, Pose and Vector3 message types
+* New functionality to transform PoseWithCovarianceStamped messages. (`#282 <https://github.com/ros/geometry2/issues/282>`_)
+  * New functionality to transform PoseWithCovarianceStamped messages.
+* Contributors: Blake Anderson, Tully Foote, cwecht
+
+0.5.17 (2018-01-01)
+-------------------
+
+0.5.16 (2017-07-14)
+-------------------
+* remove explicit templating to standardize on overloading. But provide backwards compatibility with deprecation.
+* adding unit tests for conversions
+* Copy transform before altering it in do_transform_vector3 [issue 233] (`#235 <https://github.com/ros/geometry2/issues/235>`_)
+* store gtest return value as int (`#229 <https://github.com/ros/geometry2/issues/229>`_)
+* Document the lifetime of the returned reference for getFrameId and getTimestamp
+* tf2_geometry_msgs: using tf2::Transform in doTransform-functions, marked gmTransformToKDL as deprecated
+* Switch tf2_geometry_msgs to use package.xml format 2 (`#217 <https://github.com/ros/geometry2/issues/217>`_)
+* tf2_geometry_msgs: added missing conversion functions
+* Contributors: Christopher Wecht, Sebastian Wagner, Tully Foote, dhood, pAIgn10
+
+0.5.15 (2017-01-24)
+-------------------
+
+0.5.14 (2017-01-16)
+-------------------
+* Add doxygen documentation for tf2_geometry_msgs
+* Contributors: Jackie Kay
+
+0.5.13 (2016-03-04)
+-------------------
+* Add missing python_orocos_kdl dependency
+* make example into unit test
+* vector3 not affected by translation
+* Contributors: Daniel Claes, chapulina
+
+0.5.12 (2015-08-05)
+-------------------
+* Merge pull request `#112 <https://github.com/ros/geometry_experimental/issues/112>`_ from vrabaud/getYaw
+  Get yaw
+* add toMsg and fromMsg for QuaternionStamped
+* Contributors: Tully Foote, Vincent Rabaud
+
+0.5.11 (2015-04-22)
+-------------------
+
 0.5.10 (2015-04-21)
 -------------------
 

@@ -31,7 +31,6 @@
 
 
 #include <tf2_bullet/tf2_bullet.h>
-#include <ros/ros.h>
 #include <gtest/gtest.h>
 #include <tf2/convert.h>
 
@@ -59,6 +58,6 @@ TEST(TfBullet, ConvertVector)
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
 
-  bool ret = RUN_ALL_TESTS();
+  int ret = RUN_ALL_TESTS();
   return ret;
 }

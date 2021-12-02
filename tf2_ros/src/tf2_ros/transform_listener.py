@@ -27,38 +27,63 @@
 
 # author: Wim Meeussen
 
-import roslib; roslib.load_manifest('tf2_ros')
-import rospy
+import threading
+
 import rospy
 import tf2_ros
-import threading
 from tf2_msgs.msg import TFMessage
 
 class TransformListener():
-    def __init__(self, buffer):
-        self.listenerthread = TransformListenerThread(buffer)
-        self.listenerthread.setDaemon(True)
-        self.listenerthread.start()
+    """
+    :class:`TransformListener` is a convenient way to listen for coordinate frame transformation info.
+    This class takes an object that instantiates the :class:`BufferInterface` interface, to which
+    it propagates changes to the tf frame graph.
+    """
+    def __init__(self, buffer, queue_size=None, buff_size=65536, tcp_nodelay=False):
+        """
+        .. function:: __init__(buffer)
 
+            Constructor.
 
-class TransformListenerThread(threading.Thread):
-    def __init__(self, buffer):
+            :param buffer: The buffer to propagate changes to when tf info updates.
+            :param queue_size (int) - maximum number of messages to receive at a time. This will generally be 1 or None (infinite, default). buff_size should be increased if this parameter is set as incoming data still needs to sit in the incoming buffer before being discarded. Setting queue_size buff_size to a non-default value affects all subscribers to this topic in this process.
+            :param buff_size (int) - incoming message buffer size in bytes. If queue_size is set, this should be set to a number greater than the queue_size times the average message size. Setting buff_size to a non-default value affects all subscribers to this topic in this process.
+            :param tcp_nodelay (bool) - if True, request TCP_NODELAY from publisher. Use of this option is not generally recommended in most cases as it is better to rely on timestamps in message data. Setting tcp_nodelay to True enables TCP_NODELAY for all subscribers in the same python process.
+        """
         self.buffer = buffer
-        threading.Thread.__init__(self)
+        self.last_update = rospy.Time.now()
+        self.last_update_lock = threading.Lock()
+        self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.callback, queue_size=queue_size, buff_size=buff_size, tcp_nodelay=tcp_nodelay)
+        self.tf_static_sub = rospy.Subscriber("/tf_static", TFMessage, self.static_callback, queue_size=queue_size, buff_size=buff_size, tcp_nodelay=tcp_nodelay)
 
+    def __del__(self):
+        self.unregister()
 
+    def unregister(self):
+        """
+        Unregisters all tf subscribers.
+        """
+        self.tf_sub.unregister()
+        self.tf_static_sub.unregister()
 
-    def run(self):
-        rospy.Subscriber("/tf", TFMessage, self.callback)
-        rospy.Subscriber("/tf_static", TFMessage, self.static_callback)
-        rospy.spin()
+    def check_for_reset(self):
+        # Lock to prevent different threads racing on this test and update.
+        # https://github.com/ros/geometry2/issues/341
+        with self.last_update_lock:
+            now = rospy.Time.now()
+            if now < self.last_update:
+                rospy.logwarn("Detected jump back in time of %fs. Clearing TF buffer." % (self.last_update - now).to_sec())
+                self.buffer.clear()
+            self.last_update = now
 
     def callback(self, data):
+        self.check_for_reset()
         who = data._connection_header.get('callerid', "default_authority")
         for transform in data.transforms:
             self.buffer.set_transform(transform, who)
 
     def static_callback(self, data):
+        self.check_for_reset()
         who = data._connection_header.get('callerid', "default_authority")
         for transform in data.transforms:
             self.buffer.set_transform_static(transform, who)

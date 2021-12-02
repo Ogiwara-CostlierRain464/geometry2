@@ -43,7 +43,9 @@
 
 namespace tf2_ros{
 
-class TransformListener 
+/** \brief This class provides an easy way to request and receive coordinate frame transform information.
+ */
+class TransformListener
 {
 
 public:
@@ -59,7 +61,7 @@ private:
   void init();
   void initWithThread();
 
-  /// Callback function for ros message subscriptoin
+  /// Callback function for ros message subscription
   void subscription_callback(const ros::MessageEvent<tf2_msgs::TFMessage const>& msg_evt);
   void static_subscription_callback(const ros::MessageEvent<tf2_msgs::TFMessage const>& msg_evt);
   void subscription_callback_impl(const ros::MessageEvent<tf2_msgs::TFMessage const>& msg_evt, bool is_static);

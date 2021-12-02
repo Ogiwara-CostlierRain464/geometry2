@@ -90,7 +90,7 @@ class BufferCore
 public:
   /************* Constants ***********************/
   static const int DEFAULT_CACHE_TIME = 10;  //!< The default amount of time to cache data in seconds
-  static const uint32_t MAX_GRAPH_DEPTH = 1000UL;  //!< The default amount of time to cache data in seconds
+  static const uint32_t MAX_GRAPH_DEPTH = 1000UL;  //!< Maximum graph search depth (deeper graphs will be assumed to have loops)
 
   /** Constructor
    * \param interpolating Whether to interpolate, if this is false the closest value will be returned
@@ -143,7 +143,7 @@ public:
 		    const std::string& source_frame, const ros::Time& source_time,
 		    const std::string& fixed_frame) const;
   
-  /** \brief Lookup the twist of the tracking_frame with respect to the observation frame in the reference_frame using the reference point
+  /* \brief Lookup the twist of the tracking_frame with respect to the observation frame in the reference_frame using the reference point
    * \param tracking_frame The frame to track
    * \param observation_frame The frame from which to measure the twist
    * \param reference_frame The reference frame in which to express the twist
@@ -169,7 +169,7 @@ public:
 		const tf::Point & reference_point, const std::string& reference_point_frame, 
 		const ros::Time& time, const ros::Duration& averaging_interval) const;
   */
-  /** \brief lookup the twist of the tracking frame with respect to the observational frame 
+  /* \brief lookup the twist of the tracking frame with respect to the observational frame
    * 
    * This is a simplified version of
    * lookupTwist with it assumed that the reference point is the
@@ -413,11 +413,21 @@ private:
   //Whether it is safe to use canTransform with a timeout. (If another thread is not provided it will always timeout.)
   bool using_dedicated_thread_;
 
-};
-
-
-
+public:
+  friend class TestBufferCore; // For unit testing
 
 };
+
+/** A helper class for testing internal APIs */
+class TestBufferCore
+{
+public:
+  int _walkToTopParent(BufferCore& buffer, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const;
+  const std::string& _lookupFrameString(BufferCore& buffer, CompactFrameID frame_id_num) const
+  {
+    return buffer.lookupFrameString(frame_id_num);
+  }
+};
+}
 
 #endif //TF2_CORE_H

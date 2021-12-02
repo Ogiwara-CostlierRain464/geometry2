@@ -2,6 +2,77 @@
 Changelog for package tf2_kdl
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.6.7 (2020-03-09)
+------------------
+
+0.6.6 (2020-01-09)
+------------------
+* Make kdl headers available (`#419 <https://github.com/ros/geometry2/issues/419>`_)
+* Fix python3 compatibility for noetic (`#416 <https://github.com/ros/geometry2/issues/416>`_)
+* Remove roslib.load_manifest `#404 <https://github.com/ros/geometry2/issues/404>`_ from otamachan/remove-load-manifest
+* Python 3 compatibility: relative imports and print statement
+* Contributors: Shane Loretz, Tamaki Nishino, Timon Engelke, Tully Foote
+
+0.6.5 (2018-11-16)
+------------------
+
+0.6.4 (2018-11-06)
+------------------
+
+0.6.3 (2018-07-09)
+------------------
+
+0.6.2 (2018-05-02)
+------------------
+* Adds additional conversions for tf2, KDL, Eigen (`#292 <https://github.com/ros/geometry2/issues/292>`_)
+  - adds non-stamped Eigen to Transform function
+  - converts Eigen Matrix Vectors to and from geometry_msgs::Twist
+  - adds to/from message for geometry_msgs::Pose and KDL::Frame
+* Contributors: Ian McMahon
+
+0.6.1 (2018-03-21)
+------------------
+
+0.6.0 (2018-03-21)
+------------------
+
+0.5.17 (2018-01-01)
+-------------------
+* Merge pull request `#257 <https://github.com/ros/geometry2/issues/257>`_ from delftrobotics-forks/python3
+  Make tf2_py python3 compatible again
+* Use python3 print function.
+* Contributors: Maarten de Vries, Tully Foote
+
+0.5.16 (2017-07-14)
+-------------------
+* store gtest return value as int (`#229 <https://github.com/ros/geometry2/issues/229>`_)
+* Find eigen in a much nicer way.
+* Switch tf2_kdl over to package.xml format 2.
+* Contributors: Chris Lalancette, dhood
+
+0.5.15 (2017-01-24)
+-------------------
+
+0.5.14 (2017-01-16)
+-------------------
+* Add Python documentation for tf2_kdl
+* Document kdl
+* Contributors: Jackie Kay
+
+0.5.13 (2016-03-04)
+-------------------
+* converting python test script into unit test
+* Don't export catkin includes
+* Contributors: Jochen Sprickerhof, Tully Foote
+
+0.5.12 (2015-08-05)
+-------------------
+* Add kdl::Frame to TransformStamped conversion
+* Contributors: Paul Bovbel
+
+0.5.11 (2015-04-22)
+-------------------
+
 0.5.10 (2015-04-21)
 -------------------
 

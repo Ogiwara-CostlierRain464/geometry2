@@ -36,7 +36,7 @@
 #include <tf2/transform_datatypes.h>
 #include <tf2/exceptions.h>
 #include <geometry_msgs/TransformStamped.h>
-
+#include <tf2/impl/convert.h>
 
 namespace tf2 {
 
@@ -54,14 +54,16 @@ template <class T>
 
 /**\brief Get the timestamp from data 
  * \param t The data input.
- * \return The timestamp associated with the data. 
+ * \return The timestamp associated with the data. The lifetime of the returned
+ * reference is bound to the lifetime of the argument.
  */
 template <class T>
   const ros::Time& getTimestamp(const T& t);
 
 /**\brief Get the frame_id from data 
  * \param t The data input.
- * \return The frame_id associated with the data. 
+ * \return The frame_id associated with the data. The lifetime of the returned
+ * reference is bound to the lifetime of the argument.
  */
 template <class T>
   const std::string& getFrameId(const T& t);
@@ -82,11 +84,36 @@ template <class P>
     return t.frame_id_;
   }
 
+/** Function that converts from one type to a ROS message type. It has to be
+ * implemented by each data type in tf2_* (except ROS messages) as it is
+ * used in the "convert" function.
+ * \param a an object of whatever type
+ * \return the conversion as a ROS message
+ */
+template<typename A, typename B>
+  B toMsg(const A& a);
+
+/** Function that converts from a ROS message type to another type. It has to be
+ * implemented by each data type in tf2_* (except ROS messages) as it is used
+ * in the "convert" function.
+ * \param a a ROS message to convert from
+ * \param b the object to convert to
+ */
+template<typename A, typename B>
+  void fromMsg(const A&, B& b);
+
+/** Function that converts any type to any type (messages or not).
+ * Matching toMsg and from Msg conversion functions need to exist.
+ * If they don't exist or do not apply (for example, if your two
+ * classes are ROS messages), just write a specialization of the function.
+ * \param a an object to convert from
+ * \param b the object to convert to
+ */
 template <class A, class B>
   void convert(const A& a, B& b)
   {
     //printf("In double type convert\n");
-    fromMsg(toMsg(a), b);
+    impl::Converter<ros::message_traits::IsMessage<A>::value, ros::message_traits::IsMessage<B>::value>::convert(a, b);
   }
 
 template <class A>

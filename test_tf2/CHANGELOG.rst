@@ -2,6 +2,96 @@
 Changelog for package test_tf2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.6.7 (2020-03-09)
+------------------
+* [windows][melodic] more portable fixes. (`#443 <https://github.com/ros/geometry2/issues/443>`_)
+  * more portable fixes.
+* Contributors: Sean Yen
+
+0.6.6 (2020-01-09)
+------------------
+* Update shebang and add launch prefixes for python3 support (`#421 <https://github.com/ros/geometry2/issues/421>`_)
+* Always call catkin_package() (`#418 <https://github.com/ros/geometry2/issues/418>`_)
+* Remove roslib.load_manifest `#404 <https://github.com/ros/geometry2/issues/404>`_ from otamachan/remove-load-manifest
+* Contributors: Shane Loretz, Tamaki Nishino, Tully Foote
+
+0.6.5 (2018-11-16)
+------------------
+
+0.6.4 (2018-11-06)
+------------------
+
+0.6.3 (2018-07-09)
+------------------
+* use correct unit test for test_tf2_bullet (`#301 <https://github.com/ros/geometry2/issues/301>`_)
+* update cmake order (`#298 <https://github.com/ros/geometry2/issues/298>`_)
+* Contributors: Tully Foote
+
+0.6.2 (2018-05-02)
+------------------
+
+0.6.1 (2018-03-21)
+------------------
+
+0.6.0 (2018-03-21)
+------------------
+
+0.5.17 (2018-01-01)
+-------------------
+* Merge pull request `#257 <https://github.com/ros/geometry2/issues/257>`_ from delftrobotics-forks/python3
+  Make tf2_py python3 compatible again
+* Use python3 print function.
+* Contributors: Maarten de Vries, Tully Foote
+
+0.5.16 (2017-07-14)
+-------------------
+* Remove generate_rand_vectors() from a number of tests. (`#227 <https://github.com/ros/geometry2/issues/227>`_)
+  * Remove a slew of trailing whitespace.
+  Signed-off-by: Chris Lalancette <clalancette@osrfoundation.org>
+  * Remove generate_rand_vectors() from a number of tests.
+  It was never used, so there is no reason to carry it around.
+  Signed-off-by: Chris Lalancette <clalancette@osrfoundation.org>
+* store gtest return value as int (`#229 <https://github.com/ros/geometry2/issues/229>`_)
+* Contributors: Chris Lalancette, dhood
+
+0.5.15 (2017-01-24)
+-------------------
+
+0.5.14 (2017-01-16)
+-------------------
+* Typos.
+* Adds unit tests for TF loaded from parameter server.
+  This tests both success (loading a valid TF into the param server) and
+  failures (parameter does not exist, parameter contents are invalid).
+* Code linting & reorganization
+  - whitespace
+  - indentation
+  - re-organized code to remove duplications.
+  whitespace & indentation changes only.
+  simplified (de-duplicated) duplicate code.
+  missing a duplicate variable.
+  whitespace changes only.
+* Contributors: Felix Duvallet
+
+0.5.13 (2016-03-04)
+-------------------
+* Remove LGPL from license tags
+  LGPL was erroneously included in 2a38724. As there are no files with it
+  in the package.
+* Contributors: Jochen Sprickerhof
+
+0.5.12 (2015-08-05)
+-------------------
+* add utilities to get yaw, pitch, roll and identity transform
+* provide more conversions between types
+  The previous conversion always assumed that it was converting a
+  non-message type to a non-message type. Now, one, both or none
+  can be a message or a non-message.
+* Contributors: Vincent Rabaud
+
+0.5.11 (2015-04-22)
+-------------------
+
 0.5.10 (2015-04-21)
 -------------------
 

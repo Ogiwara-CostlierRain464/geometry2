@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Copyright (c) 2008, Willow Garage, Inc.
 # All rights reserved.
 # 
@@ -28,7 +28,6 @@
 
 # author: Wim Meeussen
 
-import roslib; roslib.load_manifest('tf2_tools')
 import rospy
 import tf2_py as tf2
 import yaml
@@ -49,7 +48,7 @@ def main():
     rospy.loginfo('Generating graph in frames.pdf file...')
     rospy.wait_for_service('~tf2_frames')
     srv = rospy.ServiceProxy('~tf2_frames', FrameGraph)
-    data = yaml.load(srv().frame_yaml)
+    data = yaml.safe_load(srv().frame_yaml)
     with open('frames.gv', 'w') as f:
         f.write(generate_dot(data))
     subprocess.Popen('dot -Tpdf frames.gv -o frames.pdf'.split(' ')).communicate()
@@ -61,7 +60,7 @@ def generate_dot(data):
     dot = 'digraph G {\n'
     for el in data: 
         map = data[el]
-        dot += '"'+map['parent']+'" -> "'+el+'"'
+        dot += '"'+map['parent']+'" -> "'+str(el)+'"'
         dot += '[label=" '
         dot += 'Broadcaster: '+map['broadcaster']+'\\n'
         dot += 'Average rate: '+str(map['rate'])+'\\n'

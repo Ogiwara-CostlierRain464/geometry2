@@ -50,10 +50,10 @@
 #include <ros/init.h>
 
 #define TF2_ROS_MESSAGEFILTER_DEBUG(fmt, ...) \
-  ROS_DEBUG_NAMED("message_filter", "MessageFilter [target=%s]: ", fmt, getTargetFramesString().c_str(), __VA_ARGS__)
+  ROS_DEBUG_NAMED("message_filter", std::string(std::string("MessageFilter [target=%s]: ") + std::string(fmt)).c_str(), getTargetFramesString().c_str(), __VA_ARGS__)
 
 #define TF2_ROS_MESSAGEFILTER_WARN(fmt, ...) \
-  ROS_WARN_NAMED("message_filter", "MessageFilter [target=%s]: ", fmt, getTargetFramesString().c_str(), __VA_ARGS__)
+  ROS_WARN_NAMED("message_filter", std::string(std::string("MessageFilter [target=%s]: ") + std::string(fmt)).c_str(), getTargetFramesString().c_str(), __VA_ARGS__)
 
 namespace tf2_ros
 {
@@ -118,7 +118,7 @@ public:
   /**
    * \brief Constructor
    *
-   * \param tf The tf::Transformer this filter should use
+   * \param bc The tf2::BufferCore this filter should use
    * \param target_frame The frame this filter should attempt to transform to.  To use multiple frames, pass an empty string here and use the setTargetFrames() function.
    * \param queue_size The number of messages to queue up before throwing away old ones.  0 means infinite (dangerous).
    * \param nh The NodeHandle whose callback queue we should add callbacks to
@@ -137,7 +137,7 @@ public:
    * \brief Constructor
    *
    * \param f The filter to connect this filter's input to.  Often will be a message_filters::Subscriber.
-   * \param tf The tf::Transformer this filter should use
+   * \param bc The tf2::BufferCore this filter should use
    * \param target_frame The frame this filter should attempt to transform to.  To use multiple frames, pass an empty string here and use the setTargetFrames() function.
    * \param queue_size The number of messages to queue up before throwing away old ones.  0 means infinite (dangerous).
    * \param nh The NodeHandle whose callback queue we should add callbacks to
@@ -158,7 +158,7 @@ public:
   /**
    * \brief Constructor
    *
-   * \param tf The tf::Transformer this filter should use
+   * \param bc The tf2::BufferCore this filter should use
    * \param target_frame The frame this filter should attempt to transform to.  To use multiple frames, pass an empty string here and use the setTargetFrames() function.
    * \param queue_size The number of messages to queue up before throwing away old ones.  0 means infinite (dangerous).
    * \param cbqueue The callback queue to add callbacks to.  If NULL, callbacks will happen from whatever thread either
@@ -179,7 +179,7 @@ public:
    * \brief Constructor
    *
    * \param f The filter to connect this filter's input to.  Often will be a message_filters::Subscriber.
-   * \param tf The tf::Transformer this filter should use
+   * \param bc The tf2::BufferCore this filter should use
    * \param target_frame The frame this filter should attempt to transform to.  To use multiple frames, pass an empty string here and use the setTargetFrames() function.
    * \param queue_size The number of messages to queue up before throwing away old ones.  0 means infinite (dangerous).
    * \param cbqueue The callback queue to add callbacks to.  If NULL, callbacks will happen from whatever thread either
@@ -216,7 +216,7 @@ public:
   {
     message_connection_.disconnect();
 
-    clear();
+    MessageFilter::clear();
 
     TF2_ROS_MESSAGEFILTER_DEBUG("Successful Transforms: %llu, Discarded due to age: %llu, Transform messages received: %llu, Messages received: %llu, Total dropped: %llu",
                            (long long unsigned int)successful_transform_count_,
@@ -244,7 +244,7 @@ public:
 
     target_frames_.resize(target_frames.size());
     std::transform(target_frames.begin(), target_frames.end(), target_frames_.begin(), this->stripSlash);
-    expected_success_count_ = target_frames_.size() + (time_tolerance_.isZero() ? 0 : 1);
+    expected_success_count_ = target_frames_.size() * (time_tolerance_.isZero() ? 1 : 2);
 
     std::stringstream ss;
     for (V_string::iterator it = target_frames_.begin(); it != target_frames_.end(); ++it)
@@ -269,7 +269,7 @@ public:
   {
     boost::mutex::scoped_lock lock(target_frames_mutex_);
     time_tolerance_ = tolerance;
-    expected_success_count_ = target_frames_.size() + (time_tolerance_.isZero() ? 0 : 1);
+    expected_success_count_ = target_frames_.size() * (time_tolerance_.isZero() ? 1 : 2);
   }
 
   /**
@@ -286,6 +286,10 @@ public:
 
     messages_.clear();
     message_count_ = 0;
+
+    // remove pending callbacks in callback queue as well
+    if (callback_queue_)
+      callback_queue_->removeByID((uint64_t)this);
 
     warned_about_empty_frame_id_ = false;
   }
@@ -367,12 +371,10 @@ public:
     }
     else
     {
+      boost::unique_lock< boost::shared_mutex > unique_lock(messages_mutex_);
       // If this message is about to push us past our queue size, erase the oldest message
       if (queue_size_ != 0 && message_count_ + 1 > queue_size_)
       {
-        // While we're using the reference keep a shared lock on the messages.
-        boost::shared_lock< boost::shared_mutex > shared_lock(messages_mutex_);
-
         ++dropped_message_count_;
         const MessageInfo& front = messages_.front();
         TF2_ROS_MESSAGEFILTER_DEBUG("Removed oldest message because buffer is full, count now %d (frame_id=%s, stamp=%f)", message_count_,
@@ -380,26 +382,19 @@ public:
 
         V_TransformableRequestHandle::const_iterator it = front.handles.begin();
         V_TransformableRequestHandle::const_iterator end = front.handles.end();
+
         for (; it != end; ++it)
         {
           bc_.cancelTransformableRequest(*it);
         }
 
         messageDropped(front.event, filter_failure_reasons::Unknown);
-        // Unlock the shared lock and get a unique lock. Upgradeable lock is used in transformable.
-        // There can only be one upgrade lock. It's important the cancelTransformableRequest not deadlock with transformable.
-        // They both require the transformable_requests_mutex_ in BufferCore.
-        shared_lock.unlock();
-        // There is a very slight race condition if an older message arrives in this gap.
-        boost::unique_lock< boost::shared_mutex > unique_lock(messages_mutex_);
         messages_.pop_front();
          --message_count_;
       }
 
       // Add the message to our list
       info.event = evt;
-      // Lock access to the messages_ before modifying them.
-      boost::unique_lock< boost::shared_mutex > unique_lock(messages_mutex_);
       messages_.push_back(info);
       ++message_count_;
     }
@@ -461,8 +456,8 @@ private:
     callback_handle_ = bc_.addTransformableCallback(boost::bind(&MessageFilter::transformable, this, _1, _2, _3, _4, _5));
   }
 
-  void transformable(tf2::TransformableRequestHandle request_handle, const std::string& target_frame, const std::string& source_frame,
-                     ros::Time time, tf2::TransformableResult result)
+  void transformable(tf2::TransformableRequestHandle request_handle, const std::string& /* target_frame */, const std::string& /* source_frame */,
+                     ros::Time /* time */, tf2::TransformableResult result)
   {
     namespace mt = ros::message_traits;
 
@@ -689,7 +684,7 @@ private:
   };
   typedef std::list<MessageInfo> L_MessageInfo;
   L_MessageInfo messages_;
-  uint32_t message_count_; ///< The number of messages in the list.  Used because <container>.size() may have linear cost
+  uint32_t message_count_; ///< The number of messages in the list.  Used because \<container\>.size() may have linear cost
   boost::shared_mutex messages_mutex_; ///< The mutex used for locking message list operations
   uint32_t expected_success_count_;
 

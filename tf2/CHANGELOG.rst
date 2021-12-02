@@ -2,6 +2,120 @@
 Changelog for package tf2
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.6.7 (2020-03-09)
+------------------
+* [windows][melodic] more portable fixes. (`#443 <https://github.com/ros/geometry2/issues/443>`_)
+* [Windows][melodic-devel] Fix install locations (`#442 <https://github.com/ros/geometry2/issues/442>`_)
+* Revert "rework Eigen functions namespace hack" (`#436 <https://github.com/ros/geometry2/issues/436>`_)
+* Contributors: Sean Yen, Tully Foote
+
+0.6.6 (2020-01-09)
+------------------
+* Fix compile error missing ros/ros.h (`#400 <https://github.com/ros/geometry2/issues/400>`_)
+  * ros/ros.h -> ros/time.h
+  * tf2_eigen doesn't need ros/ros.h
+* rework Eigen functions namespace hack
+* separate transform function declarations into transform_functions.h
+* use ROS_DEPRECATED macro for portability (`#362 <https://github.com/ros/geometry2/issues/362>`_)
+* Remove `signals` from find_package(Boost COMPONENTS ...).
+* Remove legacy inclusion in CMakeLists of tf2.
+* Contributors: James Xu, Maarten de Vries, Marco Tranzatto, Shane Loretz, Tully Foote
+
+0.6.5 (2018-11-16)
+------------------
+
+0.6.4 (2018-11-06)
+------------------
+* Resolved pedantic warnings
+* fix issue `#315 <https://github.com/ros/geometry2/issues/315>`_
+* fixed nan interpoaltion issue
+* Contributors: Keller Fabian Rudolf (CC-AD/EYC3), Kuang Fangjun, Martin Ganeff
+
+0.6.3 (2018-07-09)
+------------------
+* preserve constness of const argument to avoid warnings (`#307 <https://github.com/ros/geometry2/issues/307>`_)
+* Change comment style for unused doxygen (`#297 <https://github.com/ros/geometry2/issues/297>`_)
+* Contributors: Jacob Perron, Tully Foote
+
+0.6.2 (2018-05-02)
+------------------
+
+0.6.1 (2018-03-21)
+------------------
+* Replaced deprecated console_bridge macro calls (tests)
+* Contributors: Johannes Meyer, Tully Foote
+
+0.6.0 (2018-03-21)
+------------------
+* Replaced deprecated log macro calls
+* Contributors: Tim Rakowski, Tully Foote
+
+0.5.17 (2018-01-01)
+-------------------
+* Merge pull request `#278 <https://github.com/ros/geometry2/issues/278>`_ from ros/chain_as_vec_test2
+  Clean up results of _chainAsVector
+* Simple test to check BufferCore::_chainAsVector.
+  Unit tests for walk and chain passing now.
+* Merge pull request `#267 <https://github.com/ros/geometry2/issues/267>`_ from at-wat/speedup-timecache-for-large-buffer
+  Speed-up TimeCache search for large cache time.
+* Merge pull request `#265 <https://github.com/ros/geometry2/issues/265>`_ from vsherrod/interpolation_fix
+  Corrected time output on interpolation function.
+* Add time_interval option to tf2 speed-test.
+* Merge pull request `#269 <https://github.com/ros/geometry2/issues/269>`_ from ros/frames_as_yaml
+  allFrameAsYaml consistently outputting a dict
+* resolve https://github.com/ros/geometry/pull/153 at the source instead of needing the workaround.
+* Speed-up TimeCache search for large cache time.
+* Modified tests for correct time in interpolation to existing tests.
+* Corrected time output on interpolation function.
+  Added unit test to check for this.
+* Contributors: Atsushi Watanabe, Miguel Prada, Tully Foote, Vallan Sherrod
+
+0.5.16 (2017-07-14)
+-------------------
+* remove explicit templating to standardize on overloading. But provide backwards compatibility with deprecation.
+* Merge pull request `#144 <https://github.com/ros/geometry2/issues/144>`_ from clearpathrobotics/dead_lock_fix
+  Solve a bug that causes a deadlock in MessageFilter
+* Resolve 2 places where the error_msg would not be propogated.
+  Fixes `#198 <https://github.com/ros/geometry2/issues/198>`_
+* Remove generate_rand_vectors() from a number of tests. (`#227 <https://github.com/ros/geometry2/issues/227>`_)
+* fixing include directory order to support overlays (`#231 <https://github.com/ros/geometry2/issues/231>`_)
+* replaced dependencies on tf2_msgs_gencpp by exported dependencies
+* Document the lifetime of the returned reference for getFrameId getTimestamp
+* relax normalization tolerance. `#196 <https://github.com/ros/geometry2/issues/196>`_ was too strict for some use cases. (`#220 <https://github.com/ros/geometry2/issues/220>`_)
+* Solve a bug that causes a deadlock in MessageFilter
+* Contributors: Adel Fakih, Chris Lalancette, Christopher Wecht, Tully Foote, dhood
+
+0.5.15 (2017-01-24)
+-------------------
+
+0.5.14 (2017-01-16)
+-------------------
+* fixes `#194 <https://github.com/ros/geometry2/issues/194>`_ check for quaternion normalization before inserting into storage (`#196 <https://github.com/ros/geometry2/issues/196>`_)
+  * check for quaternion normalization before inserting into storage
+  * Add test to check for transform failure on invalid quaternion input
+* updating getAngleShortestPath() (`#187 <https://github.com/ros/geometry2/issues/187>`_)
+* Move internal cache functions into a namespace
+  Fixes https://github.com/ros/geometry2/issues/175
+* Link properly to convert.h
+* Landing page for tf2 describing the conversion interface
+* Fix comment on BufferCore::MAX_GRAPH_DEPTH.
+* Contributors: Jackie Kay, Phil Osteen, Tully Foote, alex, gavanderhoorn
+
+0.5.13 (2016-03-04)
+-------------------
+
+0.5.12 (2015-08-05)
+-------------------
+* add utilities to get yaw, pitch, roll and identity transform
+* provide more conversions between types
+  The previous conversion always assumed that it was converting a
+  non-message type to a non-message type. Now, one, both or none
+  can be a message or a non-message.
+* Contributors: Vincent Rabaud
+
+0.5.11 (2015-04-22)
+-------------------
+
 0.5.10 (2015-04-21)
 -------------------
 * move lct_cache into function local memoryfor `#92 <https://github.com/ros/geometry_experimental/issues/92>`_

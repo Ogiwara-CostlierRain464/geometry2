@@ -43,12 +43,22 @@ namespace tf2
 /** PointCloud2    **/
 /********************/
 
-// method to extract timestamp from object
+/** \brief Extract a timestamp from the header of a PointCloud2 message.
+ * This function is a specialization of the getTimestamp template defined in tf2/convert.h.
+ * \param t PointCloud2 message to extract the timestamp from.
+ * \return The timestamp of the message. The lifetime of the returned reference
+ * is bound to the lifetime of the argument.
+ */
 template <>
 inline
 const ros::Time& getTimestamp(const sensor_msgs::PointCloud2& p) {return p.header.stamp;}
 
-// method to extract frame id from object
+/** \brief Extract a frame ID from the header of a PointCloud2 message.
+ * This function is a specialization of the getFrameId template defined in tf2/convert.h.
+ * \param t PointCloud2 message to extract the frame ID from.
+ * \return A string containing the frame ID of the message. The lifetime of the
+ * returned reference is bound to the lifetime of the argument.
+ */
 template <>
 inline
 const std::string& getFrameId(const sensor_msgs::PointCloud2 &p) {return p.header.frame_id;}
@@ -60,8 +70,8 @@ void doTransform(const sensor_msgs::PointCloud2 &p_in, sensor_msgs::PointCloud2 
 {
   p_out = p_in;
   p_out.header = t_in.header;
-  Eigen::Transform<float,3,Eigen::Affine> t = Eigen::Translation3f(t_in.transform.translation.x, t_in.transform.translation.y,
-                                                                   t_in.transform.translation.z) * Eigen::Quaternion<float>(
+  Eigen::Transform<float,3,Eigen::Isometry> t = Eigen::Translation3f(t_in.transform.translation.x, t_in.transform.translation.y,
+                                                                     t_in.transform.translation.z) * Eigen::Quaternion<float>(
                                                                      t_in.transform.rotation.w, t_in.transform.rotation.x,
                                                                      t_in.transform.rotation.y, t_in.transform.rotation.z);
 

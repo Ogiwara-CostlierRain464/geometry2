@@ -42,7 +42,12 @@
 namespace tf2_ros
 {
 
-  // extend the BufferInterface class and BufferCore class
+  /** \brief Standard implementation of the tf2_ros::BufferInterface abstract data type.
+   *
+   * Inherits tf2_ros::BufferInterface and tf2::BufferCore.
+   * Stores known frames and offers a ROS service, "tf_frames", which responds to client requests
+   * with a response containing a tf2_msgs::FrameGraph representing the relationship of known frames.
+   */
   class Buffer: public BufferInterface, public tf2::BufferCore
   {
   public:
@@ -92,7 +97,7 @@ namespace tf2_ros
     /** \brief Test if a transform is possible
      * \param target_frame The frame into which to transform
      * \param source_frame The frame from which to transform
-     * \param time The time at which to transform
+     * \param target_time The time at which to transform
      * \param timeout How long to block before failing
      * \param errstr A pointer to a string which will be filled with why the transform failed, if not NULL
      * \return True if the transform is possible, false otherwise 
@@ -131,7 +136,7 @@ namespace tf2_ros
 
   }; // class 
 
-static const std::string threading_error = "Do not call canTransform or lookupTransform with a timeout unless you are using another thread for populating data. Without a dedicated thread it will always timeout.  If you have a seperate thread servicing tf messages, call setUsingDedicatedThread(true) on your Buffer instance.";
+static const std::string threading_error = "Do not call canTransform or lookupTransform with a timeout unless you are using another thread for populating data. Without a dedicated thread it will always timeout.  If you have a separate thread servicing tf messages, call setUsingDedicatedThread(true) on your Buffer instance.";
 
   
 } // namespace
