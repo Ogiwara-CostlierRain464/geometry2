@@ -592,6 +592,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(const std::string& t
                                                             const std::string& source_frame,
                                                             const ros::Time& time) const
 {
+  CONSOLE_BRIDGE_logWarn("HI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
   boost::mutex::scoped_lock lock(frame_mutex_);
 
   if (target_frame == source_frame) {
