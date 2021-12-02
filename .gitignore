@@ -225,3 +225,10 @@ tags
 [._]*.un~
 
 # End of https://www.toptal.com/developers/gitignore/api/vim,c++,macos
+
+# .deb package generate
+tf2/debian/
+tf2/obj-x86_64-linux-gnu
+CMakeLists.txt
+ros-melodic-tf2-dbgsym_0.6.7-0bionic_amd64.ddeb
+ros-melodic-tf2_0.6.7-0bionic_amd64.deb
