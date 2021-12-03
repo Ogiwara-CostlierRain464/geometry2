@@ -116,6 +116,23 @@ std::string stripSlash(const std::string& in)
   return out;
 }
 
+class EveryNTimeLogger{
+public:
+  explicit EveryNTimeLogger(size_t frequency)
+  : logFrequency(frequency){}
+
+  void logWarn(const char *fmt, const char *str){
+    if(count % logFrequency == 0){
+      CONSOLE_BRIDGE_logWarn(fmt, str);
+    }
+    count++;
+  }
+
+private:
+  size_t logFrequency;
+  size_t count{0};
+};
+
 
 bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& frame_id) const
 {
