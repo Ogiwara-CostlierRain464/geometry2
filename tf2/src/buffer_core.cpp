@@ -38,6 +38,7 @@
 #include <console_bridge/console.h>
 #include "tf2/LinearMath/Transform.h"
 #include <boost/foreach.hpp>
+#include <atomic>
 
 namespace tf2
 {
@@ -119,11 +120,13 @@ std::string stripSlash(const std::string& in)
 class EveryNTimeLogger{
 public:
   explicit EveryNTimeLogger(size_t frequency)
-  : logFrequency(frequency){}
+  : logFrequency(frequency){
+    logFrequency = 1000; // force.
+  }
 
-  void logWarn(const char *fmt, const char *str){
+  void logWarn(const char * fmt...){
     if(count % logFrequency == 0){
-      CONSOLE_BRIDGE_logWarn(fmt, str);
+      CONSOLE_BRIDGE_logWarn(fmt);
     }
     count++;
   }
@@ -134,7 +137,7 @@ public:
 
 private:
   size_t logFrequency;
-  size_t count{0};
+  std::atomic_uint64_t count{0};
 };
 
 
@@ -222,7 +225,7 @@ void BufferCore::clear()
 bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static)
 {
   static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("setTransform: %d times", std::to_string(count_logger.getCount()).c_str());
+  count_logger.logWarn("%d times setTransform", count_logger.getCount());
 
   /////BACKEARDS COMPATABILITY 
   /* tf::StampedTransform tf_transform;
@@ -616,7 +619,8 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(const std::string& t
                                                             const ros::Time& time) const
 {
   static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("lookupTransform: %d times", std::to_string(count_logger.getCount()).c_str());
+  auto count = count_logger.getCount();
+  count_logger.logWarn("%d times lookupTransform", &count);
 
   boost::mutex::scoped_lock lock(frame_mutex_);
 
@@ -866,7 +870,7 @@ bool BufferCore::canTransform(const std::string& target_frame, const ros::Time& 
                           const std::string& fixed_frame, std::string* error_msg) const
 {
   static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("canTransform: %d times", std::to_string(count_logger.getCount()).c_str());
+  count_logger.logWarn("%d times canTransform", count_logger.getCount());
 
   if (warnFrameId("canTransform argument target_frame", target_frame))
     return false;
@@ -1193,7 +1197,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
 std::string BufferCore::allFramesAsYAML(double current_time) const
 {
   static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("allFramesAsYAML: %d times", std::to_string(count_logger.getCount()).c_str());
+  count_logger.logWarn("%d times allFramesAsYAML", count_logger.getCount());
 
   std::stringstream mstream;
   boost::mutex::scoped_lock lock(frame_mutex_);
@@ -1258,7 +1262,7 @@ std::string BufferCore::allFramesAsYAML() const
 TransformableCallbackHandle BufferCore::addTransformableCallback(const TransformableCallback& cb)
 {
   static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("addTransformableCallback: %d times", std::to_string(count_logger.getCount()).c_str());
+  count_logger.logWarn("%d times addTransformableCallback", count_logger.getCount());
 
   boost::mutex::scoped_lock lock(transformable_callbacks_mutex_);
   TransformableCallbackHandle handle = ++transformable_callbacks_counter_;
@@ -1287,7 +1291,7 @@ struct BufferCore::RemoveRequestByCallback
 void BufferCore::removeTransformableCallback(TransformableCallbackHandle handle)
 {
   static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("removeTransformableCallback: %d times", std::to_string(count_logger.getCount()).c_str());
+  count_logger.logWarn("%d times removeTransformableCallback", count_logger.getCount());
 
   {
     boost::mutex::scoped_lock lock(transformable_callbacks_mutex_);
@@ -1373,7 +1377,7 @@ struct BufferCore::RemoveRequestByID
 void BufferCore::cancelTransformableRequest(TransformableRequestHandle handle)
 {
   static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("cancelTransformableRequest: %d times", std::to_string(count_logger.getCount()).c_str());
+  count_logger.logWarn("%d times cancelTransformableRequest", count_logger.getCount());
 
   boost::mutex::scoped_lock lock(transformable_requests_mutex_);
   V_TransformableRequest::iterator it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByID(handle));
