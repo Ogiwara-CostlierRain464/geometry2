@@ -117,30 +117,6 @@ std::string stripSlash(const std::string& in)
   return out;
 }
 
-class EveryNTimeLogger{
-public:
-  explicit EveryNTimeLogger(size_t frequency)
-  : logFrequency(frequency){
-    logFrequency = 1000; // force.
-  }
-
-  void logWarn(const char * fmt...){
-    if(count % logFrequency == 0){
-      CONSOLE_BRIDGE_logWarn(fmt);
-    }
-    count++;
-  }
-
-  size_t getCount() const{
-    return count;
-  }
-
-private:
-  size_t logFrequency;
-  std::atomic_uint64_t count{0};
-};
-
-
 bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& frame_id) const
 {
   if (frame_id.size() == 0)
@@ -224,9 +200,6 @@ void BufferCore::clear()
 
 bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static)
 {
-  static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("%d times setTransform", count_logger.getCount());
-
   /////BACKEARDS COMPATABILITY 
   /* tf::StampedTransform tf_transform;
   tf::transformStampedMsgToTF(transform_in, tf_transform);
@@ -618,10 +591,6 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(const std::string& t
                                                             const std::string& source_frame,
                                                             const ros::Time& time) const
 {
-  static EveryNTimeLogger count_logger(10);
-  auto count = count_logger.getCount();
-  count_logger.logWarn("%d times lookupTransform", &count);
-
   boost::mutex::scoped_lock lock(frame_mutex_);
 
   if (target_frame == source_frame) {
@@ -869,9 +838,6 @@ bool BufferCore::canTransform(const std::string& target_frame, const ros::Time& 
                           const std::string& source_frame, const ros::Time& source_time,
                           const std::string& fixed_frame, std::string* error_msg) const
 {
-  static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("%d times canTransform", count_logger.getCount());
-
   if (warnFrameId("canTransform argument target_frame", target_frame))
     return false;
   if (warnFrameId("canTransform argument source_frame", source_frame))
@@ -1196,9 +1162,6 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
 
 std::string BufferCore::allFramesAsYAML(double current_time) const
 {
-  static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("%d times allFramesAsYAML", count_logger.getCount());
-
   std::stringstream mstream;
   boost::mutex::scoped_lock lock(frame_mutex_);
 
@@ -1261,9 +1224,6 @@ std::string BufferCore::allFramesAsYAML() const
 
 TransformableCallbackHandle BufferCore::addTransformableCallback(const TransformableCallback& cb)
 {
-  static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("%d times addTransformableCallback", count_logger.getCount());
-
   boost::mutex::scoped_lock lock(transformable_callbacks_mutex_);
   TransformableCallbackHandle handle = ++transformable_callbacks_counter_;
   while (!transformable_callbacks_.insert(std::make_pair(handle, cb)).second)
@@ -1290,9 +1250,6 @@ struct BufferCore::RemoveRequestByCallback
 
 void BufferCore::removeTransformableCallback(TransformableCallbackHandle handle)
 {
-  static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("%d times removeTransformableCallback", count_logger.getCount());
-
   {
     boost::mutex::scoped_lock lock(transformable_callbacks_mutex_);
     transformable_callbacks_.erase(handle);
@@ -1376,9 +1333,6 @@ struct BufferCore::RemoveRequestByID
 
 void BufferCore::cancelTransformableRequest(TransformableRequestHandle handle)
 {
-  static EveryNTimeLogger count_logger(10);
-  count_logger.logWarn("%d times cancelTransformableRequest", count_logger.getCount());
-
   boost::mutex::scoped_lock lock(transformable_requests_mutex_);
   V_TransformableRequest::iterator it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByID(handle));
 
