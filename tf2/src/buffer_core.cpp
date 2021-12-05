@@ -174,6 +174,7 @@ BufferCore::BufferCore(ros::Duration cache_time)
   frameIDs_["NO_PARENT"] = 0;
   frames_.push_back(TimeCacheInterfacePtr());
   frameIDs_reverse.push_back("NO_PARENT");
+  frame_each_mutex_.emplace_back();
 }
 
 BufferCore::~BufferCore()
