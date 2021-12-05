@@ -45,6 +45,14 @@ catkin_add_gtest(test_simple test/simple_tf2_core.cpp)
 target_link_libraries(test_simple tf2  ${console_bridge_LIBRARIES})
 add_dependencies(test_simple ${catkin_EXPORTED_TARGETS})
 
+catkin_add_gtest(test_rw_lock test/rw_lock_test.cpp)
+target_link_libraries(test_rw_lock tf2  ${console_bridge_LIBRARIES})
+add_dependencies(test_rw_lock ${catkin_EXPORTED_TARGETS})
+
+catkin_add_gtest(test_multithread test/multithread_test.cpp)
+target_link_libraries(test_multithread tf2  ${console_bridge_LIBRARIES})
+add_dependencies(test_multithread ${catkin_EXPORTED_TARGETS})
+
 add_executable(speed_test EXCLUDE_FROM_ALL test/speed_test.cpp)
 target_link_libraries(speed_test tf2  ${console_bridge_LIBRARIES})
 add_dependencies(tests speed_test)
