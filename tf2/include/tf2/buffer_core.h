@@ -42,6 +42,7 @@
 #include "ros/time.h"
 //#include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/TransformStamped.h"
+#include "rwlock.h"
 
 //////////////////////////backwards startup for porting
 //#include "tf/tf.h"
@@ -109,7 +110,15 @@ public:
    * \param is_static Record this transform as a static transform.  It will be good across all time.  (This cannot be changed after the first call.)
    * \return True unless an error occured
    */
-  bool setTransform(const geometry_msgs::TransformStamped& transform, const std::string & authority, bool is_static = false);
+  bool setTransform(const geometry_msgs::TransformStamped& transform, const std::string & authority, bool is_static = false) noexcept;
+
+  /** \brief Add transform information to the tf data structure
+   * \param transforms The transform to store
+   * \param authority The source of the information for this transform
+   * \param is_static Record this transform as a static transform.  It will be good across all time.  (This cannot be changed after the first call.)
+   * \return True unless an error occured
+   */
+  bool setTransforms(const std::vector<geometry_msgs::TransformStamped> &transforms, const std::string & authority, bool is_static = false) noexcept;
 
   /*********** Accessors *************/
 
@@ -124,7 +133,7 @@ public:
    */
   geometry_msgs::TransformStamped 
     lookupTransform(const std::string& target_frame, const std::string& source_frame,
-		    const ros::Time& time) const;
+		    const ros::Time& time) const noexcept(false);
 
   /** \brief Get the transform between two frames by frame ID assuming fixed frame.
    * \param target_frame The frame to which data should be transformed
@@ -141,7 +150,7 @@ public:
   geometry_msgs::TransformStamped
     lookupTransform(const std::string& target_frame, const ros::Time& target_time,
 		    const std::string& source_frame, const ros::Time& source_time,
-		    const std::string& fixed_frame) const;
+		    const std::string& fixed_frame) const noexcept(false);
   
   /* \brief Lookup the twist of the tracking_frame with respect to the observation frame in the reference_frame using the reference point
    * \param tracking_frame The frame to track
@@ -194,7 +203,7 @@ public:
    * \return True if the transform is possible, false otherwise 
    */
   bool canTransform(const std::string& target_frame, const std::string& source_frame,
-                    const ros::Time& time, std::string* error_msg = NULL) const;
+                    const ros::Time& time, std::string* error_msg = NULL) const noexcept(false);
   
   /** \brief Test if a transform is possible
    * \param target_frame The frame into which to transform
@@ -207,21 +216,21 @@ public:
    */
   bool canTransform(const std::string& target_frame, const ros::Time& target_time,
                     const std::string& source_frame, const ros::Time& source_time,
-                    const std::string& fixed_frame, std::string* error_msg = NULL) const;
+                    const std::string& fixed_frame, std::string* error_msg = NULL) const noexcept(false);
 
   /** \brief A way to see what frames have been cached in yaml format
    * Useful for debugging tools
    */
-  std::string allFramesAsYAML(double current_time) const;
+  std::string allFramesAsYAML(double current_time) const noexcept;
 
   /** Backwards compatibility for #84
   */
-  std::string allFramesAsYAML() const;
+  std::string allFramesAsYAML() const noexcept;
 
   /** \brief A way to see what frames have been cached
    * Useful for debugging
    */
-  std::string allFramesAsString() const;
+  std::string allFramesAsString() const noexcept;
   
   typedef boost::function<void(TransformableRequestHandle request_handle, const std::string& target_frame, const std::string& source_frame,
                                ros::Time time, TransformableResult result)> TransformableCallback;
@@ -278,13 +287,23 @@ public:
   CompactFrameID _lookupFrameNumber(const std::string& frameid_str) const { 
     return lookupFrameNumber(frameid_str); 
   }
-  CompactFrameID _lookupOrInsertFrameNumber(const std::string& frameid_str) {
-    return lookupOrInsertFrameNumber(frameid_str); 
+  CompactFrameID _lookupOrInsertFrameNumber(const std::string& frameid_str) noexcept{
+    // need to lock
+    bool lock_upgraded = false;
+    frame_mutex_.r_lock();
+    auto result = lookupOrInsertFrameNumber(frameid_str, lock_upgraded);
+    if(lock_upgraded){
+      frame_mutex_.w_unlock();
+    }else{
+      frame_mutex_.r_unlock();
+    }
+    return result;
   }
 
   int _getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const {
-    boost::mutex::scoped_lock lock(frame_mutex_);
-    return getLatestCommonTime(target_frame, source_frame, time, error_string);
+    // need to support unlocker.
+    ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
+    return getLatestCommonTime(target_frame, source_frame, time, error_string, un_locker);
   }
 
   CompactFrameID _validateFrameId(const char* function_name_arg, const std::string& frame_id) const {
@@ -310,7 +329,7 @@ private:
   /** \brief A way to see what frames have been cached
    * Useful for debugging. Use this call internally. 
    */
-  std::string allFramesAsStringNoLock() const;  
+  std::string allFramesAsStringNoLock() const noexcept;
 
 
   /******************** Internal Storage ****************/
@@ -319,9 +338,17 @@ private:
    * The frames will be dynamically allocated at run time when set the first time. */
   typedef std::vector<TimeCacheInterfacePtr> V_TimeCacheInterface;
   V_TimeCacheInterface frames_;
-  
-  /** \brief A mutex to protect testing and allocating new frames on the above vector. */
-  mutable boost::mutex frame_mutex_;
+
+  /** \brief Used for high-granularity locking. */
+  mutable std::vector<RWLockPtr> frame_each_mutex_{};
+  /** \brief Used for whole frame locking and protect from other utility function.
+   * These usages:
+   * 1. when lookup and set without insert, read lock this.
+   * 2. when insert, write lock this
+   * 3. when other utility needs to lock frames.
+   */
+  mutable RWLock frame_mutex_{};
+
 
   /** \brief A map from string frame ids to CompactFrameID */
   typedef boost::unordered_map<std::string, CompactFrameID> M_StringToCompactFrameID;
@@ -372,42 +399,42 @@ private:
    * This is an internal function which will get the pointer to the frame associated with the frame id
    * Possible Exception: tf::LookupException
    */
-  TimeCacheInterfacePtr getFrame(CompactFrameID c_frame_id) const;
+  TimeCacheInterfacePtr getFrame(CompactFrameID c_frame_id) const noexcept;
 
-  TimeCacheInterfacePtr allocateFrame(CompactFrameID cfid, bool is_static);
+  TimeCacheInterfacePtr allocateFrame(CompactFrameID cfid, bool is_static) noexcept;
 
 
-  bool warnFrameId(const char* function_name_arg, const std::string& frame_id) const;
+  bool warnFrameId(const char* function_name_arg, const std::string& frame_id) const noexcept;
   CompactFrameID validateFrameId(const char* function_name_arg, const std::string& frame_id) const;
 
   /// String to number for frame lookup with dynamic allocation of new frames
-  CompactFrameID lookupFrameNumber(const std::string& frameid_str) const;
+  CompactFrameID lookupFrameNumber(const std::string& frameid_str) const noexcept;
 
   /// String to number for frame lookup with dynamic allocation of new frames
-  CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str);
+  CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str, bool &lock_upgraded) noexcept;
 
   ///Number to string frame lookup may throw LookupException if number invalid
-  const std::string& lookupFrameString(CompactFrameID frame_id_num) const;
+  const std::string& lookupFrameString(CompactFrameID frame_id_num) const noexcept(false);
 
-  void createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const;
+  void createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const noexcept(false);
 
   /**@brief Return the latest rostime which is common across the spanning set
    * zero if fails to cross */
-  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const;
+  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;
 
   template<typename F>
-  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const;
+  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;
 
   /**@brief Traverse the transform tree. If frame_chain is not NULL, store the traversed frame tree in vector frame_chain.
    * */
   template<typename F>
-  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const;
+  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain, ScopedWriteSetUnLocker &un_locker) const noexcept;
 
-  void testTransformableRequests();
+  void testTransformableRequests(ScopedWriteSetUnLocker &un_locker);
   bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
-                    const ros::Time& time, std::string* error_msg) const;
+                    const ros::Time& time, std::string* error_msg) const noexcept(false);
   bool canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id,
-                      const ros::Time& time, std::string* error_msg) const;
+                      const ros::Time& time, std::string* error_msg) const noexcept(false);
 
 
   //Whether it is safe to use canTransform with a timeout. (If another thread is not provided it will always timeout.)
