@@ -226,9 +226,7 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/vim,c++,macos
 
-# .deb package generate
-tf2/debian/
-tf2/obj-x86_64-linux-gnu
+# package generate
 CMakeLists.txt
-ros-melodic-tf2-*.ddeb
-ros-melodic-tf2*.deb
+ros-melodic-*.ddeb
+ros-melodic-*.deb

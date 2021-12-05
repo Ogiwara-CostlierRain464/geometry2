@@ -126,12 +126,22 @@ public:
 
 typedef std::unique_ptr<RWLock> RWLockPtr;
 
-class ScopedWriteSetUnLocker{
+class ScopedSetUnLocker{
 public:
-  ScopedWriteSetUnLocker(std::vector<RWLockPtr> &mutexes_)
+  virtual void wLockIfNot(uint32_t id){};
+  virtual void rLockIfNot(uint32_t id){};
+  virtual ~ScopedSetUnLocker()= default;;
+};
+
+class DummySetUnLocker: public ScopedSetUnLocker{
+};
+
+class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
+public:
+  explicit ScopedWriteSetUnLocker(std::vector<RWLockPtr> &mutexes_)
     : mutexes(mutexes_){}
 
-  void wLockIfNot(uint32_t id){
+  void wLockIfNot(uint32_t id) override{
     // if not write locked, then add to write lock set.
     // upgrade is not allowed!
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
@@ -144,7 +154,7 @@ public:
     }
   }
 
-  void rLockIfNot(uint32_t id){
+  void rLockIfNot(uint32_t id) override{
     // if not write locked, then add to read lock set.
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
       if(readLockedIdSet.find(id) == readLockedIdSet.end()){
@@ -154,7 +164,7 @@ public:
     }
   }
 
-  ~ScopedWriteSetUnLocker(){
+  ~ScopedWriteSetUnLocker() override{
     for(auto id : writeLockedIdSet){
       mutexes[id]->w_unlock();
     }
@@ -168,6 +178,7 @@ private:
   std::set<uint32_t> readLockedIdSet{};
   std::vector<RWLockPtr> &mutexes;
 };
+
 
 class ScopedReadSetUnLocker{
 public:

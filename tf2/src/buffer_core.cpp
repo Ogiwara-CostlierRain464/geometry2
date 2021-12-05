@@ -191,7 +191,7 @@ void BufferCore::clear()
 
   if ( frames_.size() > 1 )
   {
-    for (std::vector<TimeCacheInterfacePtr>::iterator  cache_it = frames_.begin() + 1; cache_it != frames_.end(); ++cache_it)
+    for (auto cache_it = frames_.begin() + 1; cache_it != frames_.end(); ++cache_it)
     {
       if (*cache_it)
         (*cache_it)->clearList();
@@ -272,31 +272,36 @@ bool BufferCore::setTransforms(
     return false;
   }
 
-  ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
-  frame_mutex_.r_lock();
-  bool lock_upgraded = false;
-  UpdateUnLocker update_un_locker(frame_mutex_, lock_upgraded);
 
-  for(auto &e: stripped){
-    auto id = lookupOrInsertFrameNumber(e.child_frame_id, lock_upgraded);
-    auto frame = getFrame(id);
-    if(frame == nullptr){
-      frame = allocateFrame(id, is_static);
-    }
+  {
+    ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
+    frame_mutex_.r_lock();
+    bool lock_upgraded = false;
+    UpdateUnLocker update_un_locker(frame_mutex_, lock_upgraded);
 
-    un_locker.wLockIfNot(id);
+    for(auto &e: stripped){
+      auto id = lookupOrInsertFrameNumber(e.child_frame_id, lock_upgraded);
+      auto frame = getFrame(id);
+      if(frame == nullptr){
+        frame = allocateFrame(id, is_static);
+      }
 
-    std::string err_str;
-    if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id, lock_upgraded), id))){
-      frame_authority_[id] = authority;
-    }else{
-      CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
-      // TODO: Impl rollback
-      return false;
+      un_locker.wLockIfNot(id);
+
+      std::string err_str;
+      if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id, lock_upgraded), id))){
+        frame_authority_[id] = authority;
+      }else{
+        CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
+        // TODO: Impl rollback
+        return false;
+      }
     }
   }
 
-  testTransformableRequests(un_locker);
+  // set Transform and test req aren't handled serialized fashion!
+
+  testTransformableRequests();
   return true;
 }
 
@@ -773,6 +778,11 @@ bool BufferCore::canTransformNoLock(CompactFrameID target_id, CompactFrameID sou
 bool BufferCore::canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
                                   const ros::Time& time, std::string* error_msg) const noexcept(false)
 {
+  // this is called by addTransformableReq and testTransformableRequests.
+  // while testTransformableReq is called by setTransforms, which handle tree lock,
+  // so this method should not lock!
+  // however, in original code, this code contains tree lock.
+  // boost::mutex::scoped_lock lock(frame_mutex_);
   ReadUnLocker un_locker(frame_mutex_);
   un_locker.rLock();
   return canTransformNoLock(target_id, source_id, time, error_msg);
@@ -877,7 +887,8 @@ tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const n
   }
 }
 
-// not thread safe
+// not thread safe?
+// may be it is just safe because delete don't occur.
 CompactFrameID BufferCore::lookupFrameNumber(const std::string& frameid_str) const noexcept
 {
   CompactFrameID retval;
@@ -989,7 +1000,7 @@ struct TimeAndFrameIDFrameComparator
 };
 
 // NOT thread safe
-int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string, ScopedWriteSetUnLocker &un_locker) const noexcept
+int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string, ScopedSetUnLocker &un_locker) const noexcept
 {
   // looking up and locking up tree to find latest common time
   // this method only do locks and does not unlock.
@@ -1279,10 +1290,9 @@ void BufferCore::removeTransformableCallback(TransformableCallbackHandle handle)
 // thread safe
 TransformableRequestHandle BufferCore::addTransformableRequest(TransformableCallbackHandle handle, const std::string& target_frame, const std::string& source_frame, ros::Time time)
 {
-  // issue: this method is not thread safe originally!
-  CONSOLE_BRIDGE_logError("addTransformableRequest is not supported!");
-  exit(-1);
-  ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
+  // this method do 3 transactions, so not atomic.
+  CONSOLE_BRIDGE_logWarn("addTransformableRequest is not serializable!");
+  // NOTE: Don't lock tree!
 
   // shortcut if target == source
   if (target_frame == source_frame)
@@ -1306,7 +1316,8 @@ TransformableRequestHandle BufferCore::addTransformableRequest(TransformableCall
     ros::Time latest_time;
     // TODO: This is incorrect, but better than nothing.  Really we want the latest time for
     // any of the frames
-    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, un_locker);
+    DummySetUnLocker dummy{};
+    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, dummy);
     if (!latest_time.isZero() && time + cache_time_ < latest_time)
     {
       return 0xffffffffffffffffULL;
@@ -1431,9 +1442,9 @@ void BufferCore::_getFrameStrings(std::vector<std::string> & vec) const
 
 
 // NOT thread safe
-void BufferCore::testTransformableRequests(ScopedWriteSetUnLocker &un_locker)
+void BufferCore::testTransformableRequests()
 {
-  assert(frame_mutex_.isLocked());
+  assert(!frame_mutex_.isLocked()); // should be unlocked!
   boost::mutex::scoped_lock lock(transformable_requests_mutex_);
   auto it = transformable_requests_.begin();
 
@@ -1461,7 +1472,9 @@ void BufferCore::testTransformableRequests(ScopedWriteSetUnLocker &un_locker)
     TransformableResult result = TransformAvailable;
     // TODO: This is incorrect, but better than nothing.  Really we want the latest time for
     // any of the frames
-    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, un_locker);
+    // TODO: potential to deadlock.
+    DummySetUnLocker dummy{};
+    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, dummy);
     if (!latest_time.isZero() && req.time + cache_time_ < latest_time)
     {
       do_cb = true;

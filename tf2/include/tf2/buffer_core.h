@@ -420,7 +420,7 @@ private:
 
   /**@brief Return the latest rostime which is common across the spanning set
    * zero if fails to cross */
-  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;
+  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ScopedSetUnLocker &un_locker) const noexcept;
 
   template<typename F>
   int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;
@@ -430,7 +430,7 @@ private:
   template<typename F>
   int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain, ScopedWriteSetUnLocker &un_locker) const noexcept;
 
-  void testTransformableRequests(ScopedWriteSetUnLocker &un_locker);
+  void testTransformableRequests();
   bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
                     const ros::Time& time, std::string* error_msg) const noexcept(false);
   bool canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id,
@@ -457,4 +457,4 @@ public:
 };
 }
 
-#endif //TF2_CORE_H
+#endif //TF2_BUFFER_CORE_H
