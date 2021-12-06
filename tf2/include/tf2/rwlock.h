@@ -130,11 +130,7 @@ class ScopedSetUnLocker{
 public:
   virtual void wLockIfNot(uint32_t id) = 0;
   virtual void rLockIfNot(uint32_t id) = 0;
-  virtual ~ScopedSetUnLocker() = 0;
-};
-
-ScopedSetUnLocker::~ScopedSetUnLocker(){
-
+  virtual ~ScopedSetUnLocker(){};
 };
 
 class DummySetUnLocker: public ScopedSetUnLocker{
