@@ -50,6 +50,26 @@ TEST_F(RWLockTest, upgrade){
   EXPECT_FALSE(lock.isLocked());
 }
 
+TEST_F(RWLockTest, dummy){
+  {
+    DummySetUnLocker dummy{};
+    ScopedSetUnLocker *a = &dummy;
+    a->wLockIfNot(1);
+  }
+  std::vector<RWLockPtr> mutexes{};
+  mutexes.emplace_back(std::make_unique<RWLock>());
+  mutexes.emplace_back(std::make_unique<RWLock>());
+  {
+    ScopedWriteSetUnLocker actual(mutexes);
+    ScopedSetUnLocker *b = &actual;
+    b->rLockIfNot(0);
+    b->wLockIfNot(1);
+  }
+
+  EXPECT_FALSE(mutexes[0]->isLocked());
+  EXPECT_FALSE(mutexes[1]->isLocked());
+}
+
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

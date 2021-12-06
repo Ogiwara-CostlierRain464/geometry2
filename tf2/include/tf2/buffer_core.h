@@ -303,7 +303,7 @@ public:
   int _getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const {
     // need to support unlocker.
     ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
-    return getLatestCommonTime(target_frame, source_frame, time, error_string, un_locker);
+    return getLatestCommonTime(target_frame, source_frame, time, error_string, &un_locker);
   }
 
   CompactFrameID _validateFrameId(const char* function_name_arg, const std::string& frame_id) const {
@@ -420,7 +420,7 @@ private:
 
   /**@brief Return the latest rostime which is common across the spanning set
    * zero if fails to cross */
-  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ScopedSetUnLocker &un_locker) const noexcept;
+  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ScopedSetUnLocker *un_locker) const noexcept;
 
   template<typename F>
   int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;

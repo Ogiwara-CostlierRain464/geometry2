@@ -164,6 +164,35 @@ TEST_F(MultithreadTest, egde_case_1){
 // You should write test including transform requests.
 // where does transform requests comes from, actually?
 
+TEST_F(MultithreadTest, setTransform_addTransformableCallback){
+  BufferCore bfc;
+  // map <--> base_link <--> lidar
+  bfc.setTransform(trans("map", "base_link", 1), "me");
+  bfc.setTransform(trans("map", "base_link", 2), "me");
+  bfc.setTransform(trans("base_link", "lidar", 1), "me");
+  bfc.setTransform(trans("base_link", "lidar", 2), "me");
+  ros::Time when(0);
+
+  atomic_bool wait{true};
+  auto lam1 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      double t = (double) i * 0.001;
+      bfc.setTransform(trans(to_string(i), to_string(i+1), t), "me");
+    }
+  };
+  auto lam2 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.addTransformableCallback();
+    }
+  };
+  auto start = chrono::high_resolution_clock::now();
+  std::thread t1(lam1), t2(lam2);
+  wait = false;
+  t1.join(); t2.join();
+  auto finish = chrono::high_resolution_clock::now();
+}
 
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);

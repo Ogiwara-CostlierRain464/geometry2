@@ -173,8 +173,8 @@ BufferCore::BufferCore(ros::Duration cache_time)
 {
   frameIDs_["NO_PARENT"] = 0;
   frames_.push_back(TimeCacheInterfacePtr());
-  frameIDs_reverse.push_back("NO_PARENT");
-  frame_each_mutex_.emplace_back();
+  frameIDs_reverse.emplace_back("NO_PARENT");
+  frame_each_mutex_.emplace_back(std::make_unique<RWLock>());
 }
 
 BufferCore::~BufferCore()
@@ -359,7 +359,7 @@ int BufferCore::walkToTopParent(
   //If getting the latest get the latest common time
   if (time == ros::Time())
   {
-    int retval = getLatestCommonTime(target_id, source_id, time, error_string, un_locker);
+    int retval = getLatestCommonTime(target_id, source_id, time, error_string, &un_locker);
     if (retval != tf2_msgs::TF2Error::NO_ERROR)
     {
       return retval;
@@ -1000,7 +1000,7 @@ struct TimeAndFrameIDFrameComparator
 };
 
 // NOT thread safe
-int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string, ScopedSetUnLocker &un_locker) const noexcept
+int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string, ScopedSetUnLocker *un_locker) const noexcept
 {
   // looking up and locking up tree to find latest common time
   // this method only do locks and does not unlock.
@@ -1013,7 +1013,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
     TimeCacheInterfacePtr cache = getFrame(source_id);
     //Set time to latest timestamp of frameid in case of target and source frame id are the same
     if (cache) {
-      un_locker.rLockIfNot(source_id);
+      un_locker->rLockIfNot(source_id);
       time = cache->getLatestTimestamp();
     }else
       time = ros::Time();
@@ -1038,7 +1038,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
       break;
     }
 
-    un_locker.rLockIfNot(frame);
+    un_locker->rLockIfNot(frame);
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
     if (latest.second == 0)
@@ -1096,7 +1096,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
       break;
     }
 
-    un_locker.rLockIfNot(frame);
+    un_locker->rLockIfNot(frame);
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
     if (latest.second == 0)
@@ -1317,7 +1317,7 @@ TransformableRequestHandle BufferCore::addTransformableRequest(TransformableCall
     // TODO: This is incorrect, but better than nothing.  Really we want the latest time for
     // any of the frames
     DummySetUnLocker dummy{};
-    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, dummy);
+    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, &dummy);
     if (!latest_time.isZero() && time + cache_time_ < latest_time)
     {
       return 0xffffffffffffffffULL;
@@ -1474,7 +1474,7 @@ void BufferCore::testTransformableRequests()
     // any of the frames
     // TODO: potential to deadlock.
     DummySetUnLocker dummy{};
-    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, dummy);
+    getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr, &dummy);
     if (!latest_time.isZero() && req.time + cache_time_ < latest_time)
     {
       do_cb = true;
@@ -1516,6 +1516,7 @@ void BufferCore::testTransformableRequests()
   }
 
   // unlock before allowing possible user callbacks to avoid potential deadlock (#91)
+  // https://github.com/ros/geometry2/issues/91#issuecomment-90295157
   lock.unlock();
 
   BOOST_FOREACH (TransformableTuple tt, transformables)

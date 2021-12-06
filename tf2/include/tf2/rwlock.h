@@ -128,12 +128,20 @@ typedef std::unique_ptr<RWLock> RWLockPtr;
 
 class ScopedSetUnLocker{
 public:
-  virtual void wLockIfNot(uint32_t id){};
-  virtual void rLockIfNot(uint32_t id){};
-  virtual ~ScopedSetUnLocker()= default;;
+  virtual void wLockIfNot(uint32_t id) = 0;
+  virtual void rLockIfNot(uint32_t id) = 0;
+  virtual ~ScopedSetUnLocker() = 0;
+};
+
+ScopedSetUnLocker::~ScopedSetUnLocker(){
+
 };
 
 class DummySetUnLocker: public ScopedSetUnLocker{
+public:
+  void wLockIfNot(uint32_t id) override{};
+  void rLockIfNot(uint32_t id) override{};
+  ~DummySetUnLocker() override{};
 };
 
 class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
