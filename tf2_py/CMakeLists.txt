@@ -98,7 +98,7 @@ if(WIN32)
   # use .pyd extension on Windows
   set_target_properties(tf2_py PROPERTIES OUTPUT_NAME "_tf2" SUFFIX ".pyd")
 else()
-  set_target_properties(tf2_py PROPERTIES COMPILE_FLAGS "-g -Wno-missing-field-initializers")
+  set_target_properties(tf2_py PROPERTIES COMPILE_FLAGS "-g -Wno-missing-field-initializers -MMD -MP")
   set_target_properties(tf2_py PROPERTIES OUTPUT_NAME tf2 PREFIX "_" SUFFIX ".so")
 endif()
 set_target_properties(tf2_py PROPERTIES
