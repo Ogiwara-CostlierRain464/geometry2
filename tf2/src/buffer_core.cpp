@@ -1291,7 +1291,7 @@ void BufferCore::removeTransformableCallback(TransformableCallbackHandle handle)
 TransformableRequestHandle BufferCore::addTransformableRequest(TransformableCallbackHandle handle, const std::string& target_frame, const std::string& source_frame, ros::Time time)
 {
   // this method do 3 transactions, so not atomic.
-  CONSOLE_BRIDGE_logWarn("addTransformableRequest is not serializable!");
+  // CONSOLE_BRIDGE_logWarn("addTransformableRequest is not serializable!");
   // NOTE: Don't lock tree!
 
   // shortcut if target == source

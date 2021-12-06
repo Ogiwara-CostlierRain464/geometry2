@@ -173,6 +173,16 @@ TEST_F(MultithreadTest, setTransform_addTransformableCallback){
   bfc.setTransform(trans("base_link", "lidar", 2), "me");
   ros::Time when(0);
 
+  auto handle = bfc.addTransformableCallback([&](
+    TransformableRequestHandle req_handle,
+    const string &,
+    const string &,
+    ros::Time,
+    TransformableResult result
+    ){
+    ;
+  });
+
   atomic_bool wait{true};
   auto lam1 = [&](){
     while (wait){;}
@@ -184,13 +194,176 @@ TEST_F(MultithreadTest, setTransform_addTransformableCallback){
   auto lam2 = [&](){
     while (wait){;}
     for(size_t i = 0; i < 10'000; i++){
-      bfc.addTransformableCallback();
+      bfc.addTransformableRequest(handle, "map", "lidar", ros::Time(0));
     }
   };
   auto start = chrono::high_resolution_clock::now();
   std::thread t1(lam1), t2(lam2);
   wait = false;
   t1.join(); t2.join();
+  auto finish = chrono::high_resolution_clock::now();
+}
+
+TEST_F(MultithreadTest, canTransform_addTransformableCallback){
+  BufferCore bfc;
+  // map <--> base_link <--> lidar
+  bfc.setTransform(trans("map", "base_link", 1), "me");
+  bfc.setTransform(trans("map", "base_link", 2), "me");
+  bfc.setTransform(trans("base_link", "lidar", 1), "me");
+  bfc.setTransform(trans("base_link", "lidar", 2), "me");
+  ros::Time when(0);
+
+  auto handle = bfc.addTransformableCallback([&](
+    TransformableRequestHandle req_handle,
+    const string &,
+    const string &,
+    ros::Time,
+    TransformableResult result
+  ){
+    ;
+  });
+
+  atomic_bool wait{true};
+  auto lam1 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.canTransform("lidar", "map", ros::Time(0), nullptr);
+    }
+  };
+  auto lam2 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.addTransformableRequest(handle, "map", "lidar", ros::Time(0));
+    }
+  };
+  auto start = chrono::high_resolution_clock::now();
+  std::thread t1(lam1), t2(lam2);
+  wait = false;
+  t1.join(); t2.join();
+  auto finish = chrono::high_resolution_clock::now();
+}
+
+TEST_F(MultithreadTest, lookup_addTransformableCallback){
+  BufferCore bfc;
+  // map <--> base_link <--> lidar
+  bfc.setTransform(trans("map", "base_link", 1), "me");
+  bfc.setTransform(trans("map", "base_link", 2), "me");
+  bfc.setTransform(trans("base_link", "lidar", 1), "me");
+  bfc.setTransform(trans("base_link", "lidar", 2), "me");
+  ros::Time when(0);
+
+  auto handle = bfc.addTransformableCallback([&](
+    TransformableRequestHandle req_handle,
+    const string &,
+    const string &,
+    ros::Time,
+    TransformableResult result
+  ){
+    ;
+  });
+
+  atomic_bool wait{true};
+  auto lam1 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.lookupTransform("lidar", "map", ros::Time(0));
+    }
+  };
+  auto lam2 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.addTransformableRequest(handle, "map", "lidar", ros::Time(0));
+    }
+  };
+  auto start = chrono::high_resolution_clock::now();
+  std::thread t1(lam1), t2(lam2);
+  wait = false;
+  t1.join(); t2.join();
+  auto finish = chrono::high_resolution_clock::now();
+}
+
+TEST_F(MultithreadTest, addTransformableCallback_addTransformableCallback){
+  BufferCore bfc;
+  // map <--> base_link <--> lidar
+  bfc.setTransform(trans("map", "base_link", 1), "me");
+  bfc.setTransform(trans("map", "base_link", 2), "me");
+  bfc.setTransform(trans("base_link", "lidar", 1), "me");
+  bfc.setTransform(trans("base_link", "lidar", 2), "me");
+  ros::Time when(0);
+
+  auto handle = bfc.addTransformableCallback([&](
+    TransformableRequestHandle req_handle,
+    const string &,
+    const string &,
+    ros::Time,
+    TransformableResult result
+  ){
+    ;
+  });
+
+  atomic_bool wait{true};
+  auto lam1 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.addTransformableRequest(handle, "lidar", "map", ros::Time(0));
+    }
+  };
+  auto lam2 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.addTransformableRequest(handle, "map", "lidar", ros::Time(0));
+    }
+  };
+  auto start = chrono::high_resolution_clock::now();
+  std::thread t1(lam1), t2(lam2);
+  wait = false;
+  t1.join(); t2.join();
+  auto finish = chrono::high_resolution_clock::now();
+}
+
+TEST_F(MultithreadTest, setTransform_addTransformableCallback_addTransformableCallback){
+  BufferCore bfc;
+  // map <--> base_link <--> lidar
+  bfc.setTransform(trans("map", "base_link", 1), "me");
+  bfc.setTransform(trans("map", "base_link", 2), "me");
+  bfc.setTransform(trans("base_link", "lidar", 1), "me");
+  bfc.setTransform(trans("base_link", "lidar", 2), "me");
+  ros::Time when(0);
+
+  auto handle = bfc.addTransformableCallback([&](
+    TransformableRequestHandle req_handle,
+    const string &,
+    const string &,
+    ros::Time,
+    TransformableResult result
+  ){
+    ;
+  });
+
+  atomic_bool wait{true};
+  auto lam1 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.addTransformableRequest(handle, "lidar", "map", ros::Time(0));
+    }
+  };
+  auto lam2 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.addTransformableRequest(handle, "map", "lidar", ros::Time(0));
+    }
+  };
+  auto lam3 = [&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.setTransform(trans("lidar", "map", (double)i * 0.0001), "me");
+    }
+  };
+
+  auto start = chrono::high_resolution_clock::now();
+  std::thread t1(lam1), t2(lam2), t3(lam3);
+  wait = false;
+  t1.join(); t2.join(); t3.join();
   auto finish = chrono::high_resolution_clock::now();
 }
 
