@@ -30,6 +30,19 @@ install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
 
+file(GLOB_RECURSE PROJECT_SOURCES src/*.cpp)
+file(GLOB_RECURSE PROJECT_HEADERS include/*.h)
+
+add_executable(speed_check
+  ${PROJECT_SOURCES}
+  ${PROJECT_HEADERS}
+  old_tf2/old_buffer_core.h
+  old_tf2/old_buffer_core.cpp
+)
+target_link_libraries(speed_check ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES})
+add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
+
+
 # Tests
 if(CATKIN_ENABLE_TESTING)
 

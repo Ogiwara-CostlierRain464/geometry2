@@ -70,6 +70,29 @@ TEST_F(RWLockTest, dummy){
   EXPECT_FALSE(mutexes[1]->isLocked());
 }
 
+class LogPerNTimes{
+public:
+  void log(){
+    if(count % 10 == 0){
+      cout << "count is: " << count << endl;
+    }
+    count++;
+  }
+private:
+  size_t count{0};
+};
+
+void n_times_func(){
+  static LogPerNTimes logger{};
+  logger.log();
+}
+
+TEST_F(RWLockTest, static_test){
+  for(size_t i = 0; i < 100; i++){
+    n_times_func();
+  }
+}
+
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
