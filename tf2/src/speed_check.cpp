@@ -13,7 +13,7 @@ using tf2::BufferCore;
 using namespace geometry_msgs;
 using namespace std;
 
-size_t THREAD_COUNT = 8;
+size_t THREAD_COUNT = 4;
 size_t JOINT_COUNT = 1000;
 size_t ITER_COUNT = 10'000;
 
@@ -73,7 +73,6 @@ template <typename T>
 int64_t r_w(){
   T bfc{};
   make_snake(bfc);
-  ros::Time when(1);
 
   atomic_bool wait{true};
   vector<thread> threads{};
@@ -81,15 +80,60 @@ int64_t r_w(){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < ITER_COUNT; i++){
-        bfc.lookupTransform("head", "tail", when);
+        bfc.lookupTransform("head", "tail", ros::Time(0));
+      }
+    });
+  }
+
+  for(size_t i = 0; i < THREAD_COUNT; i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER_COUNT; i++){
+        // access to another place is not utilized!
+        bfc.setTransform(trans("head", "link0", (double) i * 0.001), "me");
       }
     });
   }
 
   auto start = chrono::high_resolution_clock::now();
   wait = false;
+  for(auto &e: threads){
+    e.join();
+  }
+  auto finish = chrono::high_resolution_clock::now();
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+  return microseconds.count();
+}
+
+template <typename T>
+int64_t w_w(){
+  T bfc{};
+  make_snake(bfc);
+
+  atomic_bool wait{true};
+  vector<thread> threads{};
   for(size_t i = 0; i < THREAD_COUNT; i++){
-    threads[i].join();
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER_COUNT; i++){
+        bfc.lookupTransform("head", "tail", ros::Time(0));
+      }
+    });
+  }
+
+  for(size_t i = 0; i < THREAD_COUNT; i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER_COUNT; i++){
+        bfc.setTransform(trans("head", "link0", (double) i * 0.001), "me");
+      }
+    });
+  }
+
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &e: threads){
+    e.join();
   }
   auto finish = chrono::high_resolution_clock::now();
   auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
@@ -98,16 +142,27 @@ int64_t r_w(){
 
 void old_r_r(){
   auto time = r_r<OldBufferCore>();
-  std::cout << "Old tf: " << time << "µs\n";
+  std::cout << "Old tf r_r: " << time << "µs\n";
 }
 
 void alt_r_r(){
   auto time = r_r<BufferCore>();
-  std::cout << "Alt tf: " << time << "µs\n";
+  std::cout << "Alt tf r_r: " << time << "µs\n";
 }
 
+void old_r_w(){
+  auto time = r_w<OldBufferCore>();
+  std::cout << "Old tf r_w: " << time << "µs\n";
+}
+
+void alt_r_w(){
+  auto time = r_w<BufferCore>();
+  std::cout << "Alt tf r_w: " << time << "µs\n";
+}
+
+
 int main(){
-  alt_r_r();
-  old_r_r();
+  alt_r_w();
+  old_r_w();
   return 0;
 }

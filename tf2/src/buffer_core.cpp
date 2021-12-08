@@ -1507,7 +1507,7 @@ void BufferCore::_getFrameStrings(std::vector<std::string> & vec) const
 // NOT thread safe
 void BufferCore::testTransformableRequests()
 {
-  assert(!frame_mutex_.isLocked()); // should be unlocked!
+  // assert frame_mutex_ is unlocked by this thread.
   boost::mutex::scoped_lock lock(transformable_requests_mutex_);
   auto it = transformable_requests_.begin();
 
