@@ -89,12 +89,16 @@ int64_t r_w(){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
-        size_t link = rand() % FLAGS_joint_count;
-        auto until = link + FLAGS_read_joints;
-        if(until > FLAGS_joint_count) until = FLAGS_joint_count;
-        bfc.lookupTransform("link" + to_string(link),
-                            "link" + to_string(until),
-                            ros::Time(0));
+        if(FLAGS_joint_count == FLAGS_read_joints){
+          bfc.lookupTransform("head", "tail", ros::Time(0));
+        }else{
+          size_t link = rand() % FLAGS_joint_count;
+          auto until = link + FLAGS_read_joints;
+          if(until > FLAGS_joint_count) until = FLAGS_joint_count;
+          bfc.lookupTransform("link" + to_string(link),
+                              "link" + to_string(until),
+                              ros::Time(0));
+        }
       }
     });
   }
