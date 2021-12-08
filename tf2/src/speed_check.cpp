@@ -20,6 +20,7 @@ DEFINE_uint64(thread_count, std::thread::hardware_concurrency(), "thread_count")
 DEFINE_uint64(joint_count, 1000, "joint_count");
 DEFINE_uint64(iter_count, 10'000, "iter_count");
 DEFINE_double(read_ratio, 0.7, "read ratio [0,1]");
+DEFINE_uint64(read_joints, 10, "Number of reading joint count");
 
 TransformStamped trans(
   const string &parent,
@@ -58,8 +59,10 @@ int64_t r_r(){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
-        int link = rand() % FLAGS_joint_count;
-        bfc.lookupTransform("link" + to_string(link), "link" + to_string(link+1), when);
+        size_t link = rand() % FLAGS_joint_count;
+        auto until = link + FLAGS_read_joints;
+        if(until > FLAGS_joint_count) until = FLAGS_joint_count;
+        bfc.lookupTransform("link" + to_string(link), "link" + to_string(until), when);
       }
     });
   }
@@ -181,6 +184,7 @@ int main(int argc, char* argv[]){
     CONSOLE_BRIDGE_logError("wrong read ratio param!");
     exit(-1);
   }
+  CONSOLE_BRIDGE_logInform("read joints: %d", FLAGS_read_joints);
 
   r_r_test();
   return 0;
