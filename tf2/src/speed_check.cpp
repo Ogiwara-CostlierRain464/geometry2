@@ -19,6 +19,7 @@ using namespace std;
 DEFINE_uint64(thread_count, std::thread::hardware_concurrency(), "thread_count");
 DEFINE_uint64(joint_count, 1000, "joint_count");
 DEFINE_uint64(iter_count, 10'000, "iter_count");
+DEFINE_double(read_ratio, 0.7, "read ratio [0,1]");
 
 TransformStamped trans(
   const string &parent,
@@ -76,10 +77,11 @@ template <typename T>
 int64_t r_w(){
   T bfc{};
   make_snake(bfc);
-
   atomic_bool wait{true};
   vector<thread> threads{};
-  for(size_t i = 0; i < FLAGS_thread_count; i++){
+
+  size_t read_threads = ceil((double)FLAGS_thread_count * FLAGS_read_ratio);
+  for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
@@ -88,7 +90,8 @@ int64_t r_w(){
     });
   }
 
-  for(size_t i = 0; i < FLAGS_thread_count; i++){
+  size_t write_threads = FLAGS_thread_count - read_threads;
+  for(size_t i = 0; i < write_threads; i++){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
@@ -99,6 +102,9 @@ int64_t r_w(){
       }
     });
   }
+
+  CONSOLE_BRIDGE_logInform("read thread: %d", read_threads);
+  CONSOLE_BRIDGE_logInform("write thread: %d", write_threads);
 
   auto start = chrono::high_resolution_clock::now();
   wait = false;
@@ -117,6 +123,7 @@ int64_t w_w(){
 
   atomic_bool wait{true};
   vector<thread> threads{};
+
   for(size_t i = 0; i < FLAGS_thread_count; i++){
     threads.emplace_back([&](){
       while (wait){;}
@@ -169,10 +176,16 @@ void alt_r_w(){
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 
-  cout << "thread count: " << FLAGS_thread_count << endl;
-  cout << "joint count: " << FLAGS_joint_count << endl;
-  cout << "iter count: " << FLAGS_iter_count << endl;
+  CONSOLE_BRIDGE_logInform("thread count: %d", FLAGS_thread_count);
+  CONSOLE_BRIDGE_logInform("joint count: %d", FLAGS_joint_count);
+  CONSOLE_BRIDGE_logInform("iter count: %d", FLAGS_iter_count);
+  CONSOLE_BRIDGE_logInform("read ratio: %lf", FLAGS_read_ratio);
+  if(!(0. <= FLAGS_read_ratio and FLAGS_read_ratio <= 1.)){
+    CONSOLE_BRIDGE_logError("wrong read ratio param!");
+    exit(-1);
+  }
 
   alt_r_w();
   old_r_w();

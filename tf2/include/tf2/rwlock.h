@@ -10,7 +10,7 @@
 
 class RWLock {
 public:
-  std::atomic<int> counter;
+  alignas(64) std::atomic<int> counter;
   // counter == -1, write locked;
   // counter == 0, not locked;
   // counter > 0, there are $counter readers who acquires read-lock.

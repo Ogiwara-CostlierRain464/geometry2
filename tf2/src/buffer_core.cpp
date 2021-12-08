@@ -46,7 +46,7 @@ namespace tf2
 class FunctionCallLogger{
 public:
   void log(const std::string &str){
-    CONSOLE_BRIDGE_logInform(str.c_str());
+    CONSOLE_BRIDGE_logDebug(str.c_str());
     count++;
   }
 
