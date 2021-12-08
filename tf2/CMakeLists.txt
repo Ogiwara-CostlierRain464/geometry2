@@ -11,13 +11,16 @@ catkin_package(
    DEPENDS console_bridge
    CATKIN_DEPENDS geometry_msgs tf2_msgs rostime)
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${console_bridge_INCLUDE_DIRS})
+include_directories(include
+  ${catkin_INCLUDE_DIRS}
+  ${console_bridge_INCLUDE_DIRS}
+)
 
 # export user definitions
 
 #CPP Libraries
 add_library(tf2 src/cache.cpp src/buffer_core.cpp src/static_cache.cpp)
-target_link_libraries(tf2 ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES})
+target_link_libraries(tf2 ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} gflags)
 add_dependencies(tf2 ${catkin_EXPORTED_TARGETS})
 
 install(TARGETS tf2
@@ -39,7 +42,7 @@ add_executable(speed_check
   old_tf2/old_buffer_core.h
   old_tf2/old_buffer_core.cpp
 )
-target_link_libraries(speed_check ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES})
+target_link_libraries(speed_check ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} gflags)
 add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
 
 

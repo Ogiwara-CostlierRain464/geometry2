@@ -4,6 +4,8 @@
 #include <atomic>
 #include <chrono>
 #include <vector>
+#include <gflags/gflags.h>
+#include <cstdlib>
 
 #include "../old_tf2/old_buffer_core.h"
 #include "../include/tf2/buffer_core.h"
@@ -13,9 +15,9 @@ using tf2::BufferCore;
 using namespace geometry_msgs;
 using namespace std;
 
-size_t THREAD_COUNT = 4;
-size_t JOINT_COUNT = 1000;
-size_t ITER_COUNT = 10'000;
+DEFINE_uint64(thread_count, 4, "thread_count");
+DEFINE_uint64(joint_count, 1000, "joint_count");
+DEFINE_uint64(iter_count, 10'000, "iter_count");
 
 TransformStamped trans(
   const string &parent,
@@ -34,11 +36,11 @@ void make_snake(T &bfc){
   // head -- link0 -- link1 -- .. -- link100 -- tail
   auto head_0 = trans("head", "link0", 1);
   bfc.setTransform(head_0, "me");
-  for(size_t i = 0; i < JOINT_COUNT; i++){
+  for(size_t i = 0; i < FLAGS_joint_count; i++){
     auto i_iplus1 = trans("link" + to_string(i), "link" + to_string(i+1), 1);
     bfc.setTransform(i_iplus1, "me");
   }
-  auto max_tail = trans("link" + to_string(JOINT_COUNT), "tail", 1);
+  auto max_tail = trans("link" + to_string(FLAGS_joint_count), "tail", 1);
   bfc.setTransform(max_tail, "me");
 }
 
@@ -50,10 +52,10 @@ int64_t r_r(){
 
   atomic_bool wait{true};
   vector<thread> threads{};
-  for(size_t i = 0; i < THREAD_COUNT; i++){
+  for(size_t i = 0; i < FLAGS_thread_count; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER_COUNT; i++){
+      for(size_t i = 0; i < FLAGS_iter_count; i++){
         bfc.lookupTransform("head", "tail", when);
       }
     });
@@ -61,8 +63,8 @@ int64_t r_r(){
 
   auto start = chrono::high_resolution_clock::now();
   wait = false;
-  for(size_t i = 0; i < THREAD_COUNT; i++){
-    threads[i].join();
+  for(auto &e: threads){
+    e.join();
   }
   auto finish = chrono::high_resolution_clock::now();
   auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
@@ -76,21 +78,23 @@ int64_t r_w(){
 
   atomic_bool wait{true};
   vector<thread> threads{};
-  for(size_t i = 0; i < THREAD_COUNT; i++){
+  for(size_t i = 0; i < FLAGS_thread_count; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER_COUNT; i++){
+      for(size_t i = 0; i < FLAGS_iter_count; i++){
         bfc.lookupTransform("head", "tail", ros::Time(0));
       }
     });
   }
 
-  for(size_t i = 0; i < THREAD_COUNT; i++){
+  for(size_t i = 0; i < FLAGS_thread_count; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER_COUNT; i++){
+      for(size_t i = 0; i < FLAGS_iter_count; i++){
         // access to another place is not utilized!
-        bfc.setTransform(trans("head", "link0", (double) i * 0.001), "me");
+        int link = rand() % FLAGS_joint_count;
+        bfc.setTransform(trans("link" + to_string(link), "link" + to_string(link+1),
+                               (double) i * 0.001), "me");
       }
     });
   }
@@ -112,19 +116,19 @@ int64_t w_w(){
 
   atomic_bool wait{true};
   vector<thread> threads{};
-  for(size_t i = 0; i < THREAD_COUNT; i++){
+  for(size_t i = 0; i < FLAGS_thread_count; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER_COUNT; i++){
+      for(size_t i = 0; i < FLAGS_iter_count; i++){
         bfc.lookupTransform("head", "tail", ros::Time(0));
       }
     });
   }
 
-  for(size_t i = 0; i < THREAD_COUNT; i++){
+  for(size_t i = 0; i < FLAGS_thread_count; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER_COUNT; i++){
+      for(size_t i = 0; i < FLAGS_iter_count; i++){
         bfc.setTransform(trans("head", "link0", (double) i * 0.001), "me");
       }
     });
