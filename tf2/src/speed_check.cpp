@@ -89,7 +89,12 @@ int64_t r_w(){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
-        bfc.lookupTransform("head", "tail", ros::Time(0));
+        size_t link = rand() % FLAGS_joint_count;
+        auto until = link + FLAGS_read_joints;
+        if(until > FLAGS_joint_count) until = FLAGS_joint_count;
+        bfc.lookupTransform("link" + to_string(link),
+                            "link" + to_string(until),
+                            ros::Time(0));
       }
     });
   }
@@ -100,15 +105,13 @@ int64_t r_w(){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
         int link = rand() % FLAGS_joint_count;
-        bfc.setTransform(trans("link" + to_string(link), "link" + to_string(link+1),
+        bfc.setTransform(trans("link" + to_string(link),
+                               "link" + to_string(link+1),
                                (double) i * 0.001), "me");
       }
     });
   }
 
-  CONSOLE_BRIDGE_logInform("read thread: %d", read_threads);
-  CONSOLE_BRIDGE_logInform("write thread: %d", write_threads);
-
   auto start = chrono::high_resolution_clock::now();
   wait = false;
   for(auto &e: threads){
@@ -117,50 +120,6 @@ int64_t r_w(){
   auto finish = chrono::high_resolution_clock::now();
   auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
   return microseconds.count();
-}
-
-template <typename T>
-int64_t w_w(){
-  T bfc{};
-  make_snake(bfc);
-
-  atomic_bool wait{true};
-  vector<thread> threads{};
-
-  for(size_t i = 0; i < FLAGS_thread_count; i++){
-    threads.emplace_back([&](){
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter_count; i++){
-        bfc.lookupTransform("head", "tail", ros::Time(0));
-      }
-    });
-  }
-
-  for(size_t i = 0; i < FLAGS_thread_count; i++){
-    threads.emplace_back([&](){
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter_count; i++){
-        bfc.setTransform(trans("head", "link0", (double) i * 0.001), "me");
-      }
-    });
-  }
-
-  auto start = chrono::high_resolution_clock::now();
-  wait = false;
-  for(auto &e: threads){
-    e.join();
-  }
-  auto finish = chrono::high_resolution_clock::now();
-  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
-  return microseconds.count();
-}
-
-void r_r_test(){
-  CONSOLE_BRIDGE_logInform("r_r test");
-  auto time = r_r<OldBufferCore>();
-  std::cout << "Old tf r_r: " << time << "µs\n";
-  time = r_r<BufferCore>();
-  std::cout << "Alt tf r_r: " << time << "µs\n";
 }
 
 void r_w_test(){
@@ -186,6 +145,6 @@ int main(int argc, char* argv[]){
   }
   CONSOLE_BRIDGE_logInform("read joints: %d", FLAGS_read_joints);
 
-  r_r_test();
+  r_w_test();
   return 0;
 }
