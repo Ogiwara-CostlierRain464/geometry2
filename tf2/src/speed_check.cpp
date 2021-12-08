@@ -6,6 +6,7 @@
 #include <vector>
 #include <gflags/gflags.h>
 #include <cstdlib>
+#include <console_bridge/console.h>
 
 #include "../old_tf2/old_buffer_core.h"
 #include "../include/tf2/buffer_core.h"
@@ -15,7 +16,7 @@ using tf2::BufferCore;
 using namespace geometry_msgs;
 using namespace std;
 
-DEFINE_uint64(thread_count, 4, "thread_count");
+DEFINE_uint64(thread_count, std::thread::hardware_concurrency(), "thread_count");
 DEFINE_uint64(joint_count, 1000, "joint_count");
 DEFINE_uint64(iter_count, 10'000, "iter_count");
 
@@ -165,7 +166,14 @@ void alt_r_w(){
 }
 
 
-int main(){
+int main(int argc, char* argv[]){
+  gflags::SetUsageMessage("speed check");
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  cout << "thread count: " << FLAGS_thread_count << endl;
+  cout << "joint count: " << FLAGS_joint_count << endl;
+  cout << "iter count: " << FLAGS_iter_count << endl;
+
   alt_r_w();
   old_r_w();
   return 0;
