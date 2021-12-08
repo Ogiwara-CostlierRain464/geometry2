@@ -58,7 +58,8 @@ int64_t r_r(){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
-        bfc.lookupTransform("head", "tail", when);
+        int link = rand() % FLAGS_joint_count;
+        bfc.lookupTransform("link" + to_string(link), "link" + to_string(link+1), when);
       }
     });
   }
@@ -95,7 +96,6 @@ int64_t r_w(){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter_count; i++){
-        // access to another place is not utilized!
         int link = rand() % FLAGS_joint_count;
         bfc.setTransform(trans("link" + to_string(link), "link" + to_string(link+1),
                                (double) i * 0.001), "me");
@@ -152,26 +152,21 @@ int64_t w_w(){
   return microseconds.count();
 }
 
-void old_r_r(){
+void r_r_test(){
+  CONSOLE_BRIDGE_logInform("r_r test");
   auto time = r_r<OldBufferCore>();
   std::cout << "Old tf r_r: " << time << "µs\n";
-}
-
-void alt_r_r(){
-  auto time = r_r<BufferCore>();
+  time = r_r<BufferCore>();
   std::cout << "Alt tf r_r: " << time << "µs\n";
 }
 
-void old_r_w(){
+void r_w_test(){
+  CONSOLE_BRIDGE_logInform("r_w test");
   auto time = r_w<OldBufferCore>();
   std::cout << "Old tf r_w: " << time << "µs\n";
-}
-
-void alt_r_w(){
-  auto time = r_w<BufferCore>();
+  time = r_w<BufferCore>();
   std::cout << "Alt tf r_w: " << time << "µs\n";
 }
-
 
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
@@ -187,7 +182,6 @@ int main(int argc, char* argv[]){
     exit(-1);
   }
 
-  alt_r_w();
-  old_r_w();
+  r_r_test();
   return 0;
 }
