@@ -197,6 +197,8 @@ BufferCore::BufferCore(ros::Duration cache_time)
   frames_.push_back(TimeCacheInterfacePtr());
   frameIDs_reverse.emplace_back("NO_PARENT");
   frame_each_mutex_.emplace_back(std::make_unique<RWLock>());
+
+  CONSOLE_BRIDGE_logWarn("Now using ALT TF!!!");
 }
 
 BufferCore::~BufferCore()
