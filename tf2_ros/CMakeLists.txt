@@ -75,6 +75,10 @@ set_target_properties(${PROJECT_NAME}_static_transform_publisher
   PROPERTIES OUTPUT_NAME static_transform_publisher
 )
 
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-g -MMD -MP")
+set_target_properties(${PROJECT_NAME}_static_transform_publisher PROPERTIES COMPILE_FLAGS "-g -MMD -MP")
+set_target_properties(${PROJECT_NAME}_buffer_server PROPERTIES COMPILE_FLAGS "-g -MMD -MP")
+
 # Install library
 install(TARGETS
   ${PROJECT_NAME}
