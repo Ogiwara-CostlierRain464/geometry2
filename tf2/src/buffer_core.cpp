@@ -311,6 +311,7 @@ bool BufferCore::setTransforms(
     bool lock_upgraded = false;
     UpdateUnLocker update_un_locker(frame_mutex_, lock_upgraded);
 
+try_lock:
     for(auto &e: stripped){
       auto id = lookupOrInsertFrameNumber(e.child_frame_id, lock_upgraded);
       auto frame = getFrame(id);
@@ -318,7 +319,11 @@ bool BufferCore::setTransforms(
         frame = allocateFrame(id, is_static);
       }
 
-      un_locker.wLockIfNot(id);
+      bool result = un_locker.tryWLockIfNot(id);
+      if(!result){
+        un_locker.unlockAll();
+        goto try_lock;
+      }
 
       std::string err_str;
       if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id, lock_upgraded), id))){

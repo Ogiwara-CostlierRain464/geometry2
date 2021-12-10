@@ -158,6 +158,22 @@ public:
     }
   }
 
+  bool tryWLockIfNot(uint32_t id){
+    if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
+      if(readLockedIdSet.find(id) != readLockedIdSet.end()){
+        // upgrade is not implemented!
+        assert(false);
+      }
+      bool result = mutexes[id]->w_trylock();
+      if(!result){
+        return false;
+      }
+      writeLockedIdSet.insert(id);
+    }
+    // already locked, so success.
+    return true;
+  }
+
   void rLockIfNot(uint32_t id) override{
     // if not write locked, then add to read lock set.
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
@@ -168,13 +184,19 @@ public:
     }
   }
 
-  ~ScopedWriteSetUnLocker() override{
+  void unlockAll(){
     for(auto id : writeLockedIdSet){
       mutexes[id]->w_unlock();
     }
     for(auto id : readLockedIdSet){
       mutexes[id]->r_unlock();
     }
+    writeLockedIdSet.clear();
+    readLockedIdSet.clear();
+  }
+
+  ~ScopedWriteSetUnLocker() override{
+    unlockAll();
   }
 
 private:
