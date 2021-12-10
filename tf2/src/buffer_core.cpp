@@ -46,7 +46,7 @@ namespace tf2
 class FunctionCallLogger{
 public:
   void log(const std::string &str){
-    CONSOLE_BRIDGE_logDebug(str.c_str());
+    CONSOLE_BRIDGE_logInform(str.c_str());
     count++;
   }
 
@@ -199,6 +199,7 @@ BufferCore::BufferCore(ros::Duration cache_time)
   frame_each_mutex_.emplace_back(std::make_unique<RWLock>());
 
   CONSOLE_BRIDGE_logWarn("Now using ALT TF!!!");
+  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 }
 
 BufferCore::~BufferCore()
