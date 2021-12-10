@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 #include <tf2/exceptions.h>
+#include <console_bridge/console.h>
 
 #include "../include/tf2/buffer_core.h"
 
@@ -367,7 +368,47 @@ TEST_F(MultithreadTest, setTransform_addTransformableCallback_addTransformableCa
   auto finish = chrono::high_resolution_clock::now();
 }
 
+
+TEST_F(MultithreadTest, deadlock){
+  BufferCore bfc;
+  //   b
+  //   |
+  //   x
+  //  / \
+  // y   a
+  // |
+  // z
+  bfc.setTransform(trans("x", "y", 0.00001), "me");
+  bfc.setTransform(trans("y", "z", 0.00001), "me");
+  bfc.setTransform(trans("x", "a", 0.00001), "me");
+  bfc.setTransform(trans("b", "x", 0.00001), "me");
+
+  atomic_bool wait{true};
+  auto t1 = std::thread([&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      bfc.lookupTransform("a", "z", ros::Time(0));
+    }
+  });
+  auto t2 = std::thread([&](){
+    while (wait){;}
+    for(size_t i = 0; i < 10'000; i++){
+      std::vector<geometry_msgs::TransformStamped> vec{};
+      vec.push_back(trans("x", "a", (double) i * 0.0001 ));
+      vec.push_back(trans("b", "x", (double) i * 0.0001 ));
+      bfc.setTransforms(vec, "me");
+    }
+  });
+
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  t1.join(); t2.join();
+  auto finish = chrono::high_resolution_clock::now();
+}
+
+
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
+  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_WARN);
   return RUN_ALL_TESTS();
 }
