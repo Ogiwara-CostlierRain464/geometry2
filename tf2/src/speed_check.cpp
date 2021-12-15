@@ -135,77 +135,10 @@ void r_w_test(){
   std::cout << "Alt tf r_w: " << time << "µs\n";
 }
 
-std::ostream &operator<<(std::ostream &dest, __int128_t value) {
-  std::ostream::sentry s(dest);
-  if (s) {
-    __uint128_t tmp = value < 0 ? -value : value;
-    char buffer[128];
-    char *d = std::end(buffer);
-    do {
-      --d;
-      *d = "0123456789"[tmp % 10];
-      tmp /= 10;
-    } while (tmp != 0);
-    if (value < 0) {
-      --d;
-      *d = '-';
-    }
-    int len = std::end(buffer) - d;
-    if (dest.rdbuf()->sputn(d, len) != len) {
-      dest.setstate(std::ios_base::badbit);
-    }
-  }
-  return dest;
-}
-
-std::ostream &operator>>(std::ostream &dest, __int128_t value) {
-  std::ostream::sentry s(dest);
-  if (s) {
-    __uint128_t tmp = value;
-    char buffer[128];
-    char *d = std::end(buffer);
-    do {
-      --d;
-      *d = "0123456789abcdef"[tmp % 16];
-      tmp /= 16;
-    } while (tmp != 0);
-    int len = std::end(buffer) - d;
-    if (dest.rdbuf()->sputn(d, len) != len) {
-      dest.setstate(std::ios_base::badbit);
-    }
-  }
-  return dest;
-}
-
-void check(__int128_t int128){
-  if(int128 != 1 and int128 != -1){
-    cout << int128 << endl;
-    cout >> int128 << endl;
-    exit(-1);
-  }
-}
-
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
-
-  int64_t int64{};
-  thread t1([&](){
-    for(size_t i = 0; i < 100'000; i++){
-      int64++;
-    }
-  });
-  thread t2([&](){
-    for(size_t i = 0; i < 100'000; i++){
-      int64++;
-    }
-  });
-  t1.join(); t2.join();
-  cout << int64 << endl;
-  return 0;
-
-
 
   CONSOLE_BRIDGE_logInform("thread count: %d", FLAGS_thread_count);
   CONSOLE_BRIDGE_logInform("joint count: %d", FLAGS_joint_count);
