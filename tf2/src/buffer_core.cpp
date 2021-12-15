@@ -199,7 +199,6 @@ BufferCore::BufferCore(ros::Duration cache_time)
   frame_each_mutex_.emplace_back(std::make_unique<RWLock>());
 
   CONSOLE_BRIDGE_logWarn("Now using ALT TF!!!");
-  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 }
 
 BufferCore::~BufferCore()

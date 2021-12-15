@@ -4,6 +4,9 @@
 #include <thread>
 #include <tf2/exceptions.h>
 #include <console_bridge/console.h>
+#include <tbb/concurrent_vector.h>
+#include <tbb/concurrent_unordered_map.h>
+#include <unordered_map>
 
 #include "../include/tf2/buffer_core.h"
 
@@ -404,6 +407,86 @@ TEST_F(MultithreadTest, deadlock){
   wait = false;
   t1.join(); t2.join();
   auto finish = chrono::high_resolution_clock::now();
+}
+
+TEST_F(MultithreadTest, concurrenct_vec){
+  RWLock mutex{};
+  vector<bool> vec{};
+  tbb::concurrent_vector<bool> tbb_vec{};
+  vector<thread> threads{};
+  atomic_bool wait{true};
+  size_t ITER = 100'000;
+  for(size_t i = 0; i < std::thread::hardware_concurrency(); i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER; i++){
+        mutex.w_lock();
+        vec.push_back(true);
+        mutex.w_unlock();
+      }
+    });
+  }
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &t: threads){ t.join(); }
+  auto finish = chrono::high_resolution_clock::now();
+  cout << "vec: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
+
+  wait = true;
+  threads.clear();
+  for(size_t i = 0; i < std::thread::hardware_concurrency(); i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER; i++){
+        tbb_vec.push_back(true);
+      }
+    });
+  }
+  start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &t: threads){ t.join(); }
+  finish = chrono::high_resolution_clock::now();
+  cout << "tbb vec: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
+}
+
+TEST_F(MultithreadTest, concurrenct_map){
+  RWLock mutex{};
+  unordered_map<int, string> map{};
+  tbb::concurrent_unordered_map<int, string> tbb_map{};
+  vector<thread> threads{};
+  atomic_bool wait{true};
+  size_t ITER = 100'000;
+  for(size_t i = 0; i < std::thread::hardware_concurrency(); i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER; i++){
+        mutex.w_lock();
+        map.insert(make_pair(i, "aaaaa"));
+        mutex.w_unlock();
+      }
+    });
+  }
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &t: threads){ t.join(); }
+  auto finish = chrono::high_resolution_clock::now();
+  cout << "map: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
+
+  wait = true;
+  threads.clear();
+  for(size_t i = 0; i < std::thread::hardware_concurrency(); i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER; i++){
+        tbb_map.insert(make_pair(i, "aaaaa"));
+      }
+    });
+  }
+  start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &t: threads){ t.join(); }
+  finish = chrono::high_resolution_clock::now();
+  cout << "tbb map: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
 }
 
 

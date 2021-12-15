@@ -4,6 +4,7 @@ project(tf2)
 find_package(console_bridge REQUIRED)
 find_package(catkin REQUIRED COMPONENTS geometry_msgs rostime tf2_msgs)
 find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(TBB REQUIRED)
 
 catkin_package(
    INCLUDE_DIRS include
@@ -66,7 +67,7 @@ target_link_libraries(test_rw_lock tf2  ${console_bridge_LIBRARIES})
 add_dependencies(test_rw_lock ${catkin_EXPORTED_TARGETS})
 
 catkin_add_gtest(test_multithread test/multithread_test.cpp)
-target_link_libraries(test_multithread tf2  ${console_bridge_LIBRARIES})
+target_link_libraries(test_multithread tf2  ${console_bridge_LIBRARIES} tbb)
 add_dependencies(test_multithread ${catkin_EXPORTED_TARGETS})
 
 add_executable(speed_test EXCLUDE_FROM_ALL test/speed_test.cpp)
