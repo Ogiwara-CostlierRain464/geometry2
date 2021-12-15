@@ -7,6 +7,7 @@
 
 #include <xmmintrin.h>
 #include <atomic>
+#include <tbb/concurrent_vector.h>
 
 class RWLock {
 public:
@@ -124,7 +125,7 @@ public:
   }
 };
 
-typedef std::unique_ptr<RWLock> RWLockPtr;
+typedef std::shared_ptr<RWLock> RWLockPtr;
 
 class ScopedSetUnLocker{
 public:
@@ -142,7 +143,7 @@ public:
 
 class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
 public:
-  explicit ScopedWriteSetUnLocker(std::vector<RWLockPtr> &mutexes_)
+  explicit ScopedWriteSetUnLocker(tbb::concurrent_vector<RWLockPtr> &mutexes_)
     : mutexes(mutexes_){}
 
   void wLockIfNot(uint32_t id) override{
@@ -202,7 +203,7 @@ public:
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};
-  std::vector<RWLockPtr> &mutexes;
+  tbb::concurrent_vector<RWLockPtr> &mutexes;
 };
 
 

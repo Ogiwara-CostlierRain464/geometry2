@@ -37,6 +37,9 @@
 #include <boost/signals2.hpp>
 
 #include <string>
+#include <tbb/concurrent_unordered_map.h>
+#include <tbb/concurrent_hash_map.h>
+#include <tbb/concurrent_vector.h>
 
 #include "ros/duration.h"
 #include "ros/time.h"
@@ -91,7 +94,7 @@ class BufferCore
 public:
   /************* Constants ***********************/
   static const int DEFAULT_CACHE_TIME = 10;  //!< The default amount of time to cache data in seconds
-  static const uint32_t MAX_GRAPH_DEPTH = 10000UL;  //!< Maximum graph search depth (deeper graphs will be assumed to have loops)
+  static const uint32_t MAX_GRAPH_DEPTH = 10'000'000UL;  //!< Maximum graph search depth (deeper graphs will be assumed to have loops)
 
   /** Constructor
    * \param interpolating Whether to interpolate, if this is false the closest value will be returned
@@ -134,6 +137,9 @@ public:
   geometry_msgs::TransformStamped 
     lookupTransform(const std::string& target_frame, const std::string& source_frame,
 		    const ros::Time& time) const noexcept(false);
+
+  geometry_msgs::TransformStamped
+  lookupLatestTransform(const std::string& target_frame, const std::string& source_frame) const noexcept(false);
 
   /** \brief Get the transform between two frames by frame ID assuming fixed frame.
    * \param target_frame The frame to which data should be transformed
@@ -289,21 +295,12 @@ public:
   }
   CompactFrameID _lookupOrInsertFrameNumber(const std::string& frameid_str) noexcept{
     // need to lock
-    bool lock_upgraded = false;
-    frame_mutex_.r_lock();
-    auto result = lookupOrInsertFrameNumber(frameid_str, lock_upgraded);
-    if(lock_upgraded){
-      frame_mutex_.w_unlock();
-    }else{
-      frame_mutex_.r_unlock();
-    }
+    auto result = lookupOrInsertFrameNumber(frameid_str);
     return result;
   }
 
   int _getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const {
-    // need to support unlocker.
-    ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
-    return getLatestCommonTime(target_frame, source_frame, time, error_string, &un_locker);
+    return getLatestCommonTime(target_frame, source_frame, time, error_string);
   }
 
   CompactFrameID _validateFrameId(const char* function_name_arg, const std::string& frame_id) const {
@@ -336,36 +333,23 @@ private:
   
   /** \brief The pointers to potential frames that the tree can be made of.
    * The frames will be dynamically allocated at run time when set the first time. */
-  typedef std::vector<TimeCacheInterfacePtr> V_TimeCacheInterface;
-  V_TimeCacheInterface frames_;
-
+  tbb::concurrent_vector<TimeCacheInterfacePtr> frames_;
   /** \brief Used for high-granularity locking. */
-  mutable std::vector<RWLockPtr> frame_each_mutex_{};
-  /** \brief Used for whole frame locking and protect from other utility function.
-   * These usages:
-   * 1. when lookup and set without insert, read lock this.
-   * 2. when insert, write lock this
-   * 3. when other utility needs to lock frames.
-   */
-  mutable RWLock frame_mutex_{};
-
+  mutable tbb::concurrent_vector<RWLockPtr> frame_each_mutex_{};
 
   /** \brief A map from string frame ids to CompactFrameID */
-  typedef boost::unordered_map<std::string, CompactFrameID> M_StringToCompactFrameID;
-  M_StringToCompactFrameID frameIDs_;
+  tbb::concurrent_unordered_map<std::string, CompactFrameID> frameIDs_;
   /** \brief A map from CompactFrameID frame_id_numbers to string for debugging and output */
-  std::vector<std::string> frameIDs_reverse;
+  tbb::concurrent_vector<std::string> frameIDs_reverse;
   /** \brief A map to lookup the most recent authority for a given frame */
-  std::map<CompactFrameID, std::string> frame_authority_;
-
+  tbb::concurrent_unordered_map<CompactFrameID, std::string> frame_authority_;
 
   /// How long to cache transform history
   ros::Duration cache_time_;
 
-  typedef boost::unordered_map<TransformableCallbackHandle, TransformableCallback> M_TransformableCallback;
-  M_TransformableCallback transformable_callbacks_;
-  uint32_t transformable_callbacks_counter_;
-  boost::mutex transformable_callbacks_mutex_;
+  tbb::concurrent_hash_map<TransformableCallbackHandle, TransformableCallback> transformable_callbacks_;
+  std::atomic_uint32_t transformable_callbacks_counter_;
+  RWLock transformable_callbacks_mutex_;
 
   struct TransformableRequest
   {
@@ -377,10 +361,10 @@ private:
     std::string target_string;
     std::string source_string;
   };
-  typedef std::vector<TransformableRequest> V_TransformableRequest;
-  V_TransformableRequest transformable_requests_;
-  boost::mutex transformable_requests_mutex_;
-  uint64_t transformable_requests_counter_;
+  // NOTE: to support erase, we can't use tbb::concurrent_vector!!
+  std::vector<TransformableRequest> transformable_requests_{};
+  RWLock transformable_requests_mutex_{};
+  std::atomic_uint64_t transformable_requests_counter_{};
 
   struct RemoveRequestByCallback;
   struct RemoveRequestByID;
@@ -411,7 +395,7 @@ private:
   CompactFrameID lookupFrameNumber(const std::string& frameid_str) const noexcept;
 
   /// String to number for frame lookup with dynamic allocation of new frames
-  CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str, bool &lock_upgraded) noexcept;
+  CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str) noexcept;
 
   ///Number to string frame lookup may throw LookupException if number invalid
   const std::string& lookupFrameString(CompactFrameID frame_id_num) const noexcept(false);
@@ -420,15 +404,18 @@ private:
 
   /**@brief Return the latest rostime which is common across the spanning set
    * zero if fails to cross */
-  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ScopedSetUnLocker *un_locker) const noexcept;
+  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const noexcept;
 
   template<typename F>
-  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;
+  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const noexcept;
 
   /**@brief Traverse the transform tree. If frame_chain is not NULL, store the traversed frame tree in vector frame_chain.
    * */
   template<typename F>
-  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain, ScopedWriteSetUnLocker &un_locker) const noexcept;
+  int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const noexcept;
+
+  template<typename F>
+  int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;
 
   void testTransformableRequests();
   bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,

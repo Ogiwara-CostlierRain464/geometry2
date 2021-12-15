@@ -21,7 +21,7 @@ include_directories(include
 
 #CPP Libraries
 add_library(tf2 src/cache.cpp src/buffer_core.cpp src/static_cache.cpp)
-target_link_libraries(tf2 ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} gflags)
+target_link_libraries(tf2 ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} gflags tbb)
 add_dependencies(tf2 ${catkin_EXPORTED_TARGETS})
 
 install(TARGETS tf2
