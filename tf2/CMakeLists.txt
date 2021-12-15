@@ -17,10 +17,9 @@ include_directories(include
   ${console_bridge_INCLUDE_DIRS}
 )
 
-# export user definitions
+file(GLOB_RECURSE TF2_SOURCES src/*.cpp)
 
-#CPP Libraries
-add_library(tf2 src/cache.cpp src/buffer_core.cpp src/static_cache.cpp)
+add_library(tf2 ${TF2_SOURCES})
 target_link_libraries(tf2 ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} gflags tbb)
 add_dependencies(tf2 ${catkin_EXPORTED_TARGETS})
 
@@ -34,18 +33,24 @@ install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
 
-file(GLOB_RECURSE PROJECT_SOURCES src/*.cpp)
-file(GLOB_RECURSE PROJECT_HEADERS include/*.h)
+file(GLOB_RECURSE SRC src/*.cpp)
+file(GLOB_RECURSE INCLUDE include/*.h)
 
 add_executable(speed_check
-  ${PROJECT_SOURCES}
-  ${PROJECT_HEADERS}
+  ${SRC}
+  ${INCLUDE}
   old_tf2/old_buffer_core.h
   old_tf2/old_buffer_core.cpp
+  measure/speed_check.cpp
 )
-target_link_libraries(speed_check ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} gflags)
+target_link_libraries(speed_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  gflags
+  tbb
+)
 add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
-
 
 # Tests
 if(CATKIN_ENABLE_TESTING)
@@ -62,17 +67,35 @@ catkin_add_gtest(test_simple test/simple_tf2_core.cpp)
 target_link_libraries(test_simple tf2  ${console_bridge_LIBRARIES})
 add_dependencies(test_simple ${catkin_EXPORTED_TARGETS})
 
-catkin_add_gtest(test_rw_lock test/rw_lock_test.cpp)
-target_link_libraries(test_rw_lock tf2  ${console_bridge_LIBRARIES})
-add_dependencies(test_rw_lock ${catkin_EXPORTED_TARGETS})
-
-catkin_add_gtest(test_multithread test/multithread_test.cpp)
-target_link_libraries(test_multithread tf2  ${console_bridge_LIBRARIES} tbb)
-add_dependencies(test_multithread ${catkin_EXPORTED_TARGETS})
-
 add_executable(speed_test EXCLUDE_FROM_ALL test/speed_test.cpp)
 target_link_libraries(speed_test tf2  ${console_bridge_LIBRARIES})
 add_dependencies(tests speed_test)
 add_dependencies(tests ${catkin_EXPORTED_TARGETS})
+
+catkin_add_gtest(test_rw_lock
+  test/rw_lock_test.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+target_link_libraries(test_rw_lock
+  ${console_bridge_LIBRARIES}
+  tbb
+)
+add_dependencies(test_rw_lock ${catkin_EXPORTED_TARGETS})
+
+catkin_add_gtest(test_multithread
+  test/multithread_test.cpp
+  ${SRC}
+  ${INCLUDE}
+
+)
+target_link_libraries(test_multithread
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
+add_dependencies(test_multithread ${catkin_EXPORTED_TARGETS})
+
 
 endif()

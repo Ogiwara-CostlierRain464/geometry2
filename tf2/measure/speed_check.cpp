@@ -11,7 +11,7 @@
 #include <tbb/concurrent_vector.h>
 
 #include "../old_tf2/old_buffer_core.h"
-#include "../include/tf2/buffer_core.h"
+#include "tf2/buffer_core.h"
 
 using old_tf2::OldBufferCore;
 using tf2::BufferCore;
