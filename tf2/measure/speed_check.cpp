@@ -139,7 +139,7 @@ void r_w_test(){
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
+  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 
   CONSOLE_BRIDGE_logInform("thread count: %d", FLAGS_thread_count);
   CONSOLE_BRIDGE_logInform("joint count: %d", FLAGS_joint_count);
@@ -150,6 +150,8 @@ int main(int argc, char* argv[]){
     exit(-1);
   }
   CONSOLE_BRIDGE_logInform("read joints: %d", FLAGS_read_joints);
+
+  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
   r_w_test();
   return 0;
