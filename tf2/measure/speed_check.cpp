@@ -128,12 +128,16 @@ int64_t r_w(){
   return microseconds.count();
 }
 
+double throughput(int64_t time){
+  size_t operation_count = std::thread::hardware_concurrency() * FLAGS_iter_count;
+  return ((double) operation_count) * (1000'000. / (double ) time);
+}
+
 void r_w_test(){
-  CONSOLE_BRIDGE_logInform("r_w test");
   auto time = r_w<OldBufferCore>();
-  std::cout << "Old tf r_w: " << time << "µs\n";
+  std::cout << "Old tf r_w: " << throughput(time) << "req/sec\n";
   time = r_w<BufferCore>();
-  std::cout << "Alt tf r_w: " << time << "µs\n";
+  std::cout << "Alt tf r_w: " << throughput(time) << "req/sec\n";
 }
 
 int main(int argc, char* argv[]){
