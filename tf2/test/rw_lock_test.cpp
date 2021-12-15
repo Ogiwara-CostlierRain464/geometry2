@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
+#include <tbb/concurrent_vector.h>
 #include "../include/tf2/rwlock.h"
-#include "../include/tf2/buffer_core.h"
 
-using namespace tf2;
 using namespace std;
 
 struct RWLockTest: public ::testing::Test{};
 
 TEST_F(RWLockTest, read_unlocker){
-  set<tf2::CompactFrameID> lock_set{};
+  set<uint32_t> lock_set{};
   vector<RWLockPtr> mutex_;
 
   lock_set.insert(0); mutex_.emplace_back(std::move(make_unique<RWLock>()));
@@ -23,8 +22,8 @@ TEST_F(RWLockTest, read_unlocker){
 }
 
 TEST_F(RWLockTest, write_unlocker){
-  set<tf2::CompactFrameID> lock_set{};
-  vector<RWLockPtr> mutex_;
+  set<uint32_t> lock_set{};
+  tbb::concurrent_vector<RWLockPtr> mutex_{};
 
   lock_set.insert(0); mutex_.emplace_back(std::move(make_unique<RWLock>()));
   lock_set.insert(1); mutex_.emplace_back(std::move(make_unique<RWLock>()));
@@ -56,7 +55,7 @@ TEST_F(RWLockTest, dummy){
     ScopedSetUnLocker *a = &dummy;
     a->wLockIfNot(1);
   }
-  std::vector<RWLockPtr> mutexes{};
+  tbb::concurrent_vector<RWLockPtr> mutexes{};
   mutexes.emplace_back(std::make_unique<RWLock>());
   mutexes.emplace_back(std::make_unique<RWLock>());
   {

@@ -74,8 +74,7 @@ add_dependencies(tests ${catkin_EXPORTED_TARGETS})
 
 catkin_add_gtest(test_rw_lock
   test/rw_lock_test.cpp
-  ${SRC}
-  ${INCLUDE}
+  include/tf2/rwlock.h
 )
 target_link_libraries(test_rw_lock
   ${console_bridge_LIBRARIES}
