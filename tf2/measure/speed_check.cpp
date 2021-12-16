@@ -18,11 +18,12 @@ using tf2::BufferCore;
 using namespace geometry_msgs;
 using namespace std;
 
-DEFINE_uint64(thread_count, std::thread::hardware_concurrency(), "thread_count");
-DEFINE_uint64(joint_count, 1000, "joint_count");
-DEFINE_uint64(iter_count, 10'000, "iter_count");
-DEFINE_double(read_ratio, 0.7, "read ratio [0,1]");
-DEFINE_uint64(read_joints, 10, "Number of reading joint count");
+DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
+DEFINE_uint64(joint, 1'000, "Joint size");
+DEFINE_uint64(iter, 1'000, "Iteration count");
+DEFINE_double(read_ratio, 0.7, "read ratio, within [0,1]");
+DEFINE_double(read_len, 1., "Percent of reading joint size, within [0,1]");
+DEFINE_double(write_len, 1., "Number of reading joint size, within [0,1]");
 
 TransformStamped trans(
   const string &parent,
@@ -38,33 +39,50 @@ TransformStamped trans(
 
 template <typename T>
 void make_snake(T &bfc){
-  // head -- link0 -- link1 -- .. -- link100 -- tail
-  auto head_0 = trans("head", "link0", 1);
-  bfc.setTransform(head_0, "me");
-  for(size_t i = 0; i < FLAGS_joint_count; i++){
-    auto i_iplus1 = trans("link" + to_string(i), "link" + to_string(i+1), 1);
+  // link0 -- link1 -- .. -- link100
+  for(size_t i = 0; i < FLAGS_joint; i++){
+    auto i_iplus1 = trans("link" + to_string(i), "link" + to_string(i+1), 0.0001);
     bfc.setTransform(i_iplus1, "me");
   }
-  auto max_tail = trans("link" + to_string(FLAGS_joint_count), "tail", 1);
-  bfc.setTransform(max_tail, "me");
 }
 
-template <typename T>
-int64_t r_r(){
-  T bfc{};
+int64_t r_w_old(){
+  OldBufferCore bfc{};
   make_snake(bfc);
-  ros::Time when(1);
-
   atomic_bool wait{true};
   vector<thread> threads{};
-  for(size_t i = 0; i < FLAGS_thread_count; i++){
+
+  size_t read_threads = ceil((double)FLAGS_thread * FLAGS_read_ratio);
+  size_t write_threads = FLAGS_thread - read_threads;
+  size_t read_len = ceil((double) FLAGS_joint * FLAGS_read_len);
+  size_t write_len = ceil((double) FLAGS_joint * FLAGS_write_len);
+
+  for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter_count; i++){
-        size_t link = rand() % FLAGS_joint_count;
-        auto until = link + FLAGS_read_joints;
-        if(until > FLAGS_joint_count) until = FLAGS_joint_count;
-        bfc.lookupTransform("link" + to_string(link), "link" + to_string(until), when);
+      for(size_t i = 0; i < FLAGS_iter; i++){
+        size_t link = rand() % FLAGS_joint;
+        auto until = link + read_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
+        bfc.lookupTransform("link" + to_string(link),
+                            "link" + to_string(until),
+                            ros::Time(0));
+      }
+    });
+  }
+
+  for(size_t i = 0; i < write_threads; i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < FLAGS_iter; i++){
+        int link = rand() % FLAGS_joint;
+        auto until = link + write_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
+        for(size_t j = link; j < until; j++){
+          bfc.setTransform(trans("link" + to_string(j),
+                              "link" + to_string(j+1),
+                              (double) i * 0.001), "me");
+        }
       }
     });
   }
@@ -79,41 +97,45 @@ int64_t r_r(){
   return microseconds.count();
 }
 
-template <typename T>
-int64_t r_w(){
-  T bfc{};
+int64_t r_w_alt(){
+  BufferCore bfc{};
   make_snake(bfc);
   atomic_bool wait{true};
   vector<thread> threads{};
 
-  size_t read_threads = ceil((double)FLAGS_thread_count * FLAGS_read_ratio);
+  size_t read_threads = ceil((double)FLAGS_thread * FLAGS_read_ratio);
+  size_t write_threads = FLAGS_thread - read_threads;
+  size_t read_len = ceil((double) FLAGS_joint * FLAGS_read_len);
+  size_t write_len = ceil((double) FLAGS_joint * FLAGS_write_len);
+
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter_count; i++){
-        if(FLAGS_joint_count == FLAGS_read_joints){
-          bfc.lookupTransform("head", "tail", ros::Time(0));
-        }else{
-          size_t link = rand() % FLAGS_joint_count;
-          auto until = link + FLAGS_read_joints;
-          if(until > FLAGS_joint_count) until = FLAGS_joint_count;
-          bfc.lookupTransform("link" + to_string(link),
-                              "link" + to_string(until),
-                              ros::Time(0));
-        }
+      for(size_t i = 0; i < FLAGS_iter; i++){
+        size_t link = rand() % FLAGS_joint;
+        auto until = link + read_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
+        bfc.lookupTransform("link" + to_string(link),
+                            "link" + to_string(until),
+                            ros::Time(0));
       }
     });
   }
 
-  size_t write_threads = FLAGS_thread_count - read_threads;
   for(size_t i = 0; i < write_threads; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter_count; i++){
-        int link = rand() % FLAGS_joint_count;
-        bfc.setTransform(trans("link" + to_string(link),
-                               "link" + to_string(link+1),
-                               (double) i * 0.001), "me");
+      for(size_t i = 0; i < FLAGS_iter; i++){
+        int link = rand() % FLAGS_joint;
+        auto until = link + write_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
+        vector<TransformStamped> vec{};
+        for(size_t j = link; j < until; j++){
+          vec.push_back(trans("link" + to_string(j),
+                              "link" + to_string(j+1),
+                              (double) i * 0.001));
+        }
+        bfc.setTransforms(vec, "me");
       }
     });
   }
@@ -129,14 +151,14 @@ int64_t r_w(){
 }
 
 double throughput(int64_t time){
-  size_t operation_count = std::thread::hardware_concurrency() * FLAGS_iter_count;
+  size_t operation_count = FLAGS_thread * FLAGS_iter;
   return ((double) operation_count) * (1000'000. / (double ) time);
 }
 
 void r_w_test(){
-  auto time = r_w<OldBufferCore>();
+  auto time = r_w_old();
   std::cout << "Old tf r_w: " << throughput(time) << "req/sec\n";
-  time = r_w<BufferCore>();
+  time = r_w_alt();
   std::cout << "Alt tf r_w: " << throughput(time) << "req/sec\n";
 }
 
@@ -145,15 +167,24 @@ int main(int argc, char* argv[]){
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 
-  CONSOLE_BRIDGE_logInform("thread count: %d", FLAGS_thread_count);
-  CONSOLE_BRIDGE_logInform("joint count: %d", FLAGS_joint_count);
-  CONSOLE_BRIDGE_logInform("iter count: %d", FLAGS_iter_count);
+  CONSOLE_BRIDGE_logInform("thread: %d", FLAGS_thread);
+  CONSOLE_BRIDGE_logInform("joint: %d", FLAGS_joint);
+  CONSOLE_BRIDGE_logInform("iter: %d", FLAGS_iter);
   CONSOLE_BRIDGE_logInform("read ratio: %lf", FLAGS_read_ratio);
   if(!(0. <= FLAGS_read_ratio and FLAGS_read_ratio <= 1.)){
-    CONSOLE_BRIDGE_logError("wrong read ratio param!");
+    CONSOLE_BRIDGE_logError("wrong read ratio");
     exit(-1);
   }
-  CONSOLE_BRIDGE_logInform("read joints: %d", FLAGS_read_joints);
+  CONSOLE_BRIDGE_logInform("read len: %lf", FLAGS_read_len);
+  if(!(0. <= FLAGS_read_len and FLAGS_read_len <= 1.)){
+    CONSOLE_BRIDGE_logError("wrong read len");
+    exit(-1);
+  }
+  CONSOLE_BRIDGE_logInform("write len: %lf", FLAGS_write_len);
+  if(!(0. <= FLAGS_write_len and FLAGS_write_len <= 1.)){
+    CONSOLE_BRIDGE_logError("wrong write len");
+    exit(-1);
+  }
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
