@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <console_bridge/console.h>
 #include <bits/stdc++.h>
+#include <fstream>
 #include <tbb/concurrent_vector.h>
 
 #include "../old_tf2/old_buffer_core.h"
@@ -24,6 +25,7 @@ DEFINE_uint64(iter, 1'000, "Iteration count");
 DEFINE_double(read_ratio, 0.7, "read ratio, within [0,1]");
 DEFINE_double(read_len, 1., "Percent of reading joint size, within [0,1]");
 DEFINE_double(write_len, 1., "Number of reading joint size, within [0,1]");
+DEFINE_string(output, "/tmp/a.dat", "Output file");
 
 TransformStamped trans(
   const string &parent,
@@ -155,13 +157,6 @@ double throughput(int64_t time){
   return ((double) operation_count) * (1000'000. / (double ) time);
 }
 
-void r_w_test(){
-  auto time = r_w_old();
-  std::cout << "Old tf r_w: " << throughput(time) << "req/sec\n";
-  time = r_w_alt();
-  std::cout << "Alt tf r_w: " << throughput(time) << "req/sec\n";
-}
-
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -185,9 +180,17 @@ int main(int argc, char* argv[]){
     CONSOLE_BRIDGE_logError("wrong write len");
     exit(-1);
   }
-
+  CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
-  r_w_test();
+  ofstream output{};
+  output.open(FLAGS_output.c_str(), std::ios_base::app);
+
+  auto time = r_w_old();
+  output << FLAGS_joint << " ";
+  output << throughput(time) << " ";
+  time = r_w_alt();
+  output << throughput(time) << endl;
+  output.close();
   return 0;
 }
