@@ -131,6 +131,56 @@ int64_t r_w_alt(){
         int link = rand() % FLAGS_joint;
         auto until = link + write_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
+        for(size_t j = link; j < until; j++){
+          bfc.setTransform(trans("link" + to_string(j),
+                                 "link" + to_string(j+1),
+                                 (double) i * 0.001), "me");
+        }
+      }
+    });
+  }
+
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &e: threads){
+    e.join();
+  }
+  auto finish = chrono::high_resolution_clock::now();
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+  return microseconds.count();
+}
+
+int64_t r_w_trn(){
+  BufferCore bfc{};
+  make_snake(bfc);
+  atomic_bool wait{true};
+  vector<thread> threads{};
+
+  size_t read_threads = ceil((double)FLAGS_thread * FLAGS_read_ratio);
+  size_t write_threads = FLAGS_thread - read_threads;
+  size_t read_len = ceil((double) FLAGS_joint * FLAGS_read_len);
+  size_t write_len = ceil((double) FLAGS_joint * FLAGS_write_len);
+
+  for(size_t i = 0; i < read_threads; i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < FLAGS_iter; i++){
+        size_t link = rand() % FLAGS_joint;
+        auto until = link + read_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
+        bfc.lookupLatestTransform("link" + to_string(link),
+                            "link" + to_string(until));
+      }
+    });
+  }
+
+  for(size_t i = 0; i < write_threads; i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < FLAGS_iter; i++){
+        int link = rand() % FLAGS_joint;
+        auto until = link + write_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
         vector<TransformStamped> vec{};
         for(size_t j = link; j < until; j++){
           vec.push_back(trans("link" + to_string(j),
@@ -208,6 +258,17 @@ int main(int argc, char* argv[]){
   }
   double alt_time = (double) alt_time_acc / 5.;
 
+  int64_t trn_time_acc = 0;
+  for(size_t i = 0; i < 6; i++){
+    auto time = r_w_trn();
+    if(0 == i){
+      // warm up
+      continue;;
+    }
+    trn_time_acc += time;
+  }
+  double trn_time = (double) trn_time_acc / 5.;
+
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
   output << FLAGS_iter << " "; // 3
@@ -216,6 +277,7 @@ int main(int argc, char* argv[]){
   output << FLAGS_write_len << " "; // 6
   output << throughput(old_time) << " "; // 7
   output << throughput(alt_time) << endl; // 8
+  output << throughput(trn_time) << endl; // 9
   output.close();
   return 0;
 }

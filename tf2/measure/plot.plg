@@ -1,3 +1,4 @@
 plot filename using 1:7 w lp
 replot filename using 1:8 w lp
+replot filename using 1:9 w lp
 pause -1
