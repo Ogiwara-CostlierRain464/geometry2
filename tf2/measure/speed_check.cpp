@@ -152,9 +152,9 @@ int64_t r_w_alt(){
   return microseconds.count();
 }
 
-double throughput(int64_t time){
+double throughput(double time){
   size_t operation_count = FLAGS_thread * FLAGS_iter;
-  return ((double) operation_count) * (1000'000. / (double ) time);
+  return ((double) operation_count) * (1000'000. / (double) time);
 }
 
 int main(int argc, char* argv[]){
@@ -186,11 +186,36 @@ int main(int argc, char* argv[]){
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
-  auto time = r_w_old();
-  output << FLAGS_joint << " ";
-  output << throughput(time) << " ";
-  time = r_w_alt();
-  output << throughput(time) << endl;
+  int64_t old_time_acc = 0;
+  for(size_t i = 0; i < 6; i++){
+    auto time = r_w_old();
+    if(0 == i){
+      // warm up
+      continue;;
+    }
+    old_time_acc += time;
+  }
+  double old_time = (double) old_time_acc / 5.;
+
+  int64_t alt_time_acc = 0;
+  for(size_t i = 0; i < 6; i++){
+    auto time = r_w_alt();
+    if(0 == i){
+      // warm up
+      continue;;
+    }
+    alt_time_acc += time;
+  }
+  double alt_time = (double) alt_time_acc / 5.;
+
+  output << FLAGS_thread << " "; // 1
+  output << FLAGS_joint << " "; // 2
+  output << FLAGS_iter << " "; // 3
+  output << FLAGS_read_ratio << " "; // 4
+  output << FLAGS_read_len << " "; // 5
+  output << FLAGS_write_len << " "; // 6
+  output << throughput(old_time) << " "; // 7
+  output << throughput(alt_time) << endl; // 8
   output.close();
   return 0;
 }

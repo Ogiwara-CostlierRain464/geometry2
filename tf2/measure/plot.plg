@@ -1,4 +1,3 @@
-set logscale x
 plot filename using 1:2 w lp
 replot filename using 1:3 w lp
 pause -1
