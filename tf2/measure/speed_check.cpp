@@ -276,7 +276,7 @@ int main(int argc, char* argv[]){
   output << FLAGS_read_len << " "; // 5
   output << FLAGS_write_len << " "; // 6
   output << throughput(old_time) << " "; // 7
-  output << throughput(alt_time) << endl; // 8
+  output << throughput(alt_time) << " "; // 8
   output << throughput(trn_time) << endl; // 9
   output.close();
   return 0;
