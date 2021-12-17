@@ -54,10 +54,10 @@ int64_t r_w_old(){
   atomic_bool wait{true};
   vector<thread> threads{};
 
-  size_t read_threads = ceil((double)FLAGS_thread * FLAGS_read_ratio);
+  size_t read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  size_t read_len = ceil((double) FLAGS_joint * FLAGS_read_len);
-  size_t write_len = ceil((double) FLAGS_joint * FLAGS_write_len);
+  size_t read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
+  size_t write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
@@ -105,10 +105,10 @@ int64_t r_w_alt(){
   atomic_bool wait{true};
   vector<thread> threads{};
 
-  size_t read_threads = ceil((double)FLAGS_thread * FLAGS_read_ratio);
+  size_t read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  size_t read_len = ceil((double) FLAGS_joint * FLAGS_read_len);
-  size_t write_len = ceil((double) FLAGS_joint * FLAGS_write_len);
+  size_t read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
+  size_t write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
@@ -156,10 +156,10 @@ int64_t r_w_trn(){
   atomic_bool wait{true};
   vector<thread> threads{};
 
-  size_t read_threads = ceil((double)FLAGS_thread * FLAGS_read_ratio);
+  size_t read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  size_t read_len = ceil((double) FLAGS_joint * FLAGS_read_len);
-  size_t write_len = ceil((double) FLAGS_joint * FLAGS_write_len);
+  size_t read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
+  size_t write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
