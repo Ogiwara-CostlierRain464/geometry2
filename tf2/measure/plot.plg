@@ -1,4 +1,26 @@
-plot filename using 1:7 w lp
-replot filename using 1:8 w lp
-replot filename using 1:9 w lp
-pause -1
+set terminal png
+set output filename
+set ylabel "Throughput(ope/sec)"
+
+if(var == 1){
+  set xlabel "thread"
+}
+if(var == 2){
+  set xlabel "joint"
+  set logscale x
+}
+if(var == 3){
+  set xlabel "iter"
+  set logscale x
+}
+if(var == 4){
+   set xlabel "read ratio"
+}
+if(var == 5){
+   set xlabel "read len"
+}
+if(var == 6){
+    set xlabel "write len"
+}
+
+plot data using var:7 w lp, data using var:8 w lp, data using var:9 w lp
