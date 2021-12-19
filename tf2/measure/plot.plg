@@ -23,4 +23,4 @@ if(var == 6){
     set xlabel "write len"
 }
 
-plot data using var:7 w lp, data using var:8 w lp, data using var:9 w lp
+plot data using var:7 w lp title "old", data using var:8 w lp title "snapshot", data using var:9 w lp title "latest"
