@@ -42,4 +42,3 @@ done
 #done
 
 gnuplot -e "data='$OUTPUT'; filename='$OUTPUT_PLOT'; var=$VAR" plot.plg
-nautilus $OUTPUT_DIR
