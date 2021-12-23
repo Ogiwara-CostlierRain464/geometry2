@@ -317,9 +317,9 @@ try_lock:
         un_locker.wLockIfNot(id);
       }else{
         // wLockedSize() >= 1
-        bool locked = un_locker.tryWLockIfNot(id);
-        if(!locked){ // No-wait 2PL.
-          if(result){
+        bool locked_suc = un_locker.tryWLockIfNot(id);
+        if(!locked_suc){ // No-wait 2PL.
+          if(result != nullptr){
             result->incAbort();
           }
           un_locker.unlockAll();

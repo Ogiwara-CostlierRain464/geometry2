@@ -14,7 +14,7 @@ public:
   }
 
 private:
-  alignas(64) uint64_t localAbortCounts{};
+  alignas(64) uint64_t localAbortCounts{0};
 };
 
 #endif //GEOMETRY2_RESULT_H

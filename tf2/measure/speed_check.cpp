@@ -20,9 +20,9 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 1'000, "Joint size");
+DEFINE_uint64(joint, 100, "Joint size");
 DEFINE_uint64(iter, 1'000, "Iteration count");
-DEFINE_double(read_ratio, 0.7, "read ratio, within [0,1]");
+DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_double(read_len, 1., "Percent of reading joint size, within [0,1]");
 DEFINE_double(write_len, 1., "Number of reading joint size, within [0,1]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
@@ -174,10 +174,13 @@ int64_t r_w_trn(){
     });
   }
 
-  std::vector<Result> results(write_threads, Result());
+  std::vector<Result> results{};
+  for(size_t t = 0; t < write_threads; t++){
+    results.emplace_back();
+  }
 
   for(size_t t = 0; t < write_threads; t++){
-    threads.emplace_back([&](){
+    threads.emplace_back([t, write_len, &bfc, &wait, &results](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
         int link = rand() % FLAGS_joint;
@@ -194,17 +197,18 @@ int64_t r_w_trn(){
     });
   }
 
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &e: threads){
+    e.join();
+  }
+
   uint64_t abort_count{};
   for(auto &e: results){
     abort_count += e.getAbortCount();
   }
   cout << "Abort count: " << abort_count << endl;
 
-  auto start = chrono::high_resolution_clock::now();
-  wait = false;
-  for(auto &e: threads){
-    e.join();
-  }
   auto finish = chrono::high_resolution_clock::now();
   auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
   return microseconds.count();
