@@ -33,6 +33,7 @@
 #define TF2_BUFFER_CORE_H
 
 #include "transform_storage.h"
+#include "result.h"
 
 #include <boost/signals2.hpp>
 
@@ -121,7 +122,7 @@ public:
    * \param is_static Record this transform as a static transform.  It will be good across all time.  (This cannot be changed after the first call.)
    * \return True unless an error occured
    */
-  bool setTransforms(const std::vector<geometry_msgs::TransformStamped> &transforms, const std::string & authority, bool is_static = false) noexcept;
+  bool setTransforms(const std::vector<geometry_msgs::TransformStamped> &transforms, const std::string & authority, bool is_static = false, Result *result = nullptr) noexcept;
 
   /*********** Accessors *************/
 

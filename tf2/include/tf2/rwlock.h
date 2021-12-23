@@ -196,10 +196,13 @@ public:
     readLockedIdSet.clear();
   }
 
+  size_t wLockedSize() const{
+    return writeLockedIdSet.size();
+  }
+
   ~ScopedWriteSetUnLocker() override{
     unlockAll();
   }
-
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};

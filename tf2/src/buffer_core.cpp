@@ -239,7 +239,7 @@ bool BufferCore::setTransform(
 // thread safe
 bool BufferCore::setTransforms(
   const std::vector<geometry_msgs::TransformStamped>& transforms,
-  const std::string& authority, bool is_static) noexcept{
+  const std::string& authority, bool is_static, Result *result) noexcept{
   std::vector<geometry_msgs::TransformStamped> stripped{};
   for(auto &e: transforms){
     geometry_msgs::TransformStamped tmp = e;
@@ -313,10 +313,18 @@ try_lock:
         frame = allocateFrame(id, is_static);
       }
 
-      bool result = un_locker.tryWLockIfNot(id);
-      if(!result){ // No-wait 2PL.
-        un_locker.unlockAll();
-        goto try_lock;
+      if(un_locker.wLockedSize() == 0){
+        un_locker.wLockIfNot(id);
+      }else{
+        // wLockedSize() >= 1
+        bool locked = un_locker.tryWLockIfNot(id);
+        if(!locked){ // No-wait 2PL.
+          if(result){
+            result->incAbort();
+          }
+          un_locker.unlockAll();
+          goto try_lock;
+        }
       }
 
       std::string err_str;

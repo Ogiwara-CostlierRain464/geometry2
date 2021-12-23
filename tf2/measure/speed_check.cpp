@@ -161,7 +161,7 @@ int64_t r_w_trn(){
   size_t read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
   size_t write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
-  for(size_t i = 0; i < read_threads; i++){
+  for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
@@ -174,7 +174,9 @@ int64_t r_w_trn(){
     });
   }
 
-  for(size_t i = 0; i < write_threads; i++){
+  std::vector<Result> results(write_threads, Result());
+
+  for(size_t t = 0; t < write_threads; t++){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
@@ -187,10 +189,16 @@ int64_t r_w_trn(){
                               "link" + to_string(j+1),
                               (double) i * 0.001));
         }
-        bfc.setTransforms(vec, "me");
+        bfc.setTransforms(vec, "me", false, &results[t]);
       }
     });
   }
+
+  uint64_t abort_count{};
+  for(auto &e: results){
+    abort_count += e.getAbortCount();
+  }
+  cout << "Abort count: " << abort_count << endl;
 
   auto start = chrono::high_resolution_clock::now();
   wait = false;
