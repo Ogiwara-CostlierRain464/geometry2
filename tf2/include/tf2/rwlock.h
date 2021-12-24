@@ -143,7 +143,7 @@ public:
 
 class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
 public:
-  explicit ScopedWriteSetUnLocker(tbb::concurrent_vector<RWLockPtr> &mutexes_)
+  explicit ScopedWriteSetUnLocker(tbb::concurrent_vector<RWLock> &mutexes_)
     : mutexes(mutexes_){}
 
   void wLockIfNot(uint32_t id) override{
@@ -154,7 +154,7 @@ public:
         // upgrade is not implemented!
         assert(false);
       }
-      mutexes[id]->w_lock();
+      mutexes[id].w_lock();
       writeLockedIdSet.insert(id);
     }
   }
@@ -165,7 +165,7 @@ public:
         // upgrade is not implemented!
         assert(false);
       }
-      bool result = mutexes[id]->w_trylock();
+      bool result = mutexes[id].w_trylock();
       if(!result){
         return false;
       }
@@ -179,7 +179,7 @@ public:
     // if not write locked, then add to read lock set.
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
       if(readLockedIdSet.find(id) == readLockedIdSet.end()){
-        mutexes[id]->r_lock();
+        mutexes[id].r_lock();
         readLockedIdSet.insert(id);
       }
     }
@@ -187,10 +187,10 @@ public:
 
   void unlockAll(){
     for(auto id : writeLockedIdSet){
-      mutexes[id]->w_unlock();
+      mutexes[id].w_unlock();
     }
     for(auto id : readLockedIdSet){
-      mutexes[id]->r_unlock();
+      mutexes[id].r_unlock();
     }
     writeLockedIdSet.clear();
     readLockedIdSet.clear();
@@ -206,7 +206,7 @@ public:
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};
-  tbb::concurrent_vector<RWLockPtr> &mutexes;
+  tbb::concurrent_vector<RWLock> &mutexes;
 };
 
 

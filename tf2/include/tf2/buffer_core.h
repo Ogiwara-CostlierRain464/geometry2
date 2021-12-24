@@ -336,7 +336,8 @@ private:
    * The frames will be dynamically allocated at run time when set the first time. */
   tbb::concurrent_vector<TimeCacheInterfacePtr> frames_;
   /** \brief Used for high-granularity locking. */
-  mutable tbb::concurrent_vector<RWLockPtr> frame_each_mutex_{};
+//  mutable tbb::concurrent_vector<RWLockPtr> frame_each_mutex_{};
+  mutable tbb::concurrent_vector<RWLock> frame_each_mutex_{1000};
 
   /** \brief A map from string frame ids to CompactFrameID */
   tbb::concurrent_unordered_map<std::string, CompactFrameID> frameIDs_;
