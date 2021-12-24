@@ -3,19 +3,30 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <cassert>
+#include <gflags/gflags.h>
 #include "../include/tf2/rwlock.h"
 
 using namespace std;
 
-constexpr size_t ITER = 100000;
+DEFINE_uint64(iter, 10'000, "Iteration count");
+DEFINE_string(output, "/tmp/a.dat", "Output file");
+
+size_t ITER = FLAGS_iter;
 constexpr size_t JOINT = 100;
 constexpr double WRITE_LEN = 0.5;
 size_t THREADS = std::thread::hardware_concurrency();
 
 int main(int argc, char **argv){
+  gflags::SetUsageMessage("speed check");
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  ofstream output{};
+  output.open(FLAGS_output.c_str(), std::ios_base::app);
+
   cout << "ITER: " << ITER << endl;
   mutex mutex_{};
   std::vector<RWLock> locks(JOINT+1);
@@ -104,4 +115,9 @@ int main(int argc, char **argv){
   micro = chrono::duration_cast<chrono::microseconds>(finish - start);
   cout << "RW ptr: " << micro.count() << endl;
 
+  output << FLAGS_iter << " ";
+  output << micro.count() << endl;
+  output.close();
+
+  return 0;
 }
