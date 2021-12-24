@@ -150,7 +150,7 @@ int64_t r_w_alt(){
   return microseconds.count();
 }
 
-int64_t r_w_trn(){
+std::pair<int64_t, size_t> r_w_trn(){
   BufferCore bfc{};
   make_snake(bfc);
   atomic_bool wait{true};
@@ -211,7 +211,7 @@ int64_t r_w_trn(){
 
   auto finish = chrono::high_resolution_clock::now();
   auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
-  return microseconds.count();
+  return make_pair(microseconds.count(), abort_count);
 }
 
 double throughput(double time){
@@ -271,15 +271,18 @@ int main(int argc, char* argv[]){
   double alt_time = (double) alt_time_acc / 5.;
 
   int64_t trn_time_acc = 0;
+  size_t abort_acc = 0;
   for(size_t i = 0; i < 6; i++){
-    auto time = r_w_trn();
+    auto pair = r_w_trn();
     if(0 == i){
       // warm up
       continue;;
     }
-    trn_time_acc += time;
+    trn_time_acc += pair.first;
+    abort_acc += pair.second;
   }
   double trn_time = (double) trn_time_acc / 5.;
+  double abort_count = abort_acc / 5;
 
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
@@ -289,7 +292,8 @@ int main(int argc, char* argv[]){
   output << FLAGS_write_len << " "; // 6
   output << throughput(old_time) << " "; // 7
   output << throughput(alt_time) << " "; // 8
-  output << throughput(trn_time) << endl; // 9
+  output << throughput(trn_time) << " "; // 9
+  output << abort_count << endl;
   output.close();
   return 0;
 }

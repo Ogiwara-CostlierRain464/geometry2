@@ -15,7 +15,6 @@ using namespace std;
 DEFINE_uint64(iter, 10'000, "Iteration count");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 
-size_t ITER = FLAGS_iter;
 constexpr size_t JOINT = 100;
 constexpr double WRITE_LEN = 0.5;
 size_t THREADS = std::thread::hardware_concurrency();
@@ -27,7 +26,8 @@ int main(int argc, char **argv){
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
-  cout << "ITER: " << ITER << endl;
+  cout << "ITER: " << FLAGS_iter << endl;
+  cout << "Output: " << FLAGS_output.c_str() << endl;
   mutex mutex_{};
   std::vector<RWLock> locks(JOINT+1);
   std::vector<RWLockPtr> locks2(JOINT+1, std::make_shared<RWLock>());
@@ -37,7 +37,7 @@ int main(int argc, char **argv){
   for(size_t i = 0; i < THREADS; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER; i++){
+      for(size_t i = 0; i < FLAGS_iter; i++){
         size_t link = rand() % JOINT;
         size_t until = link + (size_t)(JOINT * WRITE_LEN);
         if(until > JOINT) until = JOINT;
@@ -56,8 +56,8 @@ int main(int argc, char **argv){
   }
 
   auto finish = chrono::high_resolution_clock::now();
-  auto micro = chrono::duration_cast<chrono::microseconds>(finish - start);
-  cout << "mutex: " << micro.count() << endl;
+  auto mutex_diff = chrono::duration_cast<chrono::microseconds>(finish - start);
+  cout << "mutex: " << mutex_diff.count() << endl;
 
   threads.clear();
   wait = true;
@@ -65,7 +65,7 @@ int main(int argc, char **argv){
   for(size_t i = 0; i < THREADS; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER; i++){
+      for(size_t i = 0; i < FLAGS_iter; i++){
         size_t link = rand() % JOINT;
         size_t until = link + (size_t) (JOINT * WRITE_LEN);
         if(until > JOINT) until = JOINT;
@@ -84,8 +84,8 @@ int main(int argc, char **argv){
   }
 
   finish = chrono::high_resolution_clock::now();
-  micro = chrono::duration_cast<chrono::microseconds>(finish - start);
-  cout << "RW: " << micro.count() << endl;
+  auto rw_diff = chrono::duration_cast<chrono::microseconds>(finish - start);
+  cout << "RW: " << rw_diff.count() << endl;
 
   threads.clear();
   wait = true;
@@ -93,7 +93,7 @@ int main(int argc, char **argv){
   for(size_t i = 0; i < THREADS; i++){
     threads.emplace_back([&](){
       while (wait){;}
-      for(size_t i = 0; i < ITER; i++){
+      for(size_t i = 0; i < FLAGS_iter; i++){
         size_t link = rand() % JOINT;
         size_t until = link + (size_t) (JOINT * WRITE_LEN);
         if(until > JOINT) until = JOINT;
@@ -112,11 +112,13 @@ int main(int argc, char **argv){
   }
 
   finish = chrono::high_resolution_clock::now();
-  micro = chrono::duration_cast<chrono::microseconds>(finish - start);
-  cout << "RW ptr: " << micro.count() << endl;
+  auto rw_ptr_diff = chrono::duration_cast<chrono::microseconds>(finish - start);
+  cout << "RW ptr: " << rw_ptr_diff.count() << endl;
 
   output << FLAGS_iter << " ";
-  output << micro.count() << endl;
+  output << mutex_diff.count() << " ";
+  output << rw_diff.count() << " ";
+  output << rw_ptr_diff.count() << endl;
   output.close();
 
   return 0;
