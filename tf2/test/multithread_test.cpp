@@ -415,7 +415,7 @@ TEST_F(MultithreadTest, concurrenct_vec){
   tbb::concurrent_vector<bool> tbb_vec{};
   vector<thread> threads{};
   atomic_bool wait{true};
-  size_t ITER = 100'000;
+  size_t ITER = 1000'000;
   for(size_t i = 0; i < std::thread::hardware_concurrency(); i++){
     threads.emplace_back([&](){
       while (wait){;}
