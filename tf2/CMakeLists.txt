@@ -52,6 +52,22 @@ target_link_libraries(speed_check
 )
 add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
 
+
+add_executable(rw_lock_check
+  ${SRC}
+  ${INCLUDE}
+  measure/rw_lock_check.cpp
+  )
+target_link_libraries(rw_lock_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  gflags
+  tbb
+  )
+add_dependencies(rw_lock_check ${catkin_EXPORTED_TARGETS})
+
+
 # Tests
 if(CATKIN_ENABLE_TESTING)
 
