@@ -7,6 +7,7 @@ WRITE_LEN=0.1
 OUTPUT_DIR=/tmp/tf/$(uuidgen)
 OUTPUT=$OUTPUT_DIR/data.dat
 OUTPUT_PLOT=$OUTPUT_DIR/plot.png
+ONLY=1
 
 mkdir -p $OUTPUT_DIR
 
@@ -23,7 +24,7 @@ mkdir -p $OUTPUT_DIR
 
 VAR=3
 for I in 10 100 1000 10000 100000; do
-../cmake-build-release/devel/lib/tf2/speed_check --thread=$T --joint=$J --iter=$I --read_ratio=$READ_RATIO --read_len=$READ_LEN --write_len=$WRITE_LEN --output=$OUTPUT
+../cmake-build-release/devel/lib/tf2/speed_check --thread=$T --joint=$J --iter=$I --read_ratio=$READ_RATIO --read_len=$READ_LEN --write_len=$WRITE_LEN --output=$OUTPUT --only=$ONLY
 done
 
 #VAR=4

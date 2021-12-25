@@ -25,7 +25,7 @@ DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_double(read_len, 1., "Percent of reading joint size, within [0,1]");
 DEFINE_double(write_len, 1., "Number of reading joint size, within [0,1]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 0, "0: All, 1: Only snapshot");
+DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest");
 
 TransformStamped trans(
   const string &parent,
@@ -268,20 +268,23 @@ int main(int argc, char* argv[]){
     old_time = (double) old_time_acc / 5.;
   }
 
-  int64_t alt_time_acc = 0;
-  for(size_t i = 0; i < 6; i++){
-    auto time = r_w_alt();
-    if(0 == i){
-      // warm up
-      continue;
+  double alt_time = 0;
+  if(FLAGS_only == 0 or FLAGS_only == 1){
+    int64_t alt_time_acc = 0;
+    for(size_t i = 0; i < 6; i++){
+      auto time = r_w_alt();
+      if(0 == i){
+        // warm up
+        continue;
+      }
+      alt_time_acc += time;
     }
-    alt_time_acc += time;
+    alt_time = (double) alt_time_acc / 5.;
   }
-  double alt_time = (double) alt_time_acc / 5.;
 
   double trn_time = 0;
   double abort_count = 0;
-  if(FLAGS_only == 0){
+  if(FLAGS_only == 0 or FLAGS_only == 2){
     int64_t trn_time_acc = 0;
     size_t abort_acc = 0;
     for(size_t i = 0; i < 6; i++){
@@ -294,7 +297,7 @@ int main(int argc, char* argv[]){
       abort_acc += pair.second;
     }
     trn_time = (double) trn_time_acc / 5.;
-    abort_count = abort_acc / 5;
+    abort_count = (double) abort_acc / 5;
   }
 
   cout << "Old time: " << old_time << endl;
