@@ -284,6 +284,10 @@ int main(int argc, char* argv[]){
   double trn_time = (double) trn_time_acc / 5.;
   double abort_count = abort_acc / 5;
 
+  cout << "Old time: " << old_time << endl;
+  cout << "Snapshot time: " << alt_time << endl;
+  cout << "Latest time: " << trn_time << endl;
+
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
   output << FLAGS_iter << " "; // 3
