@@ -39,6 +39,10 @@
 #include "tf2/LinearMath/Transform.h"
 #include <boost/foreach.hpp>
 #include <atomic>
+#include <thread>
+#include <chrono>
+
+using std::chrono::operator""ms;
 
 namespace tf2
 {
@@ -323,6 +327,7 @@ try_lock:
             result->incAbort();
           }
           un_locker.unlockAll();
+          std::this_thread::sleep_for(1ms);
           goto try_lock;
         }
       }
