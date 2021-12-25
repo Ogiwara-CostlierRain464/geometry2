@@ -61,7 +61,8 @@ int64_t r_w_old(){
 
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
-      Xoroshiro128Plus r(32);
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
         size_t link = r.next() % FLAGS_joint;
@@ -76,7 +77,8 @@ int64_t r_w_old(){
 
   for(size_t i = 0; i < write_threads; i++){
     threads.emplace_back([&](){
-      Xoroshiro128Plus r(32);
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
         size_t link = r.next() % FLAGS_joint;
@@ -114,7 +116,8 @@ int64_t r_w_alt(){
 
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
-      Xoroshiro128Plus r(32);
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
         size_t link = r.next() % FLAGS_joint;
@@ -129,7 +132,8 @@ int64_t r_w_alt(){
 
   for(size_t i = 0; i < write_threads; i++){
     threads.emplace_back([&](){
-      Xoroshiro128Plus r(32);
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
         int link = r.next() % FLAGS_joint;
@@ -167,7 +171,8 @@ std::pair<int64_t, size_t> r_w_trn(){
 
   for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([&](){
-      Xoroshiro128Plus r(32);
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
         size_t link = r.next() % FLAGS_joint;
@@ -186,7 +191,8 @@ std::pair<int64_t, size_t> r_w_trn(){
 
   for(size_t t = 0; t < write_threads; t++){
     threads.emplace_back([t, write_len, &bfc, &wait, &results](){
-      Xoroshiro128Plus r(32);
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
         int link = r.next() % FLAGS_joint;

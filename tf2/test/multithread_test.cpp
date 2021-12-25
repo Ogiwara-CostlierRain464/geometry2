@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include "../include/tf2/buffer_core.h"
+#include "../measure/xoroshiro128_plus.h"
 
 using namespace tf2;
 using namespace std;
@@ -489,6 +490,46 @@ TEST_F(MultithreadTest, concurrenct_map){
   cout << "tbb map: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
 }
 
+TEST_F(MultithreadTest, rand_xor_cmp){
+  size_t ITER = 100'000;
+
+  vector<thread> threads{};
+  atomic_bool wait{true};
+  for(size_t i = 0; i < std::thread::hardware_concurrency(); i++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < ITER; i++){
+        rand();
+      }
+    });
+  }
+
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &t: threads){ t.join(); }
+  auto finish = chrono::high_resolution_clock::now();
+  cout << "rand: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
+
+  wait = true;
+  threads.clear();
+
+  for(size_t i = 0; i < std::thread::hardware_concurrency(); i++){
+    threads.emplace_back([&](){
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
+      while (wait){;}
+      for(size_t i = 0; i < ITER; i++){
+        r.next();
+      }
+    });
+  }
+
+  start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &t: threads){ t.join(); }
+  finish = chrono::high_resolution_clock::now();
+  cout << "xor: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
+}
 
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);

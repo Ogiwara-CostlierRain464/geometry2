@@ -103,7 +103,7 @@ catkin_add_gtest(test_multithread
   test/multithread_test.cpp
   ${SRC}
   ${INCLUDE}
-
+  measure/xoroshiro128_plus.h
 )
 target_link_libraries(test_multithread
   ${Boost_LIBRARIES}
