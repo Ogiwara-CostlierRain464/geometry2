@@ -143,7 +143,7 @@ public:
 
 class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
 public:
-  explicit ScopedWriteSetUnLocker(tbb::concurrent_vector<RWLock> &mutexes_)
+  explicit ScopedWriteSetUnLocker(std::array<RWLock, 1'000'005> &mutexes_)
     : mutexes(mutexes_){}
 
   void wLockIfNot(uint32_t id) override{
@@ -206,7 +206,7 @@ public:
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};
-  tbb::concurrent_vector<RWLock> &mutexes;
+  std::array<RWLock, 1'000'005> &mutexes;
 };
 
 

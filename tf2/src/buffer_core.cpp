@@ -202,6 +202,7 @@ BufferCore::BufferCore(ros::Duration cache_time)
   frameIDs_reverse.emplace_back("NO_PARENT");
 //  frame_each_mutex_.emplace_back(std::make_shared<RWLock>());
 
+  frame_each_mutex_ = std::make_shared<std::array<RWLock, 1'000'005>>();
   CONSOLE_BRIDGE_logWarn("Now using ALT TF!!!");
 }
 
@@ -210,16 +211,21 @@ BufferCore::~BufferCore()
 
 }
 
-// thread safe
+// not thread safe
 void BufferCore::clear()
 {
   if ( frames_.size() > 1 )
   {
-    for(size_t i = 1; i < frame_each_mutex_.size(); i++){
-      if(frames_[i] != nullptr){
-        frame_each_mutex_[i].w_lock();
-        frames_[i]->clearList();
-        frame_each_mutex_[i].w_unlock();
+//    for(size_t i = 1; i < frame_each_mutex_->size(); i++){
+//      if(frames_[i] != nullptr){
+//        frame_each_mutex_->at(i).w_lock();
+//        frames_[i]->clearList();
+//        frame_each_mutex_->at(i).w_unlock();
+//      }
+//    }
+    for(auto & frame : frames_){
+      if(frame != nullptr){
+        frame->clearList();
       }
     }
   }
@@ -307,7 +313,7 @@ bool BufferCore::setTransforms(
 
   // before testTransformableRequests, you have to unlock.
   {
-    ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
+    ScopedWriteSetUnLocker un_locker(*frame_each_mutex_);
 
 try_lock:
     for(auto &e: stripped){
@@ -425,7 +431,7 @@ int BufferCore::walkToTopParent(
       break;
     }
 
-    ReadUnLocker locker(frame_each_mutex_[frame]);
+    ReadUnLocker locker(frame_each_mutex_->at(frame));
     locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
@@ -485,7 +491,7 @@ int BufferCore::walkToTopParent(
       break;
     }
 
-    ReadUnLocker locker(frame_each_mutex_[frame]);
+    ReadUnLocker locker(frame_each_mutex_->at(frame));
     locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, error_string);
@@ -838,7 +844,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
       CompactFrameID target_id = lookupFrameNumber(target_frame);
       TimeCacheInterfacePtr cache = getFrame(target_id);
       if (cache) {
-        ReadUnLocker locker(frame_each_mutex_[target_id]);
+        ReadUnLocker locker(frame_each_mutex_->at(target_id));
         locker.rLock();
         identity.header.stamp = cache->getLatestTimestamp();
       }else {
@@ -892,7 +898,7 @@ geometry_msgs::TransformStamped BufferCore::lookupLatestTransform(
   ss << __FUNCTION__ << " count: " << logger.getCount() << " target: " << target_frame << " source: " << source_frame << " time: " << time;
   logger.logPer1000(ss.str());
 
-  ScopedWriteSetUnLocker node_un_locker(frame_each_mutex_);
+  ScopedWriteSetUnLocker node_un_locker(*frame_each_mutex_);
 
   if (target_frame == source_frame) {
     geometry_msgs::TransformStamped identity;
@@ -1014,7 +1020,7 @@ bool BufferCore::canTransformNoLock(CompactFrameID target_id, CompactFrameID sou
   }
 
   CanTransformAccum accum;
-  ScopedWriteSetUnLocker un_locker(frame_each_mutex_);
+  ScopedWriteSetUnLocker un_locker(*frame_each_mutex_);
   if (walkToTopParent(accum, time, target_id, source_id, error_msg) == tf2_msgs::TF2Error::NO_ERROR)
   {
     return true;
@@ -1216,7 +1222,7 @@ std::string BufferCore::allFramesAsStringNoLock() const noexcept
     TimeCacheInterfacePtr frame_ptr = getFrame(CompactFrameID(counter));
     if (frame_ptr == NULL)
       continue;
-    ReadUnLocker locker(frame_each_mutex_[counter]);
+    ReadUnLocker locker(frame_each_mutex_->at(counter));
     locker.rLock();
     CompactFrameID frame_id_num;
     if(frame_ptr->getData(ros::Time(), temp))
@@ -1264,7 +1270,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
     TimeCacheInterfacePtr cache = getFrame(source_id);
     //Set time to latest timestamp of frameid in case of target and source frame id are the same
     if (cache) {
-      ReadUnLocker locker(frame_each_mutex_[source_id]);
+      ReadUnLocker locker(frame_each_mutex_->at(source_id));
       locker.rLock();
       time = cache->getLatestTimestamp();
     }else
@@ -1288,7 +1294,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
       // There will be no cache for the very root of the tree
       break;
     }
-    ReadUnLocker locker(frame_each_mutex_[frame]);
+    ReadUnLocker locker(frame_each_mutex_->at(frame));
     locker.rLock();
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
@@ -1347,7 +1353,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
       break;
     }
 
-    ReadUnLocker locker(frame_each_mutex_[frame]);
+    ReadUnLocker locker(frame_each_mutex_->at(frame));
     locker.rLock();
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
@@ -1452,7 +1458,7 @@ std::string BufferCore::allFramesAsYAML(double current_time) const noexcept
       continue;
     }
 
-    ReadUnLocker locker(frame_each_mutex_[cfid]);
+    ReadUnLocker locker(frame_each_mutex_->at(cfid));
     locker.rLock();
 
     if(!cache->getData(ros::Time(), temp))
@@ -1675,7 +1681,7 @@ bool BufferCore::_getParent(const std::string& frame_id, ros::Time time, std::st
   if (!frame)
     return false;
 
-  ReadUnLocker locker(frame_each_mutex_[frame_number]);
+  ReadUnLocker locker(frame_each_mutex_->at(frame_number));
   locker.rLock();
 
   CompactFrameID parent_id = frame->getParent(time, NULL);
@@ -1810,7 +1816,7 @@ std::string BufferCore::_allFramesAsDot(double current_time) const
     if (!counter_frame) {
       continue;
     }
-    ReadUnLocker locker(frame_each_mutex_[counter]);
+    ReadUnLocker locker(frame_each_mutex_->at(counter));
     locker.rLock();
 
     if(!counter_frame->getData(ros::Time(), temp)) {
@@ -1857,7 +1863,7 @@ std::string BufferCore::_allFramesAsDot(double current_time) const
       }
       continue;
     }
-    ReadUnLocker locker(frame_each_mutex_[counter]);
+    ReadUnLocker locker(frame_each_mutex_->at(counter));
     locker.rLock();
     if (counter_frame->getData(ros::Time(), temp)) {
       frame_id_num = temp.frame_id_;

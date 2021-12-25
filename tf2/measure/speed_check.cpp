@@ -48,182 +48,212 @@ void make_snake(T &bfc){
   }
 }
 
-int64_t r_w_old(){
-  OldBufferCore bfc{};
-  make_snake(bfc);
-  atomic_bool wait{true};
-  vector<thread> threads{};
+double r_w_old(OldBufferCore &bfc){
+  int64_t time_acc{0};
 
-  size_t read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
+  auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  size_t read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
-  size_t write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
+  auto read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
+  auto write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
-  for(size_t i = 0; i < read_threads; i++){
-    threads.emplace_back([&](){
-      std::random_device rnd;
-      Xoroshiro128Plus r(rnd());
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter; i++){
-        size_t link = r.next() % FLAGS_joint;
-        auto until = link + read_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
-        bfc.lookupTransform("link" + to_string(link),
-                            "link" + to_string(until),
-                            ros::Time(0));
-      }
-    });
-  }
-
-  for(size_t i = 0; i < write_threads; i++){
-    threads.emplace_back([&](){
-      std::random_device rnd;
-      Xoroshiro128Plus r(rnd());
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter; i++){
-        size_t link = r.next() % FLAGS_joint;
-        auto until = link + write_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
-        for(size_t j = link; j < until; j++){
-          bfc.setTransform(trans("link" + to_string(j),
-                              "link" + to_string(j+1),
-                              (double) i * 0.001), "me");
+  for(size_t count = 0; count < 6; count++){
+    atomic_bool wait{true};
+    vector<thread> threads{};
+    for(size_t t = 0; t < read_threads; t++){
+      threads.emplace_back([&](){
+        std::random_device rnd;
+        Xoroshiro128Plus r(rnd());
+        while (wait){;}
+        for(size_t i = 0; i < FLAGS_iter; i++){
+          size_t link = r.next() % FLAGS_joint;
+          auto until = link + read_len;
+          if(until > FLAGS_joint) until = FLAGS_joint;
+          bfc.lookupTransform("link" + to_string(link),
+                              "link" + to_string(until),
+                              ros::Time(0));
         }
-      }
-    });
+      });
+    }
+
+    for(size_t t = 0; t < write_threads; t++){
+      threads.emplace_back([&](){
+        std::random_device rnd;
+        Xoroshiro128Plus r(rnd());
+        while (wait){;}
+        for(size_t i = 0; i < FLAGS_iter; i++){
+          size_t link = r.next() % FLAGS_joint;
+          auto until = link + write_len;
+          if(until > FLAGS_joint) until = FLAGS_joint;
+          for(size_t j = link; j < until; j++){
+            bfc.setTransform(trans("link" + to_string(j),
+                                   "link" + to_string(j+1),
+                                   (double) i * 0.001), "me");
+          }
+        }
+      });
+    }
+
+    auto start = chrono::high_resolution_clock::now();
+    wait = false;
+    for(auto &e: threads){
+      e.join();
+    }
+    auto finish = chrono::high_resolution_clock::now();
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+
+    bfc.clear();
+    make_snake(bfc);
+
+    if(count == 0){ //warm up
+      continue;
+    }
+    time_acc += microseconds.count();
   }
 
-  auto start = chrono::high_resolution_clock::now();
-  wait = false;
-  for(auto &e: threads){
-    e.join();
-  }
-  auto finish = chrono::high_resolution_clock::now();
-  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
-  return microseconds.count();
+  return ((double) time_acc) / 5.0;
 }
 
-int64_t r_w_alt(){
-  BufferCore bfc{};
-  make_snake(bfc);
-  atomic_bool wait{true};
-  vector<thread> threads{};
-
-  size_t read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
+double r_w_alt(BufferCore &bfc){
+  auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  size_t read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
-  size_t write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
+  auto read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
+  auto write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
-  for(size_t i = 0; i < read_threads; i++){
-    threads.emplace_back([&](){
-      std::random_device rnd;
-      Xoroshiro128Plus r(rnd());
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter; i++){
-        size_t link = r.next() % FLAGS_joint;
-        auto until = link + read_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
-        bfc.lookupTransform("link" + to_string(link),
-                            "link" + to_string(until),
-                            ros::Time(0));
-      }
-    });
-  }
+  int64_t time_acc{0};
+  for(size_t count = 0; count < 6; count++){
+    atomic_bool wait{true};
+    vector<thread> threads{};
 
-  for(size_t i = 0; i < write_threads; i++){
-    threads.emplace_back([&](){
-      std::random_device rnd;
-      Xoroshiro128Plus r(rnd());
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter; i++){
-        int link = r.next() % FLAGS_joint;
-        auto until = link + write_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
-        for(size_t j = link; j < until; j++){
-          bfc.setTransform(trans("link" + to_string(j),
-                                 "link" + to_string(j+1),
-                                 (double) i * 0.001), "me");
+    for(size_t t = 0; t < read_threads; t++){
+      threads.emplace_back([&](){
+        std::random_device rnd;
+        Xoroshiro128Plus r(rnd());
+        while (wait){;}
+        for(size_t i = 0; i < FLAGS_iter; i++){
+          size_t link = r.next() % FLAGS_joint;
+          auto until = link + read_len;
+          if(until > FLAGS_joint) until = FLAGS_joint;
+          bfc.lookupTransform("link" + to_string(link),
+                              "link" + to_string(until),
+                              ros::Time(0));
         }
-      }
-    });
+      });
+    }
+    for(size_t t = 0; t < write_threads; t++){
+      threads.emplace_back([&](){
+        std::random_device rnd;
+        Xoroshiro128Plus r(rnd());
+        while (wait){;}
+        for(size_t i = 0; i < FLAGS_iter; i++){
+          size_t link = r.next() % FLAGS_joint;
+          auto until = link + write_len;
+          if(until > FLAGS_joint) until = FLAGS_joint;
+          for(size_t j = link; j < until; j++){
+            bfc.setTransform(trans("link" + to_string(j),
+                                   "link" + to_string(j+1),
+                                   (double) i * 0.001), "me");
+          }
+        }
+      });
+    }
+
+    auto start = chrono::high_resolution_clock::now();
+    wait = false;
+    for(auto &e: threads){
+      e.join();
+    }
+    auto finish = chrono::high_resolution_clock::now();
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+
+    bfc.clear();
+    make_snake(bfc);
+
+    if(count == 0){ //warm up
+      continue;
+    }
+    time_acc += microseconds.count();
   }
 
-  auto start = chrono::high_resolution_clock::now();
-  wait = false;
-  for(auto &e: threads){
-    e.join();
-  }
-  auto finish = chrono::high_resolution_clock::now();
-  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
-  return microseconds.count();
+  return ((double) time_acc) / 5.;
 }
 
-std::pair<int64_t, size_t> r_w_trn(){
-  BufferCore bfc{};
-  make_snake(bfc);
-  atomic_bool wait{true};
-  vector<thread> threads{};
-
-  size_t read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
+// (time, aborts)
+std::pair<double, double> r_w_trn(BufferCore &bfc){
+  auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  size_t read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
-  size_t write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
+  auto read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
+  auto write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
-  for(size_t t = 0; t < read_threads; t++){
-    threads.emplace_back([&](){
-      std::random_device rnd;
-      Xoroshiro128Plus r(rnd());
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter; i++){
-        size_t link = r.next() % FLAGS_joint;
-        auto until = link + read_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
-        bfc.lookupLatestTransform("link" + to_string(link),
-                            "link" + to_string(until));
-      }
-    });
-  }
+  int64_t time_acc{0};
+  size_t aborts_acc{0};
+  for(size_t count = 0; count < 6; count++){
+    atomic_bool wait{true};
+    vector<thread> threads{};
 
-  std::vector<Result> results{};
-  for(size_t t = 0; t < write_threads; t++){
-    results.emplace_back();
-  }
-
-  for(size_t t = 0; t < write_threads; t++){
-    threads.emplace_back([t, write_len, &bfc, &wait, &results](){
-      std::random_device rnd;
-      Xoroshiro128Plus r(rnd());
-      while (wait){;}
-      for(size_t i = 0; i < FLAGS_iter; i++){
-        int link = r.next() % FLAGS_joint;
-        auto until = link + write_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
-        vector<TransformStamped> vec{};
-        for(size_t j = link; j < until; j++){
-          vec.push_back(trans("link" + to_string(j),
-                              "link" + to_string(j+1),
-                              (double) i * 0.001));
+    for(size_t t = 0; t < read_threads; t++){
+      threads.emplace_back([&](){
+        std::random_device rnd;
+        Xoroshiro128Plus r(rnd());
+        while (wait){;}
+        for(size_t i = 0; i < FLAGS_iter; i++){
+          size_t link = r.next() % FLAGS_joint;
+          auto until = link + read_len;
+          if(until > FLAGS_joint) until = FLAGS_joint;
+          bfc.lookupLatestTransform("link" + to_string(link),
+                                    "link" + to_string(until));
         }
-        bfc.setTransforms(vec, "me", false, &results[t]);
-      }
-    });
+      });
+    }
+
+    std::vector<Result> results{};
+    for(size_t t = 0; t < write_threads; t++){
+      results.emplace_back();
+    }
+
+    for(size_t t = 0; t < write_threads; t++){
+      threads.emplace_back([t, write_len, &bfc, &wait, &results](){
+        std::random_device rnd;
+        Xoroshiro128Plus r(rnd());
+        while (wait){;}
+        for(size_t i = 0; i < FLAGS_iter; i++){
+          int link = r.next() % FLAGS_joint;
+          auto until = link + write_len;
+          if(until > FLAGS_joint) until = FLAGS_joint;
+          vector<TransformStamped> vec{};
+          for(size_t j = link; j < until; j++){
+            vec.push_back(trans("link" + to_string(j),
+                                "link" + to_string(j+1),
+                                (double) i * 0.001));
+          }
+          bfc.setTransforms(vec, "me", false, &results[t]);
+        }
+      });
+    }
+
+    auto start = chrono::high_resolution_clock::now();
+    wait = false;
+    for(auto &e: threads){
+      e.join();
+    }
+    auto finish = chrono::high_resolution_clock::now();
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+
+    uint64_t abort_count{};
+    for(auto &e: results){
+      abort_count += e.getAbortCount();
+    }
+
+    bfc.clear();
+    make_snake(bfc);
+
+    if(count == 0){ // warm up
+      continue;
+    }
+    time_acc += microseconds.count();
+    aborts_acc += abort_count;
   }
 
-  auto start = chrono::high_resolution_clock::now();
-  wait = false;
-  for(auto &e: threads){
-    e.join();
-  }
-
-  uint64_t abort_count{};
-  for(auto &e: results){
-    abort_count += e.getAbortCount();
-  }
-  cout << "Abort count: " << abort_count << endl;
-
-  auto finish = chrono::high_resolution_clock::now();
-  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
-  return make_pair(microseconds.count(), abort_count);
+  return make_pair(((double) time_acc)/ 5., ((double) aborts_acc)/5.);
 }
 
 double throughput(double time){
@@ -262,48 +292,26 @@ int main(int argc, char* argv[]){
 
   double old_time = 0;
   if(FLAGS_only == 0){
-    int64_t old_time_acc = 0;
-    for(size_t i = 0; i < 6; i++){
-      auto time = r_w_old();
-      if(0 == i){
-        // warm up
-        continue;
-      }
-      old_time_acc += time;
-    }
-    old_time = (double) old_time_acc / 5.;
+    OldBufferCore bfc{};
+    make_snake(bfc);
+    old_time = r_w_old(bfc);
   }
 
   double alt_time = 0;
   if(FLAGS_only == 0 or FLAGS_only == 1){
-    int64_t alt_time_acc = 0;
-    for(size_t i = 0; i < 6; i++){
-      auto time = r_w_alt();
-      if(0 == i){
-        // warm up
-        continue;
-      }
-      alt_time_acc += time;
-    }
-    alt_time = (double) alt_time_acc / 5.;
+    BufferCore bfc{};
+    make_snake(bfc);
+    alt_time = r_w_alt(bfc);
   }
 
   double trn_time = 0;
   double abort_count = 0;
   if(FLAGS_only == 0 or FLAGS_only == 2){
-    int64_t trn_time_acc = 0;
-    size_t abort_acc = 0;
-    for(size_t i = 0; i < 6; i++){
-      auto pair = r_w_trn();
-      if(0 == i){
-        // warm up
-        continue;
-      }
-      trn_time_acc += pair.first;
-      abort_acc += pair.second;
-    }
-    trn_time = (double) trn_time_acc / 5.;
-    abort_count = (double) abort_acc / 5;
+    BufferCore bfc{};
+    make_snake(bfc);
+    auto pair = r_w_trn(bfc);
+    trn_time = pair.first;
+    abort_count = pair.second;
   }
 
   cout << "Old time: " << old_time << endl;
