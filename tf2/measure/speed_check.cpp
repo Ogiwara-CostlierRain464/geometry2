@@ -9,10 +9,9 @@
 #include <console_bridge/console.h>
 #include <bits/stdc++.h>
 #include <fstream>
-#include <tbb/concurrent_vector.h>
-
 #include "../old_tf2/old_buffer_core.h"
 #include "tf2/buffer_core.h"
+#include "xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
 using tf2::BufferCore;
@@ -26,6 +25,7 @@ DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_double(read_len, 1., "Percent of reading joint size, within [0,1]");
 DEFINE_double(write_len, 1., "Number of reading joint size, within [0,1]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
+DEFINE_uint32(only, 0, "0: All, 1: Only snapshot");
 
 TransformStamped trans(
   const string &parent,
@@ -61,9 +61,10 @@ int64_t r_w_old(){
 
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
+      Xoroshiro128Plus r(32);
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
-        size_t link = rand() % FLAGS_joint;
+        size_t link = r.next() % FLAGS_joint;
         auto until = link + read_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
         bfc.lookupTransform("link" + to_string(link),
@@ -75,9 +76,10 @@ int64_t r_w_old(){
 
   for(size_t i = 0; i < write_threads; i++){
     threads.emplace_back([&](){
+      Xoroshiro128Plus r(32);
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
-        int link = rand() % FLAGS_joint;
+        size_t link = r.next() % FLAGS_joint;
         auto until = link + write_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
         for(size_t j = link; j < until; j++){
@@ -112,9 +114,10 @@ int64_t r_w_alt(){
 
   for(size_t i = 0; i < read_threads; i++){
     threads.emplace_back([&](){
+      Xoroshiro128Plus r(32);
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
-        size_t link = rand() % FLAGS_joint;
+        size_t link = r.next() % FLAGS_joint;
         auto until = link + read_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
         bfc.lookupTransform("link" + to_string(link),
@@ -126,9 +129,10 @@ int64_t r_w_alt(){
 
   for(size_t i = 0; i < write_threads; i++){
     threads.emplace_back([&](){
+      Xoroshiro128Plus r(32);
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
-        int link = rand() % FLAGS_joint;
+        int link = r.next() % FLAGS_joint;
         auto until = link + write_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
         for(size_t j = link; j < until; j++){
@@ -163,9 +167,10 @@ std::pair<int64_t, size_t> r_w_trn(){
 
   for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([&](){
+      Xoroshiro128Plus r(32);
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
-        size_t link = rand() % FLAGS_joint;
+        size_t link = r.next() % FLAGS_joint;
         auto until = link + read_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
         bfc.lookupLatestTransform("link" + to_string(link),
@@ -181,9 +186,10 @@ std::pair<int64_t, size_t> r_w_trn(){
 
   for(size_t t = 0; t < write_threads; t++){
     threads.emplace_back([t, write_len, &bfc, &wait, &results](){
+      Xoroshiro128Plus r(32);
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
-        int link = rand() % FLAGS_joint;
+        int link = r.next() % FLAGS_joint;
         auto until = link + write_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
         vector<TransformStamped> vec{};
@@ -248,41 +254,48 @@ int main(int argc, char* argv[]){
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
-  int64_t old_time_acc = 0;
-  for(size_t i = 0; i < 6; i++){
-    auto time = r_w_old();
-    if(0 == i){
-      // warm up
-      continue;;
+  double old_time = 0;
+  if(FLAGS_only == 0){
+    int64_t old_time_acc = 0;
+    for(size_t i = 0; i < 6; i++){
+      auto time = r_w_old();
+      if(0 == i){
+        // warm up
+        continue;
+      }
+      old_time_acc += time;
     }
-    old_time_acc += time;
+    old_time = (double) old_time_acc / 5.;
   }
-  double old_time = (double) old_time_acc / 5.;
 
   int64_t alt_time_acc = 0;
   for(size_t i = 0; i < 6; i++){
     auto time = r_w_alt();
     if(0 == i){
       // warm up
-      continue;;
+      continue;
     }
     alt_time_acc += time;
   }
   double alt_time = (double) alt_time_acc / 5.;
 
-  int64_t trn_time_acc = 0;
-  size_t abort_acc = 0;
-  for(size_t i = 0; i < 6; i++){
-    auto pair = r_w_trn();
-    if(0 == i){
-      // warm up
-      continue;;
+  double trn_time = 0;
+  double abort_count = 0;
+  if(FLAGS_only == 0){
+    int64_t trn_time_acc = 0;
+    size_t abort_acc = 0;
+    for(size_t i = 0; i < 6; i++){
+      auto pair = r_w_trn();
+      if(0 == i){
+        // warm up
+        continue;
+      }
+      trn_time_acc += pair.first;
+      abort_acc += pair.second;
     }
-    trn_time_acc += pair.first;
-    abort_acc += pair.second;
+    trn_time = (double) trn_time_acc / 5.;
+    abort_count = abort_acc / 5;
   }
-  double trn_time = (double) trn_time_acc / 5.;
-  double abort_count = abort_acc / 5;
 
   cout << "Old time: " << old_time << endl;
   cout << "Snapshot time: " << alt_time << endl;

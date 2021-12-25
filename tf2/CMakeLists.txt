@@ -42,6 +42,7 @@ add_executable(speed_check
   old_tf2/old_buffer_core.h
   old_tf2/old_buffer_core.cpp
   measure/speed_check.cpp
+  measure/xoroshiro128_plus.h
 )
 target_link_libraries(speed_check
   ${Boost_LIBRARIES}
