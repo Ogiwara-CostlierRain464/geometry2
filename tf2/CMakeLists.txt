@@ -4,7 +4,8 @@ project(tf2)
 find_package(console_bridge REQUIRED)
 find_package(catkin REQUIRED COMPONENTS geometry_msgs rostime tf2_msgs)
 find_package(Boost REQUIRED COMPONENTS system thread)
-find_package(TBB REQUIRED)
+#find_package(TBB REQUIRED)
+add_subdirectory(third_party/tbb)
 
 catkin_package(
    INCLUDE_DIRS include
