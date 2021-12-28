@@ -1,5 +1,5 @@
 T=$(nproc)
-I=1000
+I=10000
 J=10000
 READ_RATIO=1
 READ_LEN=16
@@ -7,7 +7,7 @@ WRITE_LEN=16
 OUTPUT_DIR=/tmp/tf/$(uuidgen)
 OUTPUT=$OUTPUT_DIR/data.dat
 OUTPUT_PLOT=$OUTPUT_DIR/plot.png
-ONLY=0
+ONLY=3
 
 mkdir -p $OUTPUT_DIR
 

@@ -22,7 +22,7 @@ DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 100, "Joint size");
 DEFINE_uint64(iter, 1'000, "Iteration count");
 DEFINE_double(read_ratio, 1, "read ratio, within [0,1]");
-DEFINE_uint64(read_len, 1, "Number of reading joint size ∈ [0, joint]");
+DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old");

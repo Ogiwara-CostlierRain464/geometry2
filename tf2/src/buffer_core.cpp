@@ -198,6 +198,7 @@ BufferCore::BufferCore(ros::Duration cache_time)
 , using_dedicated_thread_(false)
 {
   frameIDs_["NO_PARENT"] = 0;
+  frames_.reserve(10005);
   frames_.push_back(TimeCacheInterfacePtr());
   frameIDs_reverse.emplace_back("NO_PARENT");
 //  frame_each_mutex_.emplace_back(std::make_shared<RWLock>());
