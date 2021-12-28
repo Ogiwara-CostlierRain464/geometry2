@@ -22,8 +22,8 @@ DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 100, "Joint size");
 DEFINE_uint64(iter, 1'000, "Iteration count");
 DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
-DEFINE_double(read_len, 1., "Percent of reading joint size, within [0,1]");
-DEFINE_double(write_len, 1., "Number of reading joint size, within [0,1]");
+DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
+DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest");
 
@@ -53,8 +53,6 @@ double r_w_old(OldBufferCore &bfc){
 
   auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  auto read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
-  auto write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
   for(size_t count = 0; count < 6; count++){
     atomic_bool wait{true};
@@ -66,7 +64,7 @@ double r_w_old(OldBufferCore &bfc){
         while (wait){;}
         for(size_t i = 0; i < FLAGS_iter; i++){
           size_t link = r.next() % FLAGS_joint;
-          auto until = link + read_len;
+          auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           bfc.lookupTransform("link" + to_string(link),
                               "link" + to_string(until),
@@ -82,7 +80,7 @@ double r_w_old(OldBufferCore &bfc){
         while (wait){;}
         for(size_t i = 0; i < FLAGS_iter; i++){
           size_t link = r.next() % FLAGS_joint;
-          auto until = link + write_len;
+          auto until = link + FLAGS_write_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           for(size_t j = link; j < until; j++){
             bfc.setTransform(trans("link" + to_string(j),
@@ -116,8 +114,6 @@ double r_w_old(OldBufferCore &bfc){
 double r_w_alt(BufferCore &bfc){
   auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  auto read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
-  auto write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
   int64_t time_acc{0};
   for(size_t count = 0; count < 6; count++){
@@ -131,7 +127,7 @@ double r_w_alt(BufferCore &bfc){
         while (wait){;}
         for(size_t i = 0; i < FLAGS_iter; i++){
           size_t link = r.next() % FLAGS_joint;
-          auto until = link + read_len;
+          auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           bfc.lookupTransform("link" + to_string(link),
                               "link" + to_string(until),
@@ -146,7 +142,7 @@ double r_w_alt(BufferCore &bfc){
         while (wait){;}
         for(size_t i = 0; i < FLAGS_iter; i++){
           size_t link = r.next() % FLAGS_joint;
-          auto until = link + write_len;
+          auto until = link + FLAGS_write_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           for(size_t j = link; j < until; j++){
             bfc.setTransform(trans("link" + to_string(j),
@@ -181,8 +177,6 @@ double r_w_alt(BufferCore &bfc){
 std::pair<double, double> r_w_trn(BufferCore &bfc){
   auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
-  auto read_len = (size_t)std::round((double) FLAGS_joint * FLAGS_read_len);
-  auto write_len = (size_t)std::round((double) FLAGS_joint * FLAGS_write_len);
 
   int64_t time_acc{0};
   size_t aborts_acc{0};
@@ -197,7 +191,7 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
         while (wait){;}
         for(size_t i = 0; i < FLAGS_iter; i++){
           size_t link = r.next() % FLAGS_joint;
-          auto until = link + read_len;
+          auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           bfc.lookupLatestTransform("link" + to_string(link),
                                     "link" + to_string(until));
@@ -211,13 +205,13 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
     }
 
     for(size_t t = 0; t < write_threads; t++){
-      threads.emplace_back([t, write_len, &bfc, &wait, &results](){
+      threads.emplace_back([t, &bfc, &wait, &results](){
         std::random_device rnd;
         Xoroshiro128Plus r(rnd());
         while (wait){;}
         for(size_t i = 0; i < FLAGS_iter; i++){
           int link = r.next() % FLAGS_joint;
-          auto until = link + write_len;
+          auto until = link + FLAGS_write_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           vector<TransformStamped> vec{};
           for(size_t j = link; j < until; j++){
@@ -275,12 +269,12 @@ int main(int argc, char* argv[]){
     exit(-1);
   }
   CONSOLE_BRIDGE_logInform("read len: %lf", FLAGS_read_len);
-  if(!(0. <= FLAGS_read_len and FLAGS_read_len <= 1.)){
+  if(!(0 <= FLAGS_read_len and FLAGS_read_len <= FLAGS_joint)){
     CONSOLE_BRIDGE_logError("wrong read len");
     exit(-1);
   }
   CONSOLE_BRIDGE_logInform("write len: %lf", FLAGS_write_len);
-  if(!(0. <= FLAGS_write_len and FLAGS_write_len <= 1.)){
+  if(!(0 <= FLAGS_write_len and FLAGS_write_len <= FLAGS_joint)){
     CONSOLE_BRIDGE_logError("wrong write len");
     exit(-1);
   }
@@ -289,6 +283,10 @@ int main(int argc, char* argv[]){
 
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
+
+  if(FLAGS_only != 0){
+    CONSOLE_BRIDGE_logWarn("Only %s runs!!!", FLAGS_only == 1 ? "snapshot" : "latest");
+  }
 
   double old_time = 0;
   if(FLAGS_only == 0){
@@ -317,6 +315,7 @@ int main(int argc, char* argv[]){
   cout << "Old time: " << old_time << endl;
   cout << "Snapshot time: " << alt_time << endl;
   cout << "Latest time: " << trn_time << endl;
+  cout << "Aborts in latest: " << abort_count << endl;
 
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
