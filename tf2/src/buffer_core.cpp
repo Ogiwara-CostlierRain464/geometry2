@@ -431,7 +431,7 @@ int BufferCore::walkToTopParent(
       break;
     }
 
-    ReadUnLocker locker(frame_each_mutex_->at(frame));
+//    ReadUnLocker locker(frame_each_mutex_->at(frame));
 //    locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
@@ -491,7 +491,7 @@ int BufferCore::walkToTopParent(
       break;
     }
 
-    ReadUnLocker locker(frame_each_mutex_->at(frame));
+//    ReadUnLocker locker(frame_each_mutex_->at(frame));
 //    locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, error_string);
@@ -844,7 +844,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
       CompactFrameID target_id = lookupFrameNumber(target_frame);
       TimeCacheInterfacePtr cache = getFrame(target_id);
       if (cache) {
-        ReadUnLocker locker(frame_each_mutex_->at(target_id));
+//        ReadUnLocker locker(frame_each_mutex_->at(target_id));
 //        locker.rLock();
         identity.header.stamp = cache->getLatestTimestamp();
       }else {
@@ -1270,7 +1270,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
     TimeCacheInterfacePtr cache = getFrame(source_id);
     //Set time to latest timestamp of frameid in case of target and source frame id are the same
     if (cache) {
-      ReadUnLocker locker(frame_each_mutex_->at(source_id));
+//      ReadUnLocker locker(frame_each_mutex_->at(source_id));
 //      locker.rLock();
       time = cache->getLatestTimestamp();
     }else
@@ -1294,7 +1294,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
       // There will be no cache for the very root of the tree
       break;
     }
-    ReadUnLocker locker(frame_each_mutex_->at(frame));
+//    ReadUnLocker locker(frame_each_mutex_->at(frame));
 //    locker.rLock();
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
@@ -1353,7 +1353,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
       break;
     }
 
-    ReadUnLocker locker(frame_each_mutex_->at(frame));
+//    ReadUnLocker locker(frame_each_mutex_->at(frame));
 //    locker.rLock();
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
