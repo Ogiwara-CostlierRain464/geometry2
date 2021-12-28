@@ -268,12 +268,12 @@ int main(int argc, char* argv[]){
     CONSOLE_BRIDGE_logError("wrong read ratio");
     exit(-1);
   }
-  CONSOLE_BRIDGE_logInform("read len: %lf", FLAGS_read_len);
+  CONSOLE_BRIDGE_logInform("read len: %d", FLAGS_read_len);
   if(!(0 <= FLAGS_read_len and FLAGS_read_len <= FLAGS_joint)){
     CONSOLE_BRIDGE_logError("wrong read len");
     exit(-1);
   }
-  CONSOLE_BRIDGE_logInform("write len: %lf", FLAGS_write_len);
+  CONSOLE_BRIDGE_logInform("write len: %d", FLAGS_write_len);
   if(!(0 <= FLAGS_write_len and FLAGS_write_len <= FLAGS_joint)){
     CONSOLE_BRIDGE_logError("wrong write len");
     exit(-1);
