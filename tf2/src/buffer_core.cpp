@@ -829,11 +829,6 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
   const std::string& source_frame,
   const ros::Time& time) const noexcept(false)
 {
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << " count: " << logger.getCount() << " target: " << target_frame << " source: " << source_frame << " time: " << time;
-  logger.logPer1000(ss.str());
-
   if (target_frame == source_frame) {
     geometry_msgs::TransformStamped identity;
     identity.header.frame_id = target_frame;
@@ -893,11 +888,6 @@ geometry_msgs::TransformStamped BufferCore::lookupLatestTransform(
   const std::string& source_frame) const noexcept(false)
 {
   // 2PL!
-
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << " count: " << logger.getCount() << " target: " << target_frame << " source: " << source_frame << " time: " << time;
-  logger.logPer1000(ss.str());
 
   ScopedWriteSetUnLocker node_un_locker(*frame_each_mutex_);
 
@@ -1257,11 +1247,6 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
 {
   // looking up and locking up tree to find latest common time
   // this method only do locks and does not unlock.
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__  << " count: " << logger.getCount();
-  logger.logPer1000(ss.str());
-
 
   // Error if one of the frames don't exist.
   if (source_id == 0 || target_id == 0) return tf2_msgs::TF2Error::LOOKUP_ERROR;
