@@ -432,7 +432,7 @@ int BufferCore::walkToTopParent(
     }
 
     ReadUnLocker locker(frame_each_mutex_->at(frame));
-    locker.rLock();
+//    locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
     if (parent == 0)
@@ -492,7 +492,7 @@ int BufferCore::walkToTopParent(
     }
 
     ReadUnLocker locker(frame_each_mutex_->at(frame));
-    locker.rLock();
+//    locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, error_string);
     if (parent == 0)
@@ -626,7 +626,7 @@ int BufferCore::walkToTopParentLatest(
       break;
     }
 
-    un_locker.rLockIfNot(frame);
+//    un_locker.rLockIfNot(frame);
 
     CompactFrameID parent = f.gather(cache, ros::Time(0), &extrapolation_error_string);
     if (parent == 0)
@@ -680,7 +680,7 @@ int BufferCore::walkToTopParentLatest(
     if (!cache){
       break;
     }
-    un_locker.rLockIfNot(frame);
+//    un_locker.rLockIfNot(frame);
     CompactFrameID parent = f.gather(cache, ros::Time(0), error_string);
     if (parent == 0)
     {
@@ -845,7 +845,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
       TimeCacheInterfacePtr cache = getFrame(target_id);
       if (cache) {
         ReadUnLocker locker(frame_each_mutex_->at(target_id));
-        locker.rLock();
+//        locker.rLock();
         identity.header.stamp = cache->getLatestTimestamp();
       }else {
         identity.header.stamp = time;
@@ -909,7 +909,7 @@ geometry_msgs::TransformStamped BufferCore::lookupLatestTransform(
     CompactFrameID target_id = lookupFrameNumber(target_frame);
     TimeCacheInterfacePtr cache = getFrame(target_id);
     if(cache){
-      node_un_locker.rLockIfNot(target_id);
+//      node_un_locker.rLockIfNot(target_id);
       identity.header.stamp = cache->getLatestTimestamp();
     }else{
       identity.header.stamp = ros::Time(0);
@@ -1271,7 +1271,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
     //Set time to latest timestamp of frameid in case of target and source frame id are the same
     if (cache) {
       ReadUnLocker locker(frame_each_mutex_->at(source_id));
-      locker.rLock();
+//      locker.rLock();
       time = cache->getLatestTimestamp();
     }else
       time = ros::Time();
@@ -1295,7 +1295,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
       break;
     }
     ReadUnLocker locker(frame_each_mutex_->at(frame));
-    locker.rLock();
+//    locker.rLock();
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
     if (latest.second == 0)
@@ -1354,7 +1354,7 @@ int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID sou
     }
 
     ReadUnLocker locker(frame_each_mutex_->at(frame));
-    locker.rLock();
+//    locker.rLock();
     P_TimeAndFrameID latest = cache->getLatestTimeAndParent();
 
     if (latest.second == 0)
