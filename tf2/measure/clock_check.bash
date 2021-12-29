@@ -4,7 +4,7 @@ OUTPUT_PLOT=$OUTPUT_DIR/plot.png
 
 mkdir -p $OUTPUT_DIR
 
-for T in $(seq 2 2 $(nproc)); do
+for T in $(seq 14 14 $(nproc)); do
   ../cmake-build-release/devel/lib/tf2/clock_check --thread=$T --output=$OUTPUT
 done
 
