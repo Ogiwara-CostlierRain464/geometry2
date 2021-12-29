@@ -25,7 +25,7 @@ DEFINE_double(read_ratio, 1, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old");
+DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_bool(freshness, true, "Use freshness");
 
 TransformStamped trans(
@@ -313,7 +313,7 @@ int main(int argc, char* argv[]){
   }
 
   double old_time = 0;
-  if(FLAGS_only == 0){
+  if(FLAGS_only == 0 or FLAGS_only == 4){
     OldBufferCore bfc{};
     make_snake(bfc);
     old_time = r_w_old(bfc);
@@ -365,7 +365,10 @@ int main(int argc, char* argv[]){
    * how old the data = now - old
    * so when small, then it is fresh!
    *
-   *
+   * we should clear these conditions.
+   * - what is freshness
+   * - what is synchronous?
+   * - how do we apply
    */
   return 0;
 }
