@@ -16,6 +16,7 @@ int main(int argc, char* argv[]){
 
   cout << "thread: " << FLAGS_thread << endl;
   cout << "Output: " << FLAGS_output << endl;
+  cout << "is_steady: " << (chrono::high_resolution_clock::is_steady ? "true" : "false") << endl;
 
   std::vector<size_t> results{};
   for(size_t t = 0; t < FLAGS_thread; t++){
