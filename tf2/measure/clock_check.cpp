@@ -14,6 +14,9 @@ int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  cout << "thread: " << FLAGS_thread << endl;
+  cout << "Output: " << FLAGS_output << endl;
+
   std::vector<size_t> results{};
   for(size_t t = 0; t < FLAGS_thread; t++){
     results.emplace_back();
