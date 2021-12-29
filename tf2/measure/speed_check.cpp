@@ -122,7 +122,7 @@ double r_w_old(OldBufferCore &bfc){
       for(auto &d: delays){
         delay_ave += d;
       }
-      delay_ave /= write_threads;
+      delay_ave /= read_threads;
       delay_ave /= FLAGS_iter;
       delay_acc += delay_ave;
     }
