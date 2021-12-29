@@ -328,5 +328,17 @@ int main(int argc, char* argv[]){
   output << throughput(trn_time) << " "; // 9
   output << abort_count << endl;
   output.close();
+
+  // data freshness?
+  // how do we evaluate data freshness?
+  // threads and freshness
+  // old <-- --> fresh?
+  /**
+   * past           now
+   * |-------------->|
+   * |a|    |b|
+   *
+   * how old the data =
+   */
   return 0;
 }

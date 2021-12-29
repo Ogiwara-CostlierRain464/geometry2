@@ -69,6 +69,16 @@ target_link_libraries(rw_lock_check
   )
 add_dependencies(rw_lock_check ${catkin_EXPORTED_TARGETS})
 
+add_executable(clock_check
+  measure/clock_check.cpp
+  )
+target_link_libraries(clock_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  gflags
+  tbb
+)
+add_dependencies(clock_check ${catkin_EXPORTED_TARGETS})
 
 # Tests
 if(CATKIN_ENABLE_TESTING)
