@@ -26,6 +26,7 @@ DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old");
+DEFINE_bool(freshness, true, "Use freshness");
 
 TransformStamped trans(
   const string &parent,
@@ -50,6 +51,7 @@ void make_snake(T &bfc){
 
 double r_w_old(OldBufferCore &bfc){
   int64_t time_acc{0};
+  uint64_t delay_acc{};
 
   auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
@@ -57,8 +59,10 @@ double r_w_old(OldBufferCore &bfc){
   for(size_t count = 0; count < 6; count++){
     atomic_bool wait{true};
     vector<thread> threads{};
+    vector<uint64_t> delays(read_threads, 0);
+
     for(size_t t = 0; t < read_threads; t++){
-      threads.emplace_back([&](){
+      threads.emplace_back([t, &wait, &bfc, &delays](){
         std::random_device rnd;
         Xoroshiro128Plus r(rnd());
         while (wait){;}
@@ -66,9 +70,15 @@ double r_w_old(OldBufferCore &bfc){
           size_t link = r.next() % FLAGS_joint;
           auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
-          bfc.lookupTransform("link" + to_string(link),
+          auto now = chrono::steady_clock::now();
+          auto nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
+          auto trans = bfc.lookupTransform("link" + to_string(link),
                               "link" + to_string(until),
                               ros::Time(0));
+          if(FLAGS_freshness){
+            auto after_nano = trans.header.stamp.toNSec();
+            delays[t] += after_nano - nano;
+          }
         }
       });
     }
@@ -83,9 +93,11 @@ double r_w_old(OldBufferCore &bfc){
           auto until = link + FLAGS_write_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           for(size_t j = link; j < until; j++){
+            auto now = chrono::steady_clock::now();
+            double nano = chrono::duration<double>(now.time_since_epoch()).count();
             bfc.setTransform(trans("link" + to_string(j),
                                    "link" + to_string(j+1),
-                                   (double) i * 0.001), "me");
+                                   nano), "me");
           }
         }
       });
@@ -105,8 +117,20 @@ double r_w_old(OldBufferCore &bfc){
     if(count == 0){ //warm up
       continue;
     }
+    uint64_t delay_ave{};
+    if(FLAGS_freshness){
+      for(auto &d: delays){
+        delay_ave += d;
+      }
+      delay_ave /= write_threads;
+      delay_ave /= FLAGS_iter;
+      delay_acc += delay_ave;
+    }
+
+
     time_acc += microseconds.count();
   }
+  cout << "delay: " << delay_acc / 5 << endl;
 
   return ((double) time_acc) / 5.0;
 }

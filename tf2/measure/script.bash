@@ -7,7 +7,7 @@ WRITE_LEN=16
 OUTPUT_DIR=/tmp/tf/$(uuidgen)
 OUTPUT=$OUTPUT_DIR/data.dat
 OUTPUT_PLOT=$OUTPUT_DIR/plot.png
-ONLY=3
+ONLY=0
 
 mkdir -p $OUTPUT_DIR
 
