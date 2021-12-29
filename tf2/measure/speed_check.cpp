@@ -338,7 +338,10 @@ int main(int argc, char* argv[]){
    * |-------------->|
    * |a|    |b|
    *
-   * how old the data =
+   * how old the data = now - old
+   * so when small, then it is fresh!
+   *
+   *
    */
   return 0;
 }

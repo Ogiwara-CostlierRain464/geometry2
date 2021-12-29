@@ -16,7 +16,7 @@ int main(int argc, char* argv[]){
 
   cout << "thread: " << FLAGS_thread << endl;
   cout << "Output: " << FLAGS_output << endl;
-  cout << "is_steady: " << (chrono::high_resolution_clock::is_steady ? "true" : "false") << endl;
+  cout << "is_steady: " << (chrono::steady_clock::is_steady ? "true" : "false") << endl;
 
   std::vector<size_t> results{};
   for(size_t t = 0; t < FLAGS_thread; t++){
@@ -27,8 +27,8 @@ int main(int argc, char* argv[]){
   for(size_t t = 0; t < FLAGS_thread; t++){
     threads.emplace_back([t, &results](){
       for(size_t i = 0; i < FLAGS_iter; i++){
-        auto t1 = chrono::high_resolution_clock::now();
-        auto t2 = chrono::high_resolution_clock::now();
+        auto t1 = chrono::steady_clock::now();
+        auto t2 = chrono::steady_clock::now();
         auto nano = chrono::duration_cast<chrono::nanoseconds>(t2 - t1);
         results[t] += nano.count();
       }
