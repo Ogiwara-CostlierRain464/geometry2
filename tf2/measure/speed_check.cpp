@@ -70,11 +70,11 @@ double r_w_old(OldBufferCore &bfc){
           size_t link = r.next() % FLAGS_joint;
           auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
-          auto now = chrono::steady_clock::now();
-          auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
           auto trans = bfc.lookupTransform("link" + to_string(link),
                               "link" + to_string(until),
                               ros::Time(0));
+          auto now = chrono::steady_clock::now();
+          auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
           if(FLAGS_freshness){
             auto trans_nano = trans.header.stamp.toNSec();
             delays[t] += now_nano - trans_nano;
@@ -158,11 +158,11 @@ double r_w_alt(BufferCore &bfc){
           size_t link = r.next() % FLAGS_joint;
           auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
-          auto now = chrono::steady_clock::now();
-          auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
           auto trans = bfc.lookupTransform("link" + to_string(link),
                               "link" + to_string(until),
                               ros::Time(0));
+          auto now = chrono::steady_clock::now();
+          auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
           if(FLAGS_freshness){
             auto trans_nano = trans.header.stamp.toNSec();
             delays[t] += now_nano - trans_nano;
@@ -246,10 +246,10 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
           size_t link = r.next() % FLAGS_joint;
           auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
+          bfc.lookupLatestTransform("link" + to_string(link),
+                                    "link" + to_string(until), FLAGS_freshness ? &stat : nullptr);
           auto now = chrono::steady_clock::now();
           auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
-          bfc.lookupLatestTransform("link" + to_string(link),
-                                    "link" + to_string(until), FLAGS_freshness ? &stat : nullptr); // must be 0
           if(FLAGS_freshness){
             // not all element has same timestamp!!
             auto access_ave_nano = stat.getTimeStampsAve();

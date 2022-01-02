@@ -313,8 +313,10 @@ bool BufferCore::setTransforms(
   }
 
   // before testTransformableRequests, you have to unlock.
+  // you were doing wrong! you forgot to do abort!!!!!
   {
     ScopedWriteSetUnLocker un_locker(*frame_each_mutex_);
+    std::vector<std::tuple<TimeCacheInterfacePtr, geometry_msgs::TransformStamped, CompactFrameID>> write_set{};
 
 try_lock:
     for(auto &e: stripped){
@@ -334,10 +336,20 @@ try_lock:
             result->incAbort();
           }
           un_locker.unlockAll();
+          write_set.clear();
           std::this_thread::sleep_for(1ms);
           goto try_lock;
         }
       }
+
+      write_set.emplace_back(frame, e, id);
+    }
+
+    // all lock acquired, so write.
+    for(auto &w: write_set){
+      auto frame = std::get<0>(w);
+      auto e = std::get<1>(w);
+      auto id = std::get<2>(w);
 
       std::string err_str;
       if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
@@ -345,7 +357,7 @@ try_lock:
       }else{
         CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
         // TODO: Impl rollback
-        return false;
+        assert(false);
       }
     }
   }

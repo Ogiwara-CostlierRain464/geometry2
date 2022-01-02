@@ -13,7 +13,7 @@ struct Stat {
   std::vector<uint64_t> timestamps{};
 
   uint64_t getTimeStampsAve() const{
-    uint64_t tmp{};
+    uint64_t tmp{0};
     for(auto &e: timestamps){
       tmp += e;
     }
