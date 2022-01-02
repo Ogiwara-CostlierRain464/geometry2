@@ -61,7 +61,7 @@ class OldBufferCore
 {
 public:
   /************* Constants ***********************/
-  static const int DEFAULT_CACHE_TIME = 100000;  //!< The default amount of time to cache data in seconds
+  static const int DEFAULT_CACHE_TIME = INT_MAX;  //!< The default amount of time to cache data in seconds
   static const uint64_t MAX_GRAPH_DEPTH = 1000'000'000'000UL;  //!< Maximum graph search depth (deeper graphs will be assumed to have loops)
 
   /** Constructor
