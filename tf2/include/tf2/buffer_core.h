@@ -47,6 +47,7 @@
 //#include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "rwlock.h"
+#include "stat.h"
 
 //////////////////////////backwards startup for porting
 //#include "tf/tf.h"
@@ -94,8 +95,8 @@ class BufferCore
 {
 public:
   /************* Constants ***********************/
-  static const int DEFAULT_CACHE_TIME = 10;  //!< The default amount of time to cache data in seconds
-  static const uint32_t MAX_GRAPH_DEPTH = 10'000'000UL;  //!< Maximum graph search depth (deeper graphs will be assumed to have loops)
+  static const int DEFAULT_CACHE_TIME = 100000;  //!< The default amount of time to cache data in seconds
+  static const uint64_t MAX_GRAPH_DEPTH = 1000'000'000'000UL;  //!< Maximum graph search depth (deeper graphs will be assumed to have loops)
 
   /** Constructor
    * \param interpolating Whether to interpolate, if this is false the closest value will be returned
@@ -140,7 +141,7 @@ public:
 		    const ros::Time& time) const noexcept(false);
 
   geometry_msgs::TransformStamped
-  lookupLatestTransform(const std::string& target_frame, const std::string& source_frame) const noexcept(false);
+  lookupLatestTransform(const std::string& target_frame, const std::string& source_frame, Stat *stat = nullptr) const noexcept(false);
 
   /** \brief Get the transform between two frames by frame ID assuming fixed frame.
    * \param target_frame The frame to which data should be transformed
@@ -417,7 +418,7 @@ private:
   int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const noexcept;
 
   template<typename F>
-  int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker) const noexcept;
+  int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker, Stat *stat = nullptr) const noexcept;
 
   void testTransformableRequests();
   bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,

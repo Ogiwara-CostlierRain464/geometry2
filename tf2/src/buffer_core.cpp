@@ -598,7 +598,8 @@ template<typename F>
 int BufferCore::walkToTopParentLatest(
   F& f, CompactFrameID target_id,CompactFrameID source_id,
   std::string* error_string,
-  ScopedWriteSetUnLocker &un_locker) const noexcept
+  ScopedWriteSetUnLocker &un_locker,
+  Stat *stat) const noexcept
 {
   //2PL!
 
@@ -628,6 +629,10 @@ int BufferCore::walkToTopParentLatest(
     }
 
     un_locker.rLockIfNot(frame);
+
+    if(stat != nullptr){
+      stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+    }
 
     CompactFrameID parent = f.gather(cache, ros::Time(0), &extrapolation_error_string);
     if (parent == 0)
@@ -885,7 +890,8 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
 // thread safe, but throws.
 geometry_msgs::TransformStamped BufferCore::lookupLatestTransform(
   const std::string& target_frame,
-  const std::string& source_frame) const noexcept(false)
+  const std::string& source_frame,
+  Stat *stat) const noexcept(false)
 {
   // 2PL!
 
@@ -905,6 +911,10 @@ geometry_msgs::TransformStamped BufferCore::lookupLatestTransform(
     }else{
       identity.header.stamp = ros::Time(0);
     }
+    if(stat != nullptr){
+      stat->timestamps.push_back(identity.header.stamp.toNSec());
+    }
+
     return identity;
   }
 
@@ -915,7 +925,7 @@ geometry_msgs::TransformStamped BufferCore::lookupLatestTransform(
 
   std::string error_string;
   TransformAccum accum;
-  int retval = walkToTopParentLatest(accum, target_id, source_id, &error_string, node_un_locker);
+  int retval = walkToTopParentLatest(accum, target_id, source_id, &error_string, node_un_locker, stat);
   if (retval != tf2_msgs::TF2Error::NO_ERROR)
   {
     switch (retval)
