@@ -19,6 +19,15 @@ struct Stat {
     }
     return tmp / timestamps.size();
   }
+
+  uint64_t getTimeStampsVar() const{
+    auto ave = getTimeStampsAve();
+    uint64_t tmp{0};
+    for(auto &e: timestamps){
+      tmp += (uint64_t) pow(e - ave, 2);
+    }
+    return tmp / timestamps.size();
+  }
 };
 
 }

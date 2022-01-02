@@ -26,7 +26,7 @@ DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
-DEFINE_bool(freshness, true, "Use freshness");
+DEFINE_bool(stat, true, "Show stat");
 
 TransformStamped trans(
   const string &parent,
@@ -75,7 +75,7 @@ double r_w_old(OldBufferCore &bfc){
                               ros::Time(0));
           auto now = chrono::steady_clock::now();
           auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
-          if(FLAGS_freshness){
+          if(FLAGS_stat){
             auto trans_nano = trans.header.stamp.toNSec();
             delays[t] += now_nano - trans_nano;
           }
@@ -118,7 +118,7 @@ double r_w_old(OldBufferCore &bfc){
       continue;
     }
     uint64_t delay_ave{};
-    if(FLAGS_freshness){
+    if(FLAGS_stat){
       for(auto &d: delays){
         delay_ave += d;
       }
@@ -163,7 +163,7 @@ double r_w_alt(BufferCore &bfc){
                               ros::Time(0));
           auto now = chrono::steady_clock::now();
           auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
-          if(FLAGS_freshness){
+          if(FLAGS_stat){
             auto trans_nano = trans.header.stamp.toNSec();
             delays[t] += now_nano - trans_nano;
           }
@@ -205,7 +205,7 @@ double r_w_alt(BufferCore &bfc){
       continue;
     }
     uint64_t delay_ave{};
-    if(FLAGS_freshness){
+    if(FLAGS_stat){
       for(auto &d: delays){
         delay_ave += d;
       }
@@ -227,6 +227,7 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
   int64_t time_acc{0};
   size_t aborts_acc{0};
   uint64_t delay_acc{};
+  uint64_t var_acc{};
 
   auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
@@ -235,9 +236,10 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
     atomic_bool wait{true};
     vector<thread> threads{};
     vector<uint64_t> delays(read_threads, 0);
+    vector<uint64_t> vars(read_threads, 0);
 
     for(size_t t = 0; t < read_threads; t++){
-      threads.emplace_back([t, &wait, &bfc, &delays](){
+      threads.emplace_back([t, &wait, &bfc, &delays, &vars](){
         std::random_device rnd;
         Xoroshiro128Plus r(rnd());
         while (wait){;}
@@ -247,14 +249,15 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
           auto until = link + FLAGS_read_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           bfc.lookupLatestTransform("link" + to_string(link),
-                                    "link" + to_string(until), FLAGS_freshness ? &stat : nullptr);
+                                    "link" + to_string(until), FLAGS_stat ? &stat : nullptr);
           auto now = chrono::steady_clock::now();
           auto now_nano = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
-          if(FLAGS_freshness){
+          if(FLAGS_stat){
             // not all element has same timestamp!!
             auto access_ave_nano = stat.getTimeStampsAve();
             assert(now_nano > access_ave_nano);
             delays[t] += now_nano - access_ave_nano;
+            vars[t] += stat.getTimeStampsVar();
           }
         }
       });
@@ -307,13 +310,21 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
       continue;
     }
     uint64_t delay_ave{};
-    if(FLAGS_freshness){
+    uint64_t var_ave{};
+    if(FLAGS_stat){
       for(auto &d: delays){
         delay_ave += d;
       }
       delay_ave /= read_threads;
       delay_ave /= FLAGS_iter;
       delay_acc += delay_ave;
+
+      for(auto &v: vars){
+        var_ave += v;
+      }
+      var_ave /= read_threads;
+      var_ave /= FLAGS_iter;
+      var_acc += var_ave;
     }
 
     time_acc += microseconds.count();
@@ -323,6 +334,9 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
   ros::Time delay_ros{};
   delay_ros.fromNSec(delay_acc / 5);
   cout << "latest delay: " << delay_ros << endl;
+  ros::Time var_ros{};
+  var_ros.fromNSec(var_acc / 5);
+  cout << "latest var: " << var_ros << endl;
 
   return make_pair(((double) time_acc)/ 5., ((double) aborts_acc)/5.);
 }
