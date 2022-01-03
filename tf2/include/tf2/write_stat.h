@@ -1,9 +1,9 @@
-#ifndef GEOMETRY2_RESULT_H
-#define GEOMETRY2_RESULT_H
+#ifndef GEOMETRY2_WRITE_STAT_H
+#define GEOMETRY2_WRITE_STAT_H
 
 #include <cstddef>
 
-class Result{
+class WriteStat{
 public:
   void incAbort(){
     localAbortCounts++;
@@ -17,4 +17,4 @@ private:
   alignas(64) uint64_t localAbortCounts{0};
 };
 
-#endif //GEOMETRY2_RESULT_H
+#endif //GEOMETRY2_WRITE_STAT_H

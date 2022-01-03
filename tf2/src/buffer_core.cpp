@@ -250,7 +250,7 @@ bool BufferCore::setTransform(
 // thread safe
 bool BufferCore::setTransforms(
   const std::vector<geometry_msgs::TransformStamped>& transforms,
-  const std::string& authority, bool is_static, Result *result) noexcept{
+  const std::string& authority, bool is_static, WriteStat *result) noexcept{
   std::vector<geometry_msgs::TransformStamped> stripped{};
   for(auto &e: transforms){
     geometry_msgs::TransformStamped tmp = e;
@@ -611,7 +611,7 @@ int BufferCore::walkToTopParentLatest(
   F& f, CompactFrameID target_id,CompactFrameID source_id,
   std::string* error_string,
   ScopedWriteSetUnLocker &un_locker,
-  Stat *stat) const noexcept
+  ReadStat *stat) const noexcept
 {
   //2PL!
 
@@ -903,7 +903,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
 geometry_msgs::TransformStamped BufferCore::lookupLatestTransform(
   const std::string& target_frame,
   const std::string& source_frame,
-  Stat *stat) const noexcept(false)
+  ReadStat *stat) const noexcept(false)
 {
   // 2PL!
 

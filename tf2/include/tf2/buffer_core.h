@@ -33,7 +33,7 @@
 #define TF2_BUFFER_CORE_H
 
 #include "transform_storage.h"
-#include "result.h"
+#include "write_stat.h"
 
 #include <boost/signals2.hpp>
 
@@ -47,7 +47,7 @@
 //#include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "rwlock.h"
-#include "stat.h"
+#include "read_stat.h"
 
 //////////////////////////backwards startup for porting
 //#include "tf/tf.h"
@@ -123,7 +123,7 @@ public:
    * \param is_static Record this transform as a static transform.  It will be good across all time.  (This cannot be changed after the first call.)
    * \return True unless an error occured
    */
-  bool setTransforms(const std::vector<geometry_msgs::TransformStamped> &transforms, const std::string & authority, bool is_static = false, Result *result = nullptr) noexcept;
+  bool setTransforms(const std::vector<geometry_msgs::TransformStamped> &transforms, const std::string & authority, bool is_static = false, WriteStat *result = nullptr) noexcept;
 
   /*********** Accessors *************/
 
@@ -141,7 +141,7 @@ public:
 		    const ros::Time& time) const noexcept(false);
 
   geometry_msgs::TransformStamped
-  lookupLatestTransform(const std::string& target_frame, const std::string& source_frame, Stat *stat = nullptr) const noexcept(false);
+  lookupLatestTransform(const std::string& target_frame, const std::string& source_frame, ReadStat *stat = nullptr) const noexcept(false);
 
   /** \brief Get the transform between two frames by frame ID assuming fixed frame.
    * \param target_frame The frame to which data should be transformed
@@ -418,7 +418,7 @@ private:
   int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const noexcept;
 
   template<typename F>
-  int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker, Stat *stat = nullptr) const noexcept;
+  int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ScopedWriteSetUnLocker &un_locker, ReadStat *stat = nullptr) const noexcept;
 
   void testTransformableRequests();
   bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
