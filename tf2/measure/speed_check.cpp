@@ -20,13 +20,16 @@ using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 100, "Joint size");
-DEFINE_uint64(iter, 1'000, "Iteration count");
+DEFINE_uint64(iter, 100, "Iteration count");
 DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_bool(stat, true, "Show stat");
+DEFINE_double(frequency, 600, "frequency, when 0 then disabled");
+
+using std::chrono::operator""s;
 
 TransformStamped trans(
   const string &parent,
@@ -83,6 +86,9 @@ double r_w_old(OldBufferCore &bfc){
             auto trans_nano = trans.header.stamp.toNSec();
             delays[t] += now_nano - trans_nano;
             latencies[t] += now_nano - before_nano;
+          }
+          if(FLAGS_frequency != 0){
+            this_thread::sleep_for(operator""s((1 / FLAGS_frequency)));
           }
         }
       });
@@ -189,6 +195,9 @@ double r_w_alt(BufferCore &bfc){
             auto trans_nano = trans.header.stamp.toNSec();
             delays[t] += now_nano - trans_nano;
             latencies[t] += now_nano - before_nano;
+          }
+          if(FLAGS_frequency != 0){
+            this_thread::sleep_for(operator""s((1 / FLAGS_frequency)));
           }
         }
       });
@@ -301,6 +310,9 @@ std::pair<double, double> r_w_trn(BufferCore &bfc){
             delays[t] += now_nano - access_ave_nano;
             vars[t] += stat.getTimeStampsVar();
             latencies[t] += now_nano - before_nano;
+          }
+          if(FLAGS_frequency != 0){
+            this_thread::sleep_for(operator""s((1 / FLAGS_frequency)));
           }
         }
       });
@@ -491,6 +503,9 @@ int main(int argc, char* argv[]){
    * - what is freshness
    * - what is synchronous?
    * - how do we apply
+   *
+   *
+   * frequency?
    */
   return 0;
 }
