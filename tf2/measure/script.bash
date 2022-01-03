@@ -1,7 +1,7 @@
 T=$(nproc)
-I=100
-J=100
-READ_RATIO=0.7
+I=1000
+J=1000
+READ_RATIO=1
 READ_LEN=16
 WRITE_LEN=16
 OUTPUT_DIR=/tmp/tf/$(uuidgen)
