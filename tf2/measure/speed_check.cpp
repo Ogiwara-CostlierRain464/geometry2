@@ -24,7 +24,7 @@ using namespace std;
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 100, "Joint size");
 DEFINE_uint64(iter, 100, "Iteration count");
-DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
+DEFINE_double(read_ratio, 0, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
@@ -172,14 +172,14 @@ struct RunResult{
   chrono::duration<double> delay; // how far does took data from now
   // optional
   chrono::duration<double> var; // should be zero except latest
-  size_t aborts; // should be zero expect latest
+  double aborts; // should be zero expect latest
 };
 
 // time, delay, latency, aborts, var
 template <typename T>
 RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<chrono::duration<double>> time_acc(COUNT);
-  CountAccum<size_t> aborts_acc(COUNT);
+  CountAccum<double> aborts_acc(COUNT);
   CountAccum<chrono::duration<double>> delay_acc(COUNT);
   CountAccum<chrono::duration<double>> var_acc(COUNT);
   CountAccum<chrono::duration<double>> latency_acc(COUNT);
@@ -230,7 +230,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       });
     }
 
-    CountAccum<size_t> abort_acc_thread(write_threads);
+    CountAccum<double> abort_acc_thread(write_threads);
 
     for(size_t t = 0; t < write_threads; t++){
       threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread](){
@@ -249,7 +249,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           bfc_w.write(link, until, nano, stat);
           abort_iter_acc += stat.getAbortCount();
         }
-        abort_acc_thread.record(t, abort_iter_acc / FLAGS_iter);
+        abort_acc_thread.record(t, (double) abort_iter_acc / (double) FLAGS_iter);
       });
     }
 
