@@ -372,7 +372,15 @@ int main(int argc, char* argv[]){
   output << throughput(old_result.time) << " "; // 7
   output << throughput(snapshot_result.time) << " "; // 8
   output << throughput(latest_result.time) << " "; // 9
-  output << latest_result.aborts << endl; // 10
+  output << latest_result.aborts << " "; // 10
+  output << chrono::duration<double, std::milli>(old_result.latency).count() << " "; // 11
+  output << chrono::duration<double, std::milli>(snapshot_result.latency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(latest_result.latency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 14
+  output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 15
+  output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 16
+  output << chrono::duration<double, std::milli>(latest_result.var).count() << endl; // 17
+
   output.close();
 
   return 0;
