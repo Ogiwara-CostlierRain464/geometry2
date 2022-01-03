@@ -1,7 +1,5 @@
 set terminal png
 set output filename
-set ylabel "Throughput(ope/sec)"
-set y2label "Aborts"
 
 if(var == 1){
   set xlabel "thread"
@@ -24,4 +22,15 @@ if(var == 6){
     set xlabel "write len"
 }
 
-plot data using var:7 w lp title "old", data using var:8 w lp title "snapshot", data using var:9 w lp title "latest", data using var:10 w lp title "abort"
+if(out_offset == 7){
+  set ylabel "Throughput(ope/sec)"
+}
+if(out_offset == 11){
+  set ylabel "latency (ms)"
+}
+if(out_offset == 14){
+  set ylabel "delay (ms)"
+}
+
+set y2label "Aborts"
+plot data using var:10 w lp title "abort", data using var:out_offset w lp title "old", data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"
