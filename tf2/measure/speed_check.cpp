@@ -24,7 +24,7 @@ using namespace std;
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 100, "Joint size");
 DEFINE_uint64(iter, 100, "Iteration count");
-DEFINE_double(read_ratio, 0, "read ratio, within [0,1]");
+DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
@@ -210,13 +210,12 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           if(until > FLAGS_joint) until = FLAGS_joint;
           auto before = chrono::steady_clock::now();
           bfc_w.read(link, until, stat);
-          auto now = chrono::steady_clock::now();
-
+          auto after = chrono::steady_clock::now();
           auto access_ave = operator""ns(stat.getTimeStampsAve());
-          assert(now.time_since_epoch() > access_ave);
-          delay_iter_acc += now.time_since_epoch() - access_ave;
+//          assert(now.time_since_epoch() > access_ave);
+          delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
           var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
-          latency_iter_acc += now - before;
+          latency_iter_acc += after - before;
 
           if(FLAGS_frequency != 0){
             this_thread::sleep_for(operator""s((1 / FLAGS_frequency)));
@@ -243,11 +242,15 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           auto until = link + FLAGS_write_len;
           if(until > FLAGS_joint) until = FLAGS_joint;
           vector<TransformStamped> vec{};
-          auto now = chrono::steady_clock::now();
-          double nano = chrono::duration<double>(now.time_since_epoch()).count();
+          auto before = chrono::steady_clock::now();
+          double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
           WriteStat stat{};
           bfc_w.write(link, until, nano, stat);
           abort_iter_acc += stat.getAbortCount();
+
+          if(FLAGS_frequency != 0){
+            this_thread::sleep_for(operator""s((1 / FLAGS_frequency)));
+          }
         }
         abort_acc_thread.record(t, (double) abort_iter_acc / (double) FLAGS_iter);
       });
@@ -379,7 +382,8 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 14
   output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 15
   output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 16
-  output << chrono::duration<double, std::milli>(latest_result.var).count() << endl; // 17
+  output << chrono::duration<double, std::milli>(latest_result.var).count() << " "; // 17
+  output << FLAGS_frequency << endl;
 
   output.close();
 

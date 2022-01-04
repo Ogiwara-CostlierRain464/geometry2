@@ -29,6 +29,4 @@ for T in $(seq 14 14 224); do
 ../cmake-build-release/devel/lib/tf2/speed_check --thread=$T --joint=$J --iter=$I --read_ratio=$READ_RATIO --read_len=$READ_LEN --write_len=$WRITE_LEN --output=$OUTPUT --only=$ONLY --frequency=$FREQUENCY
 done
 
-
-
 gnuplot -e "data='$OUTPUT'; filename='$OUTPUT_PLOT'; var=$VAR; out_offset=$OUT_OFFSET" plot.plg
