@@ -214,6 +214,10 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           auto access_ave = operator""ns(stat.getTimeStampsAve());
 //          assert(now.time_since_epoch() > access_ave);
           delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
+          if(before.time_since_epoch() < access_ave){
+            cout << (before.time_since_epoch() - access_ave).count() << endl;
+            assert(true);
+          }
           var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
           latency_iter_acc += after - before;
 
@@ -372,18 +376,18 @@ int main(int argc, char* argv[]){
   output << FLAGS_read_ratio << " "; // 4
   output << FLAGS_read_len << " "; // 5
   output << FLAGS_write_len << " "; // 6
-  output << throughput(old_result.time) << " "; // 7
-  output << throughput(snapshot_result.time) << " "; // 8
-  output << throughput(latest_result.time) << " "; // 9
-  output << latest_result.aborts << " "; // 10
-  output << chrono::duration<double, std::milli>(old_result.latency).count() << " "; // 11
-  output << chrono::duration<double, std::milli>(snapshot_result.latency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(latest_result.latency).count() << " "; // 13
-  output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 14
-  output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 15
-  output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 16
-  output << chrono::duration<double, std::milli>(latest_result.var).count() << " "; // 17
-  output << FLAGS_frequency << endl;
+  output << FLAGS_frequency << endl; // 7
+  output << throughput(old_result.time) << " "; // 8
+  output << throughput(snapshot_result.time) << " "; // 9
+  output << throughput(latest_result.time) << " "; // 10
+  output << latest_result.aborts << " "; // 11
+  output << chrono::duration<double, std::milli>(old_result.latency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(snapshot_result.latency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(latest_result.latency).count() << " "; // 14
+  output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 15
+  output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 16
+  output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 17
+  output << chrono::duration<double, std::milli>(latest_result.var).count() << " "; // 18
 
   output.close();
 

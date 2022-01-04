@@ -21,16 +21,19 @@ if(var == 5){
 if(var == 6){
     set xlabel "write len"
 }
+if(var == 7){
+    set xlabel "frequency"
+}
 
-if(out_offset == 7){
+if(out_offset == 8){
   set ylabel "Throughput(ope/sec)"
 }
-if(out_offset == 11){
+if(out_offset == 12){
   set ylabel "latency (ms)"
 }
-if(out_offset == 14){
+if(out_offset == 15){
   set ylabel "delay (ms)"
 }
 
 set y2label "Aborts"
-plot data using var:10 w lp title "abort", data using var:out_offset w lp title "old", data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"
+plot data using var:11 w lp title "abort", data using var:out_offset w lp title "old", data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"
