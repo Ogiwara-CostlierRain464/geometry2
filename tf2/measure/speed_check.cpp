@@ -23,15 +23,12 @@ using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 1000, "Joint size");
-DEFINE_uint64(iter, 10, "Iteration count");
 DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
-DEFINE_uint64(read_len, 1000, "Number of reading joint size ∈ [0, joint]");
+DEFINE_uint64(read_len, 1, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 1, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
-
-constexpr size_t COUNT = 5;
 
 using std::chrono::operator""s;
 using std::chrono::duration_cast;
@@ -163,11 +160,16 @@ struct CountAccum{
     return make_ave(vec);
   }
 
+  T sum(){
+    return std::accumulate(vec.begin(), vec.end(), T{});
+  }
+
   std::vector<T> vec;
 };
 
 struct RunResult{
-  chrono::duration<double> time; // per count.
+  chrono::duration<double> time;
+  double throughput;
   chrono::duration<double> latency;
   chrono::duration<double> delay; // how far does took data from now
   // optional
@@ -175,120 +177,130 @@ struct RunResult{
   double aborts; // should be zero expect latest
 };
 
+double throughput(chrono::duration<double> time, size_t iter){
+  return ((double) iter) * (1. / chrono::duration<double>(time).count());
+}
+
 // time, delay, latency, aborts, var
 template <typename T>
 RunResult run(BufferCoreWrapper<T> &bfc_w){
-  CountAccum<chrono::duration<double>> time_acc(COUNT);
-  CountAccum<double> aborts_acc(COUNT);
-  CountAccum<chrono::duration<double>> delay_acc(COUNT);
-  CountAccum<chrono::duration<double>> var_acc(COUNT);
-  CountAccum<chrono::duration<double>> latency_acc(COUNT);
-
   auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
   size_t write_threads = FLAGS_thread - read_threads;
 
-  for(size_t count = 0; count < COUNT+1; count++){
-    atomic_bool wait{true};
-    vector<thread> threads{};
+  atomic_bool wait{true};
+  vector<thread> threads{};
 
-    CountAccum<chrono::duration<double>> delay_acc_thread(read_threads);
-    CountAccum<chrono::duration<double>> vars_acc_thread(read_threads);
-    CountAccum<chrono::duration<double>> latencies_acc_thread(read_threads);
+  CountAccum<double> throughput_acc_read_thread(read_threads);
+  CountAccum<chrono::duration<double>> delay_acc_thread(read_threads);
+  CountAccum<chrono::duration<double>> vars_acc_thread(read_threads);
+  CountAccum<chrono::duration<double>> latencies_acc_thread(read_threads);
 
-    for(size_t t = 0; t < read_threads; t++){
-      threads.emplace_back([t, &wait, &bfc_w, &delay_acc_thread, &vars_acc_thread, &latencies_acc_thread](){
-        std::random_device rnd;
-        Xoroshiro128Plus r(rnd());
-        while (wait){;}
 
-        chrono::duration<double> delay_iter_acc{}, var_iter_acc{}, latency_iter_acc{};
+  for(size_t t = 0; t < read_threads; t++){
+    threads.emplace_back([t,&wait, &bfc_w, &delay_acc_thread,
+                          &vars_acc_thread, &latencies_acc_thread, &throughput_acc_read_thread](){
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
+      while (wait){;}
 
-        for(size_t i = 0; i < FLAGS_iter; i++){
-          ReadStat stat{};
-          size_t link = r.next() % FLAGS_joint;
-          auto until = link + FLAGS_read_len;
-          if(until > FLAGS_joint) until = FLAGS_joint;
-          auto before = chrono::steady_clock::now();
-          bfc_w.read(link, until, stat);
-          auto after = chrono::steady_clock::now();
-          auto access_ave = operator""ns(stat.getTimeStampsAve());
+      chrono::duration<double> delay_iter_acc{}, var_iter_acc{}, latency_iter_acc{};
+      size_t iter_count = 0;
+      auto start_iter = chrono::steady_clock::now();
+      auto end_iter = start_iter;
+
+      for(;;){
+        iter_count++;
+
+        ReadStat stat{};
+        size_t link = r.next() % FLAGS_joint;
+        auto until = link + FLAGS_read_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
+        auto before = chrono::steady_clock::now();
+        bfc_w.read(link, until, stat);
+        auto after = chrono::steady_clock::now();
+        auto access_ave = operator""ns(stat.getTimeStampsAve());
 //          assert(now.time_since_epoch() > access_ave);
-          delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
-          var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
-          latency_iter_acc += after - before;
+        delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
+        var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
+        latency_iter_acc += after - before;
 
-          if(FLAGS_frequency != 0){
-            this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
-          }
+        if(FLAGS_frequency != 0){
+          this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
         }
 
-        delay_acc_thread.record(t,delay_iter_acc / (double) FLAGS_iter);
-        vars_acc_thread.record(t, var_iter_acc / (double) FLAGS_iter);
-        latencies_acc_thread.record(t, latency_iter_acc / (double) FLAGS_iter);
-        // div by iter.
-      });
-    }
+        end_iter = chrono::steady_clock::now();
 
-    CountAccum<double> abort_acc_thread(write_threads);
-
-    for(size_t t = 0; t < write_threads; t++){
-      threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread](){
-        std::random_device rnd;
-        Xoroshiro128Plus r(rnd());
-        while (wait){;}
-        uint64_t abort_iter_acc{};
-        for(size_t i = 0; i < FLAGS_iter; i++){
-          size_t link = r.next() % FLAGS_joint;
-          auto until = link + FLAGS_write_len;
-          if(until > FLAGS_joint) until = FLAGS_joint;
-          vector<TransformStamped> vec{};
-          auto before = chrono::steady_clock::now();
-          double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
-          WriteStat stat{};
-          bfc_w.write(link, until, nano, stat);
-          abort_iter_acc += stat.getAbortCount();
-
-          if(FLAGS_frequency != 0){
-            this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
-          }
+        if(end_iter - start_iter > 60s){
+          break;
         }
-        abort_acc_thread.record(t, (double) abort_iter_acc / (double) FLAGS_iter);
-      });
-    }
+      }
 
-    auto start = chrono::high_resolution_clock::now();
-    wait = false;
-    for(auto &e: threads){
-      e.join();
-    }
-    auto finish = chrono::high_resolution_clock::now();
-
-    bfc_w.init();
-
-    if(count == 0){ // warm up
-      continue;
-    }
-
-    time_acc.record(count - 1, finish - start);
-    aborts_acc.record(count - 1, abort_acc_thread.average());
-    delay_acc.record(count - 1, delay_acc_thread.average());
-    var_acc.record(count - 1, vars_acc_thread.average());
-    latency_acc.record(count - 1, latencies_acc_thread.average());
+      throughput_acc_read_thread.record(t, throughput(end_iter - start_iter, iter_count));
+      delay_acc_thread.record(t,delay_iter_acc / (double) iter_count);
+      vars_acc_thread.record(t, var_iter_acc / (double) iter_count);
+      latencies_acc_thread.record(t, latency_iter_acc / (double) iter_count);
+      // div by iter.
+    });
   }
 
+  CountAccum<double> abort_acc_thread(write_threads);
+  CountAccum<double> throughput_acc_write_thread(write_threads);
+
+  for(size_t t = 0; t < write_threads; t++){
+    threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread, &throughput_acc_write_thread](){
+      std::random_device rnd;
+      Xoroshiro128Plus r(rnd());
+      while (wait){;}
+      uint64_t abort_iter_acc{};
+      auto start_iter = chrono::steady_clock::now();
+      auto end_iter = start_iter;
+      size_t iter_count = 0;
+
+      for(;;){
+        iter_count++;
+
+        size_t link = r.next() % FLAGS_joint;
+        auto until = link + FLAGS_write_len;
+        if(until > FLAGS_joint) until = FLAGS_joint;
+        vector<TransformStamped> vec{};
+        auto before = chrono::steady_clock::now();
+        double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
+        WriteStat stat{};
+        bfc_w.write(link, until, nano, stat);
+        abort_iter_acc += stat.getAbortCount();
+
+        if(FLAGS_frequency != 0){
+          this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
+        }
+
+        end_iter = chrono::steady_clock::now();
+
+        if(end_iter - start_iter > 60s){
+          break;
+        }
+      }
+
+      throughput_acc_write_thread.record(t, throughput(end_iter - start_iter, iter_count));
+      abort_acc_thread.record(t, (double) abort_iter_acc / (double) iter_count);
+    });
+  }
+
+  auto start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &e: threads){
+    e.join();
+  }
+  auto finish = chrono::high_resolution_clock::now();
+
   RunResult result{};
-  result.time = time_acc.average();
-  result.latency = latency_acc.average();
-  result.delay = delay_acc.average();
-  result.var = var_acc.average();
-  result.aborts = aborts_acc.average();
+  result.time = finish - start;
+  result.throughput = (throughput_acc_read_thread.sum() + throughput_acc_write_thread.sum()) / (double) FLAGS_thread;
+  result.latency = latencies_acc_thread.average();
+  result.delay = delay_acc_thread.average();
+  result.var = vars_acc_thread.average();
+  result.aborts = abort_acc_thread.average();
 
   return result;
-}
-
-double throughput(chrono::duration<double> time){
-  size_t operation_count = FLAGS_thread * FLAGS_iter;
-  return ((double) operation_count) * (1. / chrono::duration<double>(time).count());
 }
 
 int main(int argc, char* argv[]){
@@ -298,7 +310,6 @@ int main(int argc, char* argv[]){
 
   CONSOLE_BRIDGE_logInform("thread: %d", FLAGS_thread);
   CONSOLE_BRIDGE_logInform("joint: %d", FLAGS_joint);
-  CONSOLE_BRIDGE_logInform("iter: %d", FLAGS_iter);
   CONSOLE_BRIDGE_logInform("read ratio: %lf", FLAGS_read_ratio);
   if(!(0. <= FLAGS_read_ratio and FLAGS_read_ratio <= 1.)){
     CONSOLE_BRIDGE_logError("wrong read ratio");
@@ -368,14 +379,14 @@ int main(int argc, char* argv[]){
 
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
-  output << FLAGS_iter << " "; // 3
+  output << 8901'016 << " "; // 3
   output << FLAGS_read_ratio << " "; // 4
   output << FLAGS_read_len << " "; // 5
   output << FLAGS_write_len << " "; // 6
   output << FLAGS_frequency << " "; // 7
-  output << throughput(old_result.time) << " "; // 8
-  output << throughput(snapshot_result.time) << " "; // 9
-  output << throughput(latest_result.time) << " "; // 10
+  output << old_result.throughput << " "; // 8
+  output << snapshot_result.throughput << " "; // 9
+  output << latest_result.throughput << " "; // 10
   output << latest_result.aborts << " "; // 11
   output << chrono::duration<double, std::milli>(old_result.latency).count() << " "; // 12
   output << chrono::duration<double, std::milli>(snapshot_result.latency).count() << " "; // 13
