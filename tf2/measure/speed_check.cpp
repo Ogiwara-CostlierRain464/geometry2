@@ -22,11 +22,11 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 100, "Joint size");
-DEFINE_uint64(iter, 100, "Iteration count");
+DEFINE_uint64(joint, 1000, "Joint size");
+DEFINE_uint64(iter, 10, "Iteration count");
 DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
-DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
-DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
+DEFINE_uint64(read_len, 1000, "Number of reading joint size ∈ [0, joint]");
+DEFINE_uint64(write_len, 1, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
@@ -218,13 +218,13 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           latency_iter_acc += after - before;
 
           if(FLAGS_frequency != 0){
-            this_thread::sleep_for(operator""s((1 / FLAGS_frequency)));
+            this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
           }
         }
 
-        delay_acc_thread.record(t,delay_iter_acc / FLAGS_iter);
-        vars_acc_thread.record(t, var_iter_acc / FLAGS_iter);
-        latencies_acc_thread.record(t, latency_iter_acc / FLAGS_iter);
+        delay_acc_thread.record(t,delay_iter_acc / (double) FLAGS_iter);
+        vars_acc_thread.record(t, var_iter_acc / (double) FLAGS_iter);
+        latencies_acc_thread.record(t, latency_iter_acc / (double) FLAGS_iter);
         // div by iter.
       });
     }
@@ -249,7 +249,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           abort_iter_acc += stat.getAbortCount();
 
           if(FLAGS_frequency != 0){
-            this_thread::sleep_for(operator""s((1 / FLAGS_frequency)));
+            this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
           }
         }
         abort_acc_thread.record(t, (double) abort_iter_acc / (double) FLAGS_iter);
