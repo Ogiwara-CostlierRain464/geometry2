@@ -29,6 +29,8 @@ DEFINE_uint64(write_len, 1, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
+DEFINE_uint64(loop_sec, 60, "loop second");
+
 
 using std::chrono::operator""s;
 using std::chrono::duration_cast;
@@ -209,8 +211,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       auto end_iter = start_iter;
 
       for(;;){
-        iter_count++;
-
         ReadStat stat{};
         size_t link = r.next() % FLAGS_joint;
         auto until = link + FLAGS_read_len;
@@ -228,9 +228,11 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
         }
 
+        iter_count++;
+
         end_iter = chrono::steady_clock::now();
 
-        if(end_iter - start_iter > 60s){
+        if(end_iter - start_iter > operator""s(FLAGS_loop_sec)){
           break;
         }
       }
@@ -275,7 +277,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
         end_iter = chrono::steady_clock::now();
 
-        if(end_iter - start_iter > 60s){
+        if(end_iter - start_iter > operator""s(FLAGS_loop_sec)){
           break;
         }
       }
@@ -294,7 +296,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
   RunResult result{};
   result.time = finish - start;
-  result.throughput = (throughput_acc_read_thread.sum() + throughput_acc_write_thread.sum()) / (double) FLAGS_thread;
+  result.throughput = throughput_acc_read_thread.sum() + throughput_acc_write_thread.sum();
   result.latency = latencies_acc_thread.average();
   result.delay = delay_acc_thread.average();
   result.var = vars_acc_thread.average();
