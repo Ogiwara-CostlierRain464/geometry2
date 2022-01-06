@@ -6,34 +6,29 @@ if(var == 1){
 }
 if(var == 2){
   set xlabel "joint"
-  set logscale x
 }
 if(var == 3){
-  set xlabel "iter"
-  set logscale x
-}
-if(var == 4){
    set xlabel "read ratio"
 }
-if(var == 5){
+if(var == 4){
    set xlabel "read len"
 }
-if(var == 6){
+if(var == 5){
     set xlabel "write len"
 }
-if(var == 7){
-    set xlabel "frequency"
+if(var == 6){
+    set xlabel "frequency (Hz)"
 }
 
-if(out_offset == 8){
+if(out_offset == 7){
   set ylabel "Throughput(ope/sec)"
 }
-if(out_offset == 12){
+if(out_offset == 11){
   set ylabel "latency (ms)"
 }
-if(out_offset == 15){
+if(out_offset == 14){
   set ylabel "delay (ms)"
 }
 
-set y2label "Aborts"
-plot data using var:11 w lp title "abort", data using var:out_offset w lp title "old", data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"
+set y2label "abort ratio(abort/ope)"
+plot data using var:10 w lp title "abort", data using var:out_offset w lp title "old", data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"

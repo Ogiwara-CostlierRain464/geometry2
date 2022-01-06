@@ -379,22 +379,21 @@ int main(int argc, char* argv[]){
 
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
-  output << 8901'016 << " "; // 3
-  output << FLAGS_read_ratio << " "; // 4
-  output << FLAGS_read_len << " "; // 5
-  output << FLAGS_write_len << " "; // 6
-  output << FLAGS_frequency << " "; // 7
-  output << old_result.throughput << " "; // 8
-  output << snapshot_result.throughput << " "; // 9
-  output << latest_result.throughput << " "; // 10
-  output << latest_result.aborts << " "; // 11
-  output << chrono::duration<double, std::milli>(old_result.latency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(snapshot_result.latency).count() << " "; // 13
-  output << chrono::duration<double, std::milli>(latest_result.latency).count() << " "; // 14
-  output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 15
-  output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 16
-  output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 17
-  output << chrono::duration<double, std::milli>(latest_result.var).count() << endl; // 18
+  output << FLAGS_read_ratio << " "; // 3
+  output << FLAGS_read_len << " "; // 4
+  output << FLAGS_write_len << " "; // 5
+  output << FLAGS_frequency << " "; // 6
+  output << old_result.throughput << " "; // 7
+  output << snapshot_result.throughput << " "; // 8
+  output << latest_result.throughput << " "; // 9
+  output << latest_result.aborts << " "; // 10
+  output << chrono::duration<double, std::milli>(old_result.latency).count() << " "; // 11
+  output << chrono::duration<double, std::milli>(snapshot_result.latency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(latest_result.latency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 14
+  output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 15
+  output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 16
+  output << chrono::duration<double, std::milli>(latest_result.var).count() << endl; // 17
 
   output.close();
 
