@@ -11,11 +11,12 @@ struct ReadStat {
   std::vector<uint64_t> timestamps{};
 
   uint64_t getTimeStampsAve() const{
+    // don't sum!
     uint64_t tmp{0};
     for(auto &e: timestamps){
-      tmp += e;
+      tmp += e / timestamps.size();
     }
-    return tmp / timestamps.size();
+    return tmp;
   }
 
   double getTimeStampsVar() const{

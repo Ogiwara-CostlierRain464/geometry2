@@ -22,12 +22,12 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 1000, "Joint size");
+DEFINE_uint64(joint, 10000, "Joint size");
 DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
-DEFINE_uint64(read_len, 1, "Number of reading joint size ∈ [0, joint]");
+DEFINE_uint64(read_len, 9990, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 1, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
+DEFINE_uint32(only, 2, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 60, "loop second");
 
