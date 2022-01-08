@@ -1747,6 +1747,7 @@ void BufferCore::testTransformableRequests()
     TransformableResult result = TransformAvailable;
     // TODO: This is incorrect, but better than nothing.  Really we want the latest time for
     // any of the frames
+    // TF officially allow non-serialized fashion.
     getLatestCommonTime(req.target_id, req.source_id, latest_time, nullptr);
     if (!latest_time.isZero() && req.time + cache_time_ < latest_time)
     {

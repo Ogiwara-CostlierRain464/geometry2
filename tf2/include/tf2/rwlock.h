@@ -209,36 +209,9 @@ private:
   std::array<RWLock, 1'000'005> &mutexes;
 };
 
-
-class ScopedReadSetUnLocker{
-public:
-  ScopedReadSetUnLocker(
-    std::set<uint32_t> &set,
-    std::vector<RWLockPtr> &mutexes_)
-    : lockedIdSet(set), mutexes(mutexes_){}
-
-  void rLockIfNot(uint32_t id){
-    if(lockedIdSet.find(id) == lockedIdSet.end()){
-      mutexes[id]->r_lock();
-      lockedIdSet.insert(id);
-    }
-  }
-
-  ~ScopedReadSetUnLocker(){
-    for(auto id : lockedIdSet){
-      assert(mutexes[id]->isLocked());
-      mutexes[id]->r_unlock();
-    }
-  }
-
-private:
-  std::set<uint32_t> &lockedIdSet;
-  std::vector<RWLockPtr> &mutexes;
-};
-
 class ReadUnLocker{
 public:
-  ReadUnLocker(RWLock &lock_)
+  explicit ReadUnLocker(RWLock &lock_)
   : lock(lock_){}
 
   void rLock(){
@@ -246,7 +219,6 @@ public:
   }
 
   ~ReadUnLocker(){
-    assert(lock.isLocked());
     lock.r_unlock();
   }
 
@@ -264,7 +236,6 @@ public:
   }
 
   ~WriteUnLocker() {
-    assert(lock.isLocked());
     lock.w_unlock();
   }
 

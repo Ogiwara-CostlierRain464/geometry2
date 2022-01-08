@@ -218,6 +218,14 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         auto before = chrono::steady_clock::now();
         bfc_w.read(link, until, stat);
         auto after = chrono::steady_clock::now();
+
+        if(stat.getTimeStampsAve() > 10'000'000){
+          for(auto &e: stat.timestamps){
+            cout << " " << e << " ";
+          }
+          exit(-1);
+        }
+
         auto access_ave = operator""ns(stat.getTimeStampsAve());
 //          assert(now.time_since_epoch() > access_ave);
         delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
