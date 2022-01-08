@@ -1,6 +1,6 @@
 T=$(nproc)
 J=10000
-READ_RATIO=1
+READ_RATIO=0.5
 READ_LEN=16
 WRITE_LEN=16
 FREQUENCY=0
@@ -22,7 +22,7 @@ for T in $(seq 14 14 224); do
 #VAR=3
 #for READ_RATIO in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0; do
 #VAR=4
-#for READ_LEN in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0; do
+#for READ_LEN in 1000 9990 do
 #VAR=5
 #for WRITE_LEN in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0; do
 #VAR=6
