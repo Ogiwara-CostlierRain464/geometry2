@@ -11,6 +11,10 @@ DEFINE_uint64(thread, std::thread::hardware_concurrency(), "thread num");
 DEFINE_uint64(iter, 10000, "iter");
 DEFINE_string(output, "/tmp/c.dat", "output file");
 
+double throughput(chrono::duration<double> time, size_t iter){
+  return ((double) iter) * (1. / chrono::duration<double>(time).count());
+}
+
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("tbb check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -39,15 +43,17 @@ int main(int argc, char* argv[]){
     e.join();
   }
   auto finish = chrono::high_resolution_clock::now();
-  auto milli_sec = std::chrono::duration<double, std::milli>(finish - start).count();
+  auto sec = std::chrono::duration<double>(finish - start);
+  auto opes = FLAGS_thread * FLAGS_iter;
+  auto throughput_ = throughput(sec, opes);
 
-  cout << milli_sec << "ms" << endl;
+  cout << throughput_ << "ope/sec" << endl;
 
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
   output << FLAGS_thread << " ";
   output << FLAGS_iter << " ";
-  output << milli_sec << endl;
+  output << throughput_ << endl;
   output.close();
 
   return 0;
