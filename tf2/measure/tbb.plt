@@ -4,4 +4,4 @@ set ylabel "time(lower is better)"
 
 #set logscale x
 
-plot data using 1:2 w lp title "mutex", data using 1:3 w lp title "rw", data using 1:4 w lp title "rw ptr",
+plot data using 1:3 w lp title "tbb vec"

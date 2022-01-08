@@ -28,9 +28,7 @@ int main(int argc, char* argv[]){
 
   vector<thread> threads{};
   for(size_t t = 0; t < FLAGS_thread; t++){
-    threads.emplace_back([t, &wait, &vec](){
-      while (wait){;}
-
+    threads.emplace_back([t, &vec](){
       for(size_t i = 0; i < FLAGS_iter; i++){
         vec[t]++;
       }
@@ -38,7 +36,6 @@ int main(int argc, char* argv[]){
   }
 
   auto start = chrono::high_resolution_clock::now();
-  wait = false;
   for(auto &e: threads){
     e.join();
   }
