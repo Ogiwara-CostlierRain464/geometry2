@@ -6,7 +6,7 @@ OUTPUT_PLOT=$OUTPUT_DIR/plot.png
 
 mkdir -p $OUTPUT_DIR
 
-for T in 1 2 3 4; do
+for T in $(seq 14 14 224); do
   ../cmake-build-release/devel/lib/tf2/tbb_check --thread=$T --iter=$I --output=$OUTPUT
 done
 
