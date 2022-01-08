@@ -223,6 +223,9 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           for(auto &e: stat.timestamps){
             cout << " " << e << " ";
           }
+          cout << endl;
+          cout << "now: " << before.time_since_epoch().count() << endl;
+
           exit(-1);
         }
 
