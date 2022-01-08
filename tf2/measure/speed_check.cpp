@@ -219,7 +219,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         bfc_w.read(link, until, stat);
         auto after = chrono::steady_clock::now();
 
-        if((before.time_since_epoch() - operator""ns(stat.getTimeStampsAve())) > 10'000'000ns){
+        if((before.time_since_epoch() - operator""ns(stat.getTimeStampsAve())) > 10'000'000'000'000'000ns){
           for(auto &e: stat.timestamps){
             cout << " " << e << " ";
           }
