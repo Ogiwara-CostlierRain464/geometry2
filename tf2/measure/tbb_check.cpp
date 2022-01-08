@@ -46,7 +46,8 @@ int main(int argc, char* argv[]){
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
   output << FLAGS_thread << " ";
-  output << std::chrono::duration<double, std::milli>(finish - start).count() << "ms" << endl;
+  output << FLAGS_iter << " ";
+  output << milli_sec << endl;
   output.close();
 
   return 0;
