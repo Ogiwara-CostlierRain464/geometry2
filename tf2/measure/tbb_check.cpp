@@ -55,7 +55,7 @@ int main(int argc, char* argv[]){
 
         iter_count++;
         end_iter = chrono::steady_clock::now();
-        if(end_iter - start_iter > 5s){
+        if(end_iter - start_iter > 60s){
           break;
         }
       }
