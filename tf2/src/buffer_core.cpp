@@ -394,6 +394,9 @@ int BufferCore::walkToTopParent(
     }
   }
 
+  // TRY!
+  return tf2_msgs::TF2Error::NO_ERROR;
+
   // Walk the tree to its root from the source frame, accumulating the transform
   CompactFrameID frame = source_id;
   CompactFrameID top_parent = frame;
@@ -1146,7 +1149,7 @@ CompactFrameID BufferCore::lookupOrInsertFrameNumber(
     retval = CompactFrameID(frames_.size());
 
     // TODO: is this really safe? what happen when push_back causes different timing??
-    frames_.push_back(TimeCacheInterfacePtr());//Just a place holder for iteration
+    frames_.emplace_back();//Just a place holder for iteration
 //    frame_each_mutex_.emplace_back(std::make_unique<RWLock>());
     frameIDs_[frameid_str] = retval;
     frameIDs_reverse.push_back(frameid_str);
