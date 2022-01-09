@@ -455,9 +455,6 @@ int BufferCore::walkToTopParent(
     }
   }
 
-  // try
-  return tf2_msgs::TF2Error::NO_ERROR;
-
   // These checks have done:
   // s --> (extrapolation)
   // s --> t
