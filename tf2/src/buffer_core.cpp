@@ -203,13 +203,13 @@ BufferCore::BufferCore(ros::Duration cache_time)
   frameIDs_reverse.emplace_back("NO_PARENT");
 //  frame_each_mutex_.emplace_back(std::make_shared<RWLock>());
 
-  frame_each_mutex_ = std::make_shared<std::array<RWLock, 1'000'005>>();
+  frame_each_mutex_ = new std::array<RWLock, 1'000'005>();
   CONSOLE_BRIDGE_logWarn("Now using ALT TF!!!");
 }
 
 BufferCore::~BufferCore()
 {
-
+  delete frame_each_mutex_;
 }
 
 // not thread safe
