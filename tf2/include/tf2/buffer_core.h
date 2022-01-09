@@ -335,17 +335,17 @@ private:
   
   /** \brief The pointers to potential frames that the tree can be made of.
    * The frames will be dynamically allocated at run time when set the first time. */
-  tbb::concurrent_vector<TimeCacheInterfacePtr> frames_;
+  std::vector<TimeCacheInterfacePtr> frames_;
   /** \brief Used for high-granularity locking. */
 //  mutable tbb::concurrent_vector<RWLockPtr> frame_each_mutex_{};
   mutable std::shared_ptr<std::array<RWLock, 1'000'005>> frame_each_mutex_;
 
   /** \brief A map from string frame ids to CompactFrameID */
-  tbb::concurrent_unordered_map<std::string, CompactFrameID> frameIDs_;
+  boost::unordered_map<std::string, CompactFrameID> frameIDs_;
   /** \brief A map from CompactFrameID frame_id_numbers to string for debugging and output */
-  tbb::concurrent_vector<std::string> frameIDs_reverse;
+  std::vector<std::string> frameIDs_reverse;
   /** \brief A map to lookup the most recent authority for a given frame */
-  tbb::concurrent_unordered_map<CompactFrameID, std::string> frame_authority_;
+  boost::unordered_map<CompactFrameID, std::string> frame_authority_;
 
   /// How long to cache transform history
   ros::Duration cache_time_;
