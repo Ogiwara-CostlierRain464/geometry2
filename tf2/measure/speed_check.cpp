@@ -23,11 +23,11 @@ using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 10000, "Joint size");
-DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
-DEFINE_uint64(read_len, 9990, "Number of reading joint size ∈ [0, joint]");
-DEFINE_uint64(write_len, 1, "Number of writing joint size ∈ [0, joint]");
+DEFINE_double(read_ratio, 1, "read ratio, within [0,1]");
+DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
+DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 2, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
+DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 60, "loop second");
 
@@ -76,8 +76,8 @@ struct BufferCoreWrapper<OldBufferCore>{
     make_snake(bfc);
   }
   void read(size_t link, size_t until, ReadStat &out_stat) const{
-    auto trans = bfc.lookupTransform("link" + to_string(until),
-                                     "link" + to_string(link),
+    auto trans = bfc.lookupTransform("link" + to_string(link),
+                                     "link" + to_string(until),
                                      ros::Time(0));
     out_stat.timestamps.push_back(trans.header.stamp.toNSec());
   }
@@ -110,13 +110,13 @@ struct BufferCoreWrapper<BufferCore>{
   void read(size_t link, size_t until, ReadStat &out_stat) const{
     if(accessType == Snapshot){
       assert(until > link);
-      auto trans = bfc.lookupTransform("link" + to_string(until),
-                                       "link" + to_string(link),
+      auto trans = bfc.lookupTransform("link" + to_string(link),
+                                       "link" + to_string(until),
                                        ros::Time(0));
       out_stat.timestamps.push_back(trans.header.stamp.toNSec());
     }else{
-      bfc.lookupLatestTransform("link" + to_string(until),
-                                "link" + to_string(link), &out_stat);
+      bfc.lookupLatestTransform("link" + to_string(link),
+                                "link" + to_string(until), &out_stat);
     }
   }
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
