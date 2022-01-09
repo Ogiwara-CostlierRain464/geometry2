@@ -394,9 +394,6 @@ int BufferCore::walkToTopParent(
     }
   }
 
-  // TRY!
-  return tf2_msgs::TF2Error::NO_ERROR;
-
   // Walk the tree to its root from the source frame, accumulating the transform
   CompactFrameID frame = source_id;
   CompactFrameID top_parent = frame;
@@ -457,6 +454,9 @@ int BufferCore::walkToTopParent(
       return tf2_msgs::TF2Error::LOOKUP_ERROR;
     }
   }
+
+  // try
+  return tf2_msgs::TF2Error::NO_ERROR;
 
   // These checks have done:
   // s --> (extrapolation)
