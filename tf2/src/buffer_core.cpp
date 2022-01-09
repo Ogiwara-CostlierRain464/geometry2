@@ -415,8 +415,8 @@ int BufferCore::walkToTopParent(
       break;
     }
 
-    ReadUnLocker locker(frame_each_mutex_->at(frame));
-    locker.rLock();
+//    ReadUnLocker locker(frame_each_mutex_->at(frame));
+//    locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
     if (parent == 0)
@@ -454,6 +454,8 @@ int BufferCore::walkToTopParent(
       return tf2_msgs::TF2Error::LOOKUP_ERROR;
     }
   }
+
+  assert(true);
 
   // These checks have done:
   // s --> (extrapolation)
