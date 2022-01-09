@@ -76,8 +76,8 @@ struct BufferCoreWrapper<OldBufferCore>{
     make_snake(bfc);
   }
   void read(size_t link, size_t until, ReadStat &out_stat) const{
-    auto trans = bfc.lookupTransform("link" + to_string(link),
-                                     "link" + to_string(until),
+    auto trans = bfc.lookupTransform("link" + to_string(until),
+                                     "link" + to_string(link),
                                      ros::Time(0));
     out_stat.timestamps.push_back(trans.header.stamp.toNSec());
   }
@@ -109,13 +109,14 @@ struct BufferCoreWrapper<BufferCore>{
   }
   void read(size_t link, size_t until, ReadStat &out_stat) const{
     if(accessType == Snapshot){
+      assert(until > link);
       auto trans = bfc.lookupTransform("link" + to_string(until),
                                        "link" + to_string(link),
                                        ros::Time(0));
       out_stat.timestamps.push_back(trans.header.stamp.toNSec());
     }else{
-      bfc.lookupLatestTransform("link" + to_string(link),
-                                "link" + to_string(until), &out_stat);
+      bfc.lookupLatestTransform("link" + to_string(until),
+                                "link" + to_string(link), &out_stat);
     }
   }
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
