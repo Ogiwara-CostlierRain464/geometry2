@@ -47,28 +47,6 @@ using std::chrono::operator""ms;
 namespace tf2
 {
 
-class FunctionCallLogger{
-public:
-  void log(const std::string &str){
-    CONSOLE_BRIDGE_logInform(str.c_str());
-    count++;
-  }
-
-  void logPer1000(const std::string &str){
-    if(count % 1000 == 0){
-      log(str);
-    }else{
-      count++;
-    }
-  }
-
-  size_t getCount() const{
-    return count;
-  }
-private:
-  size_t count{0};
-};
-
 // Tolerance for acceptable quaternion normalization
 static double QUATERNION_NORMALIZATION_TOLERANCE = 10e-3;
 
@@ -236,13 +214,6 @@ void BufferCore::clear()
 bool BufferCore::setTransform(
   const geometry_msgs::TransformStamped& transform,
   const std::string &authority, bool is_static) noexcept{
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << " count:" << logger.getCount()
-     << " target: " << transform.header.frame_id
-     << " child: " << transform.child_frame_id;
-  logger.logPer1000(ss.str());
-
   std::vector<geometry_msgs::TransformStamped> vec{transform};
   setTransforms(vec, authority, is_static);
 }
@@ -1060,11 +1031,6 @@ bool BufferCore::canTransformInternal(CompactFrameID target_id, CompactFrameID s
 bool BufferCore::canTransform(const std::string& target_frame, const std::string& source_frame,
                            const ros::Time& time, std::string* error_msg) const noexcept(false)
 {
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << " count " << logger.getCount() << " target: " << target_frame << " source: " << source_frame << " time: " << time;
-  logger.logPer1000(ss.str());
-
   // Short circuit if target_frame == source_frame
   if (target_frame == source_frame)
     return true;
@@ -1511,11 +1477,6 @@ std::string BufferCore::allFramesAsYAML() const noexcept
 // thread safe
 TransformableCallbackHandle BufferCore::addTransformableCallback(const TransformableCallback& cb)
 {
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << " count: " << logger.getCount();
-  logger.log(ss.str());
-
   WriteUnLocker locker(transformable_requests_mutex_);
   locker.wLock();
 
@@ -1545,11 +1506,6 @@ struct BufferCore::RemoveRequestByCallback
 // thread safe
 void BufferCore::removeTransformableCallback(TransformableCallbackHandle handle)
 {
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << " count " << logger.getCount();
-  logger.log(ss.str());
-
   transformable_callbacks_.erase(handle);
 
   {
@@ -1565,11 +1521,6 @@ TransformableRequestHandle BufferCore::addTransformableRequest(TransformableCall
 {
   // this method do 3 transactions, so not atomic.
   // NOTE: Don't lock tree!
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << " count " << logger.getCount() << " target: " << target_frame << " source: " << source_frame << " time: " << time;
-  logger.log(ss.str());
-
   // shortcut if target == source
   if (target_frame == source_frame)
   {
@@ -1641,11 +1592,6 @@ struct BufferCore::RemoveRequestByID
 // thread safe
 void BufferCore::cancelTransformableRequest(TransformableRequestHandle handle)
 {
-  static FunctionCallLogger logger{};
-  std::stringstream ss{};
-  ss << __FUNCTION__ << "count " << logger.getCount();
-  logger.log(ss.str());
-
   WriteUnLocker lock(transformable_requests_mutex_);
   lock.wLock();
   auto it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByID(handle));
