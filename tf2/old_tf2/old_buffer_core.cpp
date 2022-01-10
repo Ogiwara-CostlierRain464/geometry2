@@ -851,7 +851,7 @@ geometry_msgs::Twist OldBufferCore::lookupTwist(const std::string& tracking_fram
   }
 
 
-  tf2::TimeCacheInterfacePtr OldBufferCore::getFrame(tf2::CompactFrameID frame_id) const
+  TimeCacheInterfacePtr OldBufferCore::getFrame(tf2::CompactFrameID frame_id) const
   {
     if (frame_id >= frames_.size())
       return TimeCacheInterfacePtr();

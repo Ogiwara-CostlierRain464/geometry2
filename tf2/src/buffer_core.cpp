@@ -188,6 +188,9 @@ BufferCore::BufferCore(ros::Duration cache_time)
 BufferCore::~BufferCore()
 {
   delete frame_each_mutex_;
+  for(auto e : frames_){
+    delete e;
+  }
 }
 
 // not thread safe
@@ -415,8 +418,8 @@ int BufferCore::walkToTopParent(
       break;
     }
 
-//    ReadUnLocker locker(frame_each_mutex_->at(frame));
-//    locker.rLock();
+    ReadUnLocker locker(frame_each_mutex_->at(frame));
+    locker.rLock();
 
     CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
     if (parent == 0)

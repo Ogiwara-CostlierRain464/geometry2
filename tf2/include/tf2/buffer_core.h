@@ -65,7 +65,7 @@ typedef uint32_t TransformableCallbackHandle;
 typedef uint64_t TransformableRequestHandle;
 
 class TimeCacheInterface;
-typedef boost::shared_ptr<TimeCacheInterface> TimeCacheInterfacePtr;
+typedef TimeCacheInterface* TimeCacheInterfacePtr;
 
 enum TransformableResult
 {

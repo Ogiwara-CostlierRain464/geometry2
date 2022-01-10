@@ -85,8 +85,6 @@ public:
   virtual ros::Time getOldestTimestamp()=0;
 };
 
-typedef boost::shared_ptr<TimeCacheInterface> TimeCacheInterfacePtr;
-
 /** \brief A class to keep a sorted linked list in time
  * This builds and maintains a list of timestamped
  * data.  And provides lookup functions to get
