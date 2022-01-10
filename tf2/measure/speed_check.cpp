@@ -76,15 +76,19 @@ struct BufferCoreWrapper<OldBufferCore>{
     make_snake(bfc);
   }
   void read(size_t link, size_t until, ReadStat &out_stat) const{
+    // Read from low to high for performance.
+    assert(until > link);
     auto trans = bfc.lookupTransform("link" + to_string(link),
                                      "link" + to_string(until),
                                      ros::Time(0));
     out_stat.timestamps.push_back(trans.header.stamp.toNSec());
   }
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
-    for(size_t j = link; j < until; j++){
-      bfc.setTransform(trans("link" + to_string(j),
-                             "link" + to_string(j+1),
+    // Write from low to high for performance.
+    assert(until > link);
+    for(size_t j = until; j > link; j--){
+      bfc.setTransform(trans("link" + to_string(j-1),
+                             "link" + to_string(j),
                              nano_time), "me");
     }
   }
@@ -120,17 +124,18 @@ struct BufferCoreWrapper<BufferCore>{
     }
   }
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
+    assert(until > link);
     if(accessType == Snapshot){
-      for(size_t j = link; j < until; j++){
-        bfc.setTransform(trans("link" + to_string(j),
-                               "link" + to_string(j+1),
+      for(size_t j = until; j > link; j--){
+        bfc.setTransform(trans("link" + to_string(j-1),
+                               "link" + to_string(j),
                                nano_time), "me");
       }
     }else{
       vector<TransformStamped> vec{};
-      for(size_t j = link; j < until; j++){
-        vec.push_back(trans("link" + to_string(j),
-                            "link" + to_string(j+1),
+      for(size_t j = until; j > link; j--){
+        vec.push_back(trans("link" + to_string(j-1),
+                            "link" + to_string(j),
                             nano_time));
       }
       bfc.setTransforms(vec, "me", false, &out_stat);
