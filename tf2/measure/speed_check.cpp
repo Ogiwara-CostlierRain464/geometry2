@@ -155,7 +155,7 @@ struct BufferCoreWrapper<BufferCore>{
 };
 
 template <typename T>
-T make_ave(std::vector<T> &vec){
+T make_ave(const std::vector<T> &vec){
   T acc{};
   if(vec.empty()){
     return acc;
@@ -175,11 +175,11 @@ struct CountAccum{
     vec[t_id] = data;
   };
 
-  T average(){
+  T average() const{
     return make_ave(vec);
   }
 
-  T sum(){
+  T sum() const{
     return std::accumulate(vec.begin(), vec.end(), T{});
   }
 
@@ -195,6 +195,9 @@ struct RunResult{
   // optional
   chrono::duration<double> var; // should be zero except latest
   double aborts; // should be zero expect latest
+
+  double readThroughput;
+  double writeThroughput;
 };
 
 double throughput(chrono::duration<double> time, size_t iter){
@@ -327,6 +330,8 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.delay = delay_acc_thread.average();
   result.var = vars_acc_thread.average();
   result.aborts = abort_acc_thread.average();
+  result.readThroughput = throughput_acc_read_thread.sum();
+  result.writeThroughput = throughput_acc_write_thread.sum();
 
   return result;
 }
@@ -427,9 +432,15 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(latest_result.var).count() << " "; // 17
   output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 18
   output << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << " "; // 19
-  output << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << endl; // 20
+  output << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << " "; // 20
+  output << old_result.readThroughput << " "; // 21
+  output << snapshot_result.readThroughput << " "; // 22
+  output << latest_result.readThroughput << " "; // 23
+  output << old_result.writeThroughput << " "; // 24
+  output << snapshot_result.writeThroughput << " "; // 25
+  output << latest_result.writeThroughput << " "; // 26
 
-
+  output << endl;
   output.close();
 
   return 0;
