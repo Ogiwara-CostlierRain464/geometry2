@@ -1,6 +1,6 @@
 T=$(nproc)
 J=10000
-READ_RATIO=1
+READ_RATIO=0.5
 READ_LEN=16
 WRITE_LEN=16
 FREQUENCY=0
@@ -10,7 +10,7 @@ OUTPUT_DIR=/tmp/tf/$(uuidgen)
 OUTPUT=$OUTPUT_DIR/data.dat
 OUTPUT_PLOT=$OUTPUT_DIR/plot.png
 # 0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old
-ONLY=0
+ONLY=2
 # throughput = 7, latency = 11, delay = 14
 OUT_OFFSET=7
 

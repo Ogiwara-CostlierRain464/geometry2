@@ -189,7 +189,8 @@ struct CountAccum{
 struct RunResult{
   chrono::duration<double> time;
   double throughput;
-  chrono::duration<double> latency;
+  chrono::duration<double> readLatency;
+  chrono::duration<double> writeLatency;
   chrono::duration<double> delay; // how far does took data from now
   // optional
   chrono::duration<double> var; // should be zero except latest
@@ -212,12 +213,12 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<double> throughput_acc_read_thread(read_threads);
   CountAccum<chrono::duration<double>> delay_acc_thread(read_threads);
   CountAccum<chrono::duration<double>> vars_acc_thread(read_threads);
-  CountAccum<chrono::duration<double>> latencies_acc_thread(read_threads);
+  CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
 
 
   for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([t,&wait, &bfc_w, &delay_acc_thread,
-                          &vars_acc_thread, &latencies_acc_thread, &throughput_acc_read_thread](){
+                          &vars_acc_thread, &latencies_acc_read_thread, &throughput_acc_read_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
@@ -258,16 +259,18 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       throughput_acc_read_thread.record(t, throughput(end_iter - start_iter, iter_count));
       delay_acc_thread.record(t,delay_iter_acc / (double) iter_count);
       vars_acc_thread.record(t, var_iter_acc / (double) iter_count);
-      latencies_acc_thread.record(t, latency_iter_acc / (double) iter_count);
+      latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
       // div by iter.
     });
   }
 
   CountAccum<double> abort_acc_thread(write_threads);
   CountAccum<double> throughput_acc_write_thread(write_threads);
+  CountAccum<chrono::duration<double>> latencies_acc_write_thread(write_threads);
 
   for(size_t t = 0; t < write_threads; t++){
-    threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread, &throughput_acc_write_thread](){
+    threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread,
+                          &throughput_acc_write_thread, &latencies_acc_write_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
@@ -275,10 +278,9 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
       size_t iter_count = 0;
+      chrono::duration<double> latency_iter_acc{};
 
       for(;;){
-        iter_count++;
-
         size_t link = r.next() % FLAGS_joint;
         auto until = link + FLAGS_write_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
@@ -287,11 +289,15 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         WriteStat stat{};
         bfc_w.write(link, until, nano, stat);
+        auto after = chrono::steady_clock::now();
         abort_iter_acc += stat.getAbortCount();
+        latency_iter_acc += after - before;
 
         if(FLAGS_frequency != 0){
           this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
         }
+
+        iter_count++;
 
         end_iter = chrono::steady_clock::now();
 
@@ -302,6 +308,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
       throughput_acc_write_thread.record(t, throughput(end_iter - start_iter, iter_count));
       abort_acc_thread.record(t, (double) abort_iter_acc / (double) iter_count);
+      latencies_acc_write_thread.record(t, latency_iter_acc / (double) iter_count);
     });
   }
 
@@ -315,7 +322,8 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   RunResult result{};
   result.time = finish - start;
   result.throughput = throughput_acc_read_thread.sum() + throughput_acc_write_thread.sum();
-  result.latency = latencies_acc_thread.average();
+  result.readLatency = latencies_acc_read_thread.average();
+  result.writeLatency = latencies_acc_write_thread.average();
   result.delay = delay_acc_thread.average();
   result.var = vars_acc_thread.average();
   result.aborts = abort_acc_thread.average();
@@ -378,17 +386,20 @@ int main(int argc, char* argv[]){
   cout << std::setprecision(std::numeric_limits<double>::digits10);
   cout << "old: " << endl;
   cout << "\t" << "time: " << chrono::duration<double, std::milli>(old_result.time).count() << "ms" << endl;
-  cout << "\t" << "latency: " << chrono::duration<double, std::milli>(old_result.latency).count() << "ms" << endl;
+  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
+  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.writeLatency).count() << "ms" << endl;
   cout << "\t" << "delay: " << chrono::duration<double, std::milli>(old_result.delay).count() << "ms" << endl;
 
   cout << "snapshot:" << endl;
   cout << "\t" << "time: " << chrono::duration<double, std::milli>(snapshot_result.time).count() << "ms" << endl;
-  cout << "\t" << "latency: " << chrono::duration<double, std::milli>(snapshot_result.latency).count() << "ms" << endl;
+  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << "ms" << endl;
+  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << "ms" << endl;
   cout << "\t" << "delay: " << chrono::duration<double, std::milli>(snapshot_result.delay).count() << "ms" << endl;
 
   cout << "latest:" << endl;
   cout << "\t" << "time: " << chrono::duration<double, std::milli>(latest_result.time).count() << "ms" << endl;
-  cout << "\t" << "latency: " << chrono::duration<double, std::milli>(latest_result.latency).count() << "ms" << endl;
+  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(latest_result.readLatency).count() << "ms" << endl;
+  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << "ms" << endl;
   cout << "\t" << "delay: " << chrono::duration<double, std::milli>(latest_result.delay).count() << "ms" << endl;
   cout << "\t" << "var: " << chrono::duration<double, std::milli>(latest_result.var).count() << "ms" << endl;
   cout << "\t" << "aborts: " << latest_result.aborts << " times" << endl;
@@ -407,13 +418,17 @@ int main(int argc, char* argv[]){
   output << snapshot_result.throughput << " "; // 8
   output << latest_result.throughput << " "; // 9
   output << latest_result.aborts << " "; // 10
-  output << chrono::duration<double, std::milli>(old_result.latency).count() << " "; // 11
-  output << chrono::duration<double, std::milli>(snapshot_result.latency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(latest_result.latency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 11
+  output << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(latest_result.readLatency).count() << " "; // 13
   output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 14
   output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 15
   output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 16
-  output << chrono::duration<double, std::milli>(latest_result.var).count() << endl; // 17
+  output << chrono::duration<double, std::milli>(latest_result.var).count() << " "; // 17
+  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 18
+  output << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << " "; // 19
+  output << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << endl; // 20
+
 
   output.close();
 
