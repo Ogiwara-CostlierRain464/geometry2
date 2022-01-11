@@ -382,6 +382,7 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   CONSOLE_BRIDGE_logInform("Only: %d", FLAGS_only);
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
+  CONSOLE_BRIDGE_logInform("Opposite write direction: %s", FLAGS_opposite_write_direction ? "true" : "false");
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
