@@ -23,11 +23,11 @@ using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 10000, "Joint size");
-DEFINE_double(read_ratio, 1, "read ratio, within [0,1]");
+DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 1, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
+DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 5, "loop second");
 
@@ -126,17 +126,28 @@ struct BufferCoreWrapper<BufferCore>{
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
     assert(until > link);
     if(accessType == Snapshot){
-      for(size_t j = until; j > link; j--){
-        bfc.setTransform(trans("link" + to_string(j-1),
-                               "link" + to_string(j),
+//      for(size_t j = until; j > link; j--){
+//        bfc.setTransform(trans("link" + to_string(j-1),
+//                               "link" + to_string(j),
+//                               nano_time), "me");
+//      }
+      for(size_t j = link; j < until; j++){
+        bfc.setTransform(trans("link" + to_string(j),
+                               "link" + to_string(j+1),
                                nano_time), "me");
       }
     }else{
+      // which write direction is proper?
       vector<TransformStamped> vec{};
-      for(size_t j = until; j > link; j--){
-        vec.push_back(trans("link" + to_string(j-1),
-                            "link" + to_string(j),
-                            nano_time));
+//      for(size_t j = until; j > link; j--){
+//        vec.push_back(trans("link" + to_string(j-1),
+//                            "link" + to_string(j),
+//                            nano_time));
+//      }
+      for(size_t j = link; j < until; j++){
+        vec.push_back(trans("link" + to_string(j),
+                               "link" + to_string(j+1),
+                               nano_time));
       }
       bfc.setTransforms(vec, "me", false, &out_stat);
     }
