@@ -30,6 +30,7 @@ DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 5, "loop second");
+DEFINE_bool(opposite_write_direction, true, "when true, opposite write direction");
 
 
 using std::chrono::operator""s;
@@ -86,10 +87,18 @@ struct BufferCoreWrapper<OldBufferCore>{
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
     // Write from low to high for performance.
     assert(until > link);
-    for(size_t j = until; j > link; j--){
-      bfc.setTransform(trans("link" + to_string(j-1),
-                             "link" + to_string(j),
-                             nano_time), "me");
+    if(FLAGS_opposite_write_direction){
+      for(size_t j = link; j < until; j++){
+        bfc.setTransform(trans("link" + to_string(j),
+                               "link" + to_string(j+1),
+                               nano_time), "me");
+      }
+    }else{
+      for(size_t j = until; j > link; j--){
+        bfc.setTransform(trans("link" + to_string(j-1),
+                               "link" + to_string(j),
+                               nano_time), "me");
+      }
     }
   }
 };
@@ -126,15 +135,18 @@ struct BufferCoreWrapper<BufferCore>{
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
     assert(until > link);
     if(accessType == Snapshot){
-//      for(size_t j = until; j > link; j--){
-//        bfc.setTransform(trans("link" + to_string(j-1),
-//                               "link" + to_string(j),
-//                               nano_time), "me");
-//      }
-      for(size_t j = link; j < until; j++){
-        bfc.setTransform(trans("link" + to_string(j),
-                               "link" + to_string(j+1),
-                               nano_time), "me");
+      if(FLAGS_opposite_write_direction){
+        for(size_t j = link; j < until; j++){
+          bfc.setTransform(trans("link" + to_string(j),
+                                 "link" + to_string(j+1),
+                                 nano_time), "me");
+        }
+      }else{
+        for(size_t j = until; j > link; j--){
+          bfc.setTransform(trans("link" + to_string(j-1),
+                                 "link" + to_string(j),
+                                 nano_time), "me");
+        }
       }
     }else{
       // which write direction is proper?
@@ -144,11 +156,20 @@ struct BufferCoreWrapper<BufferCore>{
 //                            "link" + to_string(j),
 //                            nano_time));
 //      }
-      for(size_t j = link; j < until; j++){
-        vec.push_back(trans("link" + to_string(j),
-                               "link" + to_string(j+1),
-                               nano_time));
+      if(FLAGS_opposite_write_direction){
+        for(size_t j = link; j < until; j++){
+          vec.push_back(trans("link" + to_string(j),
+                              "link" + to_string(j+1),
+                              nano_time));
+        }
+      }else{
+        for(size_t j = until; j > link; j--){
+          vec.push_back(trans("link" + to_string(j-1),
+                              "link" + to_string(j),
+                              nano_time));
+        }
       }
+
       bfc.setTransforms(vec, "me", false, &out_stat);
     }
   }
