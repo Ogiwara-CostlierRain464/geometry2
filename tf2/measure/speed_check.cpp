@@ -66,7 +66,7 @@ struct BufferCoreWrapper{
   void init(){}
   void read(size_t link, size_t until, ReadStat &out_stat)const{}
   // return abort count
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){}
+  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){}
 };
 
 template <>
@@ -84,7 +84,7 @@ struct BufferCoreWrapper<OldBufferCore>{
                                      ros::Time(0));
     out_stat.timestamps.push_back(trans.header.stamp.toNSec());
   }
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
+  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
     // Write from low to high for performance.
     assert(until > link);
     if(FLAGS_opposite_write_direction){
@@ -92,12 +92,14 @@ struct BufferCoreWrapper<OldBufferCore>{
         bfc.setTransform(trans("link" + to_string(j),
                                "link" + to_string(j+1),
                                nano_time), "me");
+        iter_acc++;
       }
     }else{
       for(size_t j = until; j > link; j--){
         bfc.setTransform(trans("link" + to_string(j-1),
                                "link" + to_string(j),
                                nano_time), "me");
+        iter_acc++;
       }
     }
   }
@@ -132,7 +134,7 @@ struct BufferCoreWrapper<BufferCore>{
                                 "link" + to_string(until), &out_stat);
     }
   }
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat){
+  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
     assert(until > link);
     if(accessType == Snapshot){
       if(FLAGS_opposite_write_direction){
@@ -140,12 +142,14 @@ struct BufferCoreWrapper<BufferCore>{
           bfc.setTransform(trans("link" + to_string(j),
                                  "link" + to_string(j+1),
                                  nano_time), "me");
+          iter_acc++;
         }
       }else{
         for(size_t j = until; j > link; j--){
           bfc.setTransform(trans("link" + to_string(j-1),
                                  "link" + to_string(j),
                                  nano_time), "me");
+          iter_acc++;
         }
       }
     }else{
@@ -171,6 +175,7 @@ struct BufferCoreWrapper<BufferCore>{
       }
 
       bfc.setTransforms(vec, "me", false, &out_stat);
+      iter_acc++;
     }
   }
 };
@@ -312,7 +317,9 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         auto before = chrono::steady_clock::now();
         double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         WriteStat stat{};
-        bfc_w.write(link, until, nano, stat);
+        bfc_w.write(link, until, nano, stat, iter_count);
+        // make fair?
+
         auto after = chrono::steady_clock::now();
         abort_iter_acc += stat.getAbortCount();
         latency_iter_acc += after - before;
@@ -320,8 +327,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         if(FLAGS_frequency != 0){
           this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
         }
-
-        iter_count++;
 
         end_iter = chrono::steady_clock::now();
 
