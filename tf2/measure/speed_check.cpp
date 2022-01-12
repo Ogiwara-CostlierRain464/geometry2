@@ -27,9 +27,9 @@ DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
+DEFINE_uint32(only, 1, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 5, "loop second");
+DEFINE_uint64(loop_sec, 60, "loop second");
 DEFINE_bool(opposite_write_direction, true, "when true, opposite write direction");
 
 
@@ -318,8 +318,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         WriteStat stat{};
         bfc_w.write(link, until, nano, stat, iter_count);
-        // make fair?
-
         auto after = chrono::steady_clock::now();
         abort_iter_acc += stat.getAbortCount();
         latency_iter_acc += after - before;
