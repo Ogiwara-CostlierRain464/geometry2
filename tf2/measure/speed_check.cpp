@@ -350,6 +350,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
     });
   }
 
+  bfc_w.init();
   auto start = chrono::high_resolution_clock::now();
   wait = false;
   for(auto &e: threads){
@@ -406,21 +407,18 @@ int main(int argc, char* argv[]){
   RunResult old_result{};
   if(FLAGS_only == 0 or FLAGS_only == 4){
     BufferCoreWrapper<OldBufferCore> bfc_w{};
-    bfc_w.init();
     old_result = run(bfc_w);
   }
 
   RunResult snapshot_result{};
   if(FLAGS_only == 0 or FLAGS_only == 1 or FLAGS_only == 3){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::Snapshot);
-    bfc_w.init();
     snapshot_result = run(bfc_w);
   }
 
   RunResult latest_result{};
   if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::Latest);
-    bfc_w.init();
     latest_result = run(bfc_w);
   }
 
