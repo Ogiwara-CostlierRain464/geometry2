@@ -475,6 +475,7 @@ int main(int argc, char* argv[]){
   output << old_result.writeThroughput << " "; // 24
   output << snapshot_result.writeThroughput << " "; // 25
   output << latest_result.writeThroughput << " "; // 26
+  output << (FLAGS_opposite_write_direction ? "opposite" : "direct") << " ";
 
   output << endl;
   output.close();
