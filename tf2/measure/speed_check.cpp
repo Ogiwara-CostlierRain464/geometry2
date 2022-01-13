@@ -27,7 +27,7 @@ DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 1, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old");
+DEFINE_uint32(only, 1, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 60, "loop second");
 DEFINE_bool(opposite_write_direction, true, "when true, opposite write direction");
@@ -182,15 +182,26 @@ struct BufferCoreWrapper<BufferCore>{
 
 template <typename T>
 T make_ave(const std::vector<T> &vec){
-  T acc{};
-  if(vec.empty()){
-    return acc;
-  }
+  // don't call this!
+  assert(false);
+}
 
-  for(auto &e: vec){
-    acc += e;
+template <>
+double make_ave<double>(const std::vector<double> &vec){
+  double tmp{};
+  for(auto &e: vec) {
+    tmp += e / (double) vec.size();
   }
-  return acc / vec.size();
+  return tmp;
+}
+
+template <>
+chrono::duration<double> make_ave<chrono::duration<double>>(const std::vector<chrono::duration<double>> &vec){
+  chrono::duration<double> tmp{};
+  for(auto &e: vec) {
+    tmp += e / (double) vec.size();
+  }
+  return tmp;
 }
 
 template <typename T>

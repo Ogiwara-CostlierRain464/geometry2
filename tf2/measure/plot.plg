@@ -51,6 +51,11 @@ if(out_offset == 24){
 
 if(only == 3){
   plot data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"
+  exit
+}
+if(only == 5){
+  plot data using var:out_offset w lp title "old", data using var:out_offset+2 w lp title "latest"
+  exit
 }
 
 plot data using var:out_offset w lp title "old", data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"

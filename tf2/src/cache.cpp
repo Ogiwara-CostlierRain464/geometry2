@@ -254,7 +254,6 @@ bool TimeCache::insertData(const TransformStorage& new_data)
     }
   }
 
-
   while(storage_it != storage_.end())
   {
     if (storage_it->stamp_ <= new_data.stamp_)

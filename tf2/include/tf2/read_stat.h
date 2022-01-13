@@ -12,11 +12,11 @@ struct ReadStat {
 
   uint64_t getTimeStampsAve() const{
     // don't sum!
-    uint64_t tmp{0};
+    double tmp{0};
     for(auto &e: timestamps){
-      tmp += e / timestamps.size();
+      tmp += (double) e / (double) timestamps.size();
     }
-    return tmp;
+    return (size_t) tmp;
   }
 
   double getTimeStampsVar() const{
