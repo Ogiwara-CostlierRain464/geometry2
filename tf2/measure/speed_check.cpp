@@ -29,7 +29,7 @@ DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 1, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 60, "loop second");
+DEFINE_uint64(loop_sec, 5, "loop second");
 DEFINE_bool(opposite_write_direction, true, "when true, opposite write direction");
 
 
@@ -265,6 +265,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
+      printf("Thread id: %zu On CPU: %d\n", t, sched_getcpu());
 
       chrono::duration<double> delay_iter_acc{}, var_iter_acc{}, latency_iter_acc{};
       size_t iter_count = 0;
@@ -315,10 +316,11 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
   for(size_t t = 0; t < write_threads; t++){
     threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread,
-                          &throughput_acc_write_thread, &latencies_acc_write_thread](){
+                          &throughput_acc_write_thread, &latencies_acc_write_thread, read_threads](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
+      printf("Thread id: %zu On CPU: %d\n", t+read_threads, sched_getcpu());
       uint64_t abort_iter_acc{};
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
