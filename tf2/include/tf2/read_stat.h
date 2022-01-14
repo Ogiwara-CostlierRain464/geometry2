@@ -9,6 +9,7 @@
 // Record start per thread.
 struct ReadStat {
   std::vector<uint64_t> timestamps{};
+  size_t tryReadLockCount{};
 
   uint64_t getTimeStampsAve() const{
     // don't sum!

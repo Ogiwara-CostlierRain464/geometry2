@@ -127,7 +127,7 @@ struct BufferCoreWrapper<BufferCore>{
       assert(until > link);
       auto trans = bfc.lookupTransform("link" + to_string(link),
                                        "link" + to_string(until),
-                                       ros::Time(0));
+                                       ros::Time(0), &out_stat);
       out_stat.timestamps.push_back(trans.header.stamp.toNSec());
     }else{
       bfc.lookupLatestTransform("link" + to_string(link),
@@ -207,6 +207,8 @@ chrono::duration<double> make_ave<chrono::duration<double>>(const std::vector<ch
 template <typename T>
 struct CountAccum{
   explicit CountAccum(size_t count): vec(count, T{}){}
+  CountAccum(const CountAccum<T> &other) = delete;
+  CountAccum(CountAccum<T> &&other) = delete;
 
   void record(size_t t_id, const T &data){
     vec[t_id] = data;
@@ -254,11 +256,12 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<chrono::duration<double>> delay_acc_thread(read_threads);
   CountAccum<chrono::duration<double>> vars_acc_thread(read_threads);
   CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
-
+  CountAccum<double> read_wait_count(read_threads);
 
   for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([t,&wait, &bfc_w, &delay_acc_thread,
-                          &vars_acc_thread, &latencies_acc_read_thread, &throughput_acc_read_thread](){
+                          &vars_acc_thread, &latencies_acc_read_thread,
+                          &throughput_acc_read_thread, &read_wait_count](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
@@ -267,6 +270,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       size_t iter_count = 0;
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
+      size_t read_wait_count_acc{};
 
       for(;;){
         ReadStat stat{};
@@ -282,6 +286,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
         var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
         latency_iter_acc += after - before;
+        read_wait_count_acc += stat.tryReadLockCount;
 
         if(FLAGS_frequency != 0){
           this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
@@ -300,7 +305,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       delay_acc_thread.record(t,delay_iter_acc / (double) iter_count);
       vars_acc_thread.record(t, var_iter_acc / (double) iter_count);
       latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
-      // div by iter.
+      read_wait_count.record(t, (double) read_wait_count_acc / (double) iter_count);
     });
   }
 
@@ -368,6 +373,8 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.aborts = abort_acc_thread.average();
   result.readThroughput = throughput_acc_read_thread.sum();
   result.writeThroughput = throughput_acc_write_thread.sum();
+
+  cout << "read wait count: " << read_wait_count.average() << endl;
 
   return result;
 }

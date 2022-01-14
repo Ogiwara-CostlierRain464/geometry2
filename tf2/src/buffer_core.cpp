@@ -375,7 +375,8 @@ template<typename F>
 int BufferCore::walkToTopParent(
   F& f, ros::Time time, CompactFrameID target_id,
   CompactFrameID source_id, std::string* error_string,
-  std::vector<CompactFrameID> *frame_chain) const noexcept
+  std::vector<CompactFrameID> *frame_chain,
+  ReadStat *stat) const noexcept
 {
   if (frame_chain)
     frame_chain->clear();
@@ -419,7 +420,11 @@ int BufferCore::walkToTopParent(
     }
 
     ReadUnLocker locker(frame_each_mutex_->at(frame));
-    locker.rLock();
+    while (!locker.tryRLock()){
+      if(stat){
+        stat->tryReadLockCount++;
+      }
+    }
 
     CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
     if (parent == 0)
@@ -820,7 +825,8 @@ int BufferCore::walkToTopParentLatest(
 geometry_msgs::TransformStamped BufferCore::lookupTransform(
   const std::string& target_frame,
   const std::string& source_frame,
-  const ros::Time& time) const noexcept(false)
+  const ros::Time& time,
+  ReadStat *stat) const noexcept(false)
 {
   if (target_frame == source_frame) {
     geometry_msgs::TransformStamped identity;
@@ -853,7 +859,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
 
   std::string error_string;
   TransformAccum accum;
-  int retval = walkToTopParent(accum, time, target_id, source_id, &error_string);
+  int retval = walkToTopParent(accum, time, target_id, source_id, &error_string, nullptr, stat);
   if (retval != tf2_msgs::TF2Error::NO_ERROR)
   {
     switch (retval)

@@ -214,8 +214,12 @@ public:
   explicit ReadUnLocker(RWLock &lock_)
   : lock(lock_){}
 
-  void rLock(){
+  inline void rLock(){
     lock.r_lock();
+  }
+
+  inline bool tryRLock(){
+    return lock.r_trylock();
   }
 
   ~ReadUnLocker(){
