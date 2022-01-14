@@ -7,6 +7,7 @@
 #include <tbb/concurrent_vector.h>
 #include <tbb/concurrent_unordered_map.h>
 #include <unordered_map>
+#include <mutex>
 
 #include "../include/tf2/buffer_core.h"
 #include "../measure/xoroshiro128_plus.h"
@@ -529,6 +530,44 @@ TEST_F(MultithreadTest, rand_xor_cmp){
   for(auto &t: threads){ t.join(); }
   finish = chrono::high_resolution_clock::now();
   cout << "xor: " << chrono::duration_cast<chrono::microseconds>(finish - start).count() << "us" << endl;
+}
+
+TEST_F(MultithreadTest, affinity){
+  constexpr unsigned num_threads = 4;
+  // A mutex ensures orderly access to std::cout from multiple threads.
+  std::mutex iomutex;
+  std::vector<std::thread> threads(num_threads);
+  for (unsigned i = 0; i < num_threads; ++i) {
+    threads[i] = std::thread([&iomutex, i] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      for (size_t j = 0; j < 3; j++) {
+        {
+          // Use a lexical scope and lock_guard to safely lock the mutex only
+          // for the duration of std::cout usage.
+          std::lock_guard<std::mutex> iolock(iomutex);
+          std::cout << "Thread #" << i << ": on CPU " << sched_getcpu() << "\n";
+        }
+
+        // Simulate important work done by the tread by sleeping for a bit...
+        std::this_thread::sleep_for(std::chrono::milliseconds(900));
+      }
+    });
+
+    // Create a cpu_set_t object representing a set of CPUs. Clear it and mark
+    // only CPU i as set.
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(i, &cpuset);
+    int rc = pthread_setaffinity_np(threads[i].native_handle(),
+                                    sizeof(cpu_set_t), &cpuset);
+    if (rc != 0) {
+      std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+    }
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
 }
 
 int main(int argc, char **argv){
