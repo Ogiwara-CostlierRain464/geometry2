@@ -265,8 +265,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
-      printf("Thread id: %zu On CPU: %d\n", t, sched_getcpu());
-
       chrono::duration<double> delay_iter_acc{}, var_iter_acc{}, latency_iter_acc{};
       size_t iter_count = 0;
       auto start_iter = chrono::steady_clock::now();
@@ -320,7 +318,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
-      printf("Thread id: %zu On CPU: %d\n", t+read_threads, sched_getcpu());
       uint64_t abort_iter_acc{};
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
@@ -358,6 +355,18 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   }
 
   bfc_w.init();
+  for(size_t t = 0; t < threads.size(); t++){
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(t, &cpuset);
+    int rc = pthread_setaffinity_np(threads[t].native_handle(),
+                                    sizeof(cpu_set_t), &cpuset);
+    if (rc != 0) {
+      std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+      exit(-1);
+    }
+  }
+  asm volatile("" ::: "memory"); // force not to reorder.
   auto start = chrono::high_resolution_clock::now();
   wait = false;
   for(auto &e: threads){
