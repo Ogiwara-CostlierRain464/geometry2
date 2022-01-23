@@ -1,5 +1,6 @@
-set terminal png
+set terminal pdf
 set output filename
+set size ratio 0.75
 
 if(var == 1){
   set xlabel "thread"
