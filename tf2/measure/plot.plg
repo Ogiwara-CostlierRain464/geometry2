@@ -1,5 +1,6 @@
-set terminal pdf
+set terminal pdf size 4in,3in
 set output filename
+set key left top
 set size ratio 0.75
 
 if(var == 1){

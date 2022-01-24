@@ -34,7 +34,7 @@ struct CountAccum{
 };
 
 template <typename T>
-void a(T &arr){
+double a(T &arr){
   CountAccum<double> throughput_acc_thread(FLAGS_thread);
 
   vector<thread> threads{};
@@ -70,6 +70,7 @@ void a(T &arr){
   auto throughput_ = throughput_acc_thread.sum();
 
   cout << throughput_ << "ope/sec" << endl;
+  return throughput_;
 }
 
 int main(int argc, char* argv[]){
@@ -83,8 +84,16 @@ int main(int argc, char* argv[]){
   vector<std::size_t*> raw(1'000'000, new size_t(1));
   vector<shared_ptr<size_t>> shared(1'000'000, make_shared<std::size_t>(1));
 
-  a(raw);
-  a(shared);
+  auto raw_t = a(raw);
+  auto shared_t = a(shared);
+
+  ofstream output{};
+  output.open(FLAGS_output.c_str(), std::ios_base::app);
+  output << FLAGS_thread << " ";
+  output << shared_t << " ";
+  output << raw_t << " ";
+  output << endl;
+  output.close();
 
   return 0;
 }
