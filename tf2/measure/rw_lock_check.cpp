@@ -12,12 +12,12 @@
 
 using namespace std;
 
+DEFINE_uint64(thread, std::thread::hardware_concurrency(), "thread count");
 DEFINE_uint64(iter, 10'000, "Iteration count");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 
 constexpr size_t JOINT = 100;
 constexpr double WRITE_LEN = 0.5;
-size_t THREADS = std::thread::hardware_concurrency();
 
 int main(int argc, char **argv){
   gflags::SetUsageMessage("speed check");
@@ -34,7 +34,7 @@ int main(int argc, char **argv){
   atomic_bool wait{true};
 
   vector<thread> threads{};
-  for(size_t i = 0; i < THREADS; i++){
+  for(size_t i = 0; i < FLAGS_thread; i++){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
@@ -62,7 +62,7 @@ int main(int argc, char **argv){
   threads.clear();
   wait = true;
 
-  for(size_t i = 0; i < THREADS; i++){
+  for(size_t i = 0; i < FLAGS_thread; i++){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
@@ -90,7 +90,7 @@ int main(int argc, char **argv){
   threads.clear();
   wait = true;
 
-  for(size_t i = 0; i < THREADS; i++){
+  for(size_t i = 0; i < FLAGS_thread; i++){
     threads.emplace_back([&](){
       while (wait){;}
       for(size_t i = 0; i < FLAGS_iter; i++){
