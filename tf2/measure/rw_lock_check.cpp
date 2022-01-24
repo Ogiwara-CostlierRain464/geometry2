@@ -13,7 +13,7 @@
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "thread count");
-DEFINE_uint64(iter, 10'000, "Iteration count");
+DEFINE_uint64(iter, 100'000, "Iteration count");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 
 constexpr size_t JOINT = 100;
@@ -29,6 +29,7 @@ int main(int argc, char **argv){
   cout << "ITER: " << FLAGS_iter << endl;
   cout << "Output: " << FLAGS_output.c_str() << endl;
   mutex mutex_{};
+  RWLock mutex2_{};
   std::vector<RWLock> locks(JOINT+1);
   std::vector<RWLockPtr> locks2(JOINT+1, std::make_shared<RWLock>());
   atomic_bool wait{true};
@@ -58,6 +59,36 @@ int main(int argc, char **argv){
   auto finish = chrono::high_resolution_clock::now();
   auto mutex_diff = chrono::duration_cast<chrono::microseconds>(finish - start);
   cout << "mutex: " << mutex_diff.count() << endl;
+
+  threads.clear();
+  wait = true;
+
+  for(size_t t = 0; t < FLAGS_thread; t++){
+    threads.emplace_back([&](){
+      while (wait){;}
+      for(size_t i = 0; i < FLAGS_iter; i++){
+        size_t link = rand() % JOINT;
+        size_t until = link + (size_t) (JOINT * WRITE_LEN);
+        if(until > JOINT) until = JOINT;
+        for(size_t j = link; j < until; j++){
+          mutex2_.w_lock();
+          mutex2_.w_unlock();
+        }
+      }
+    });
+  }
+
+  start = chrono::high_resolution_clock::now();
+  wait = false;
+  for(auto &e: threads){
+    e.join();
+  }
+
+  finish = chrono::high_resolution_clock::now();
+  auto mutex2_diff = chrono::duration_cast<chrono::microseconds>(finish - start);
+  cout << "mutex2: " << mutex2_diff.count() << endl;
+
+  return 0;
 
   threads.clear();
   wait = true;
