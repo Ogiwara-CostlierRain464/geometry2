@@ -91,6 +91,17 @@ target_link_libraries(tbb_check
   )
 add_dependencies(tbb_check ${catkin_EXPORTED_TARGETS})
 
+add_executable(shared_ptr_check
+  measure/shared_ptr_check.cpp
+  )
+target_link_libraries(shared_ptr_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  gflags
+  tbb
+  )
+add_dependencies(shared_ptr_check ${catkin_EXPORTED_TARGETS})
+
 # Tests
 if(CATKIN_ENABLE_TESTING)
 
