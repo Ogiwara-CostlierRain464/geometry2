@@ -9,6 +9,7 @@
 #include <atomic>
 #include <cassert>
 #include <mutex>
+#include <set>
 #include "../include/tf2/rwlock.h"
 
 using namespace std;
