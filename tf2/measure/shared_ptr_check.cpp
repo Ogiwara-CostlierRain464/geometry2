@@ -53,7 +53,8 @@ double a(T &arr){
 
       for(;;){
         for(size_t i = 0; i < LEN; i++){
-          arr[r.next() % SIZE]->fetch_add(1);
+          auto ptr = arr[r.next() % SIZE];
+          ptr->fetch_add(1);
         }
 
         iter_count++;
