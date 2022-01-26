@@ -15,7 +15,7 @@ DEFINE_uint64(thread, std::thread::hardware_concurrency(), "thread num");
 DEFINE_string(output, "/tmp/c.dat", "output file");
 DEFINE_uint64(loop_sec, 60, "loop second");
 
-size_t LEN = 16;
+size_t LEN = 100;
 size_t SIZE = 10'000;
 
 double throughput(chrono::duration<double> time, size_t iter){
