@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <numeric>
 #include <random>
+#include <atomic>
 #include "xoroshiro128_plus.h"
 
 using namespace std;
@@ -46,10 +47,9 @@ double a(T &arr){
       size_t iter_count = 0;
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
-      size_t sum{};
 
       for(;;){
-        sum += *arr[r.next() % 1'000'000];
+        arr[r.next() % 1'000'000]->fetch_add(1);
 
         iter_count++;
         end_iter = chrono::steady_clock::now();
@@ -81,8 +81,8 @@ int main(int argc, char* argv[]){
   cout << "Output: " << FLAGS_output << endl;
   cout << "Loop sec: " << FLAGS_loop_sec << endl;
 
-  vector<std::size_t*> raw(1'000'000, new size_t(1));
-  vector<shared_ptr<size_t>> shared(1'000'000, make_shared<std::size_t>(1));
+  vector<atomic_uint64_t *> raw(1'000'000, new atomic_uint64_t (1));
+  vector<shared_ptr<atomic_uint64_t>> shared(1'000'000, make_shared<atomic_uint64_t>(1));
 
   auto raw_t = a(raw);
   auto shared_t = a(shared);
