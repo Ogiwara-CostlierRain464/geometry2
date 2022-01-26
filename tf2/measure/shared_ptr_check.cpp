@@ -15,6 +15,9 @@ DEFINE_uint64(thread, std::thread::hardware_concurrency(), "thread num");
 DEFINE_string(output, "/tmp/c.dat", "output file");
 DEFINE_uint64(loop_sec, 60, "loop second");
 
+size_t LEN = 16;
+size_t SIZE = 10'000;
+
 double throughput(chrono::duration<double> time, size_t iter){
   return ((double) iter) * (1. / chrono::duration<double>(time).count());
 }
@@ -49,7 +52,9 @@ double a(T &arr){
       auto end_iter = start_iter;
 
       for(;;){
-        arr[r.next() % 1'000'000]->fetch_add(1);
+        for(size_t i = 0; i < LEN; i++){
+          arr[r.next() % SIZE]->fetch_add(1);
+        }
 
         iter_count++;
         end_iter = chrono::steady_clock::now();
@@ -81,8 +86,8 @@ int main(int argc, char* argv[]){
   cout << "Output: " << FLAGS_output << endl;
   cout << "Loop sec: " << FLAGS_loop_sec << endl;
 
-  vector<atomic_uint64_t *> raw(1'000'000, new atomic_uint64_t (1));
-  vector<shared_ptr<atomic_uint64_t>> shared(1'000'000, make_shared<atomic_uint64_t>(1));
+  vector<atomic_uint64_t *> raw(SIZE, new atomic_uint64_t (1));
+  vector<shared_ptr<atomic_uint64_t>> shared(SIZE, make_shared<atomic_uint64_t>(1));
 
   auto raw_t = a(raw);
   auto shared_t = a(shared);
