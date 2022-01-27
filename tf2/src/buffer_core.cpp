@@ -426,7 +426,7 @@ int BufferCore::walkToTopParent(
       }
     }
 
-    CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
+    CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string, stat);
     if (parent == 0)
     {
       // s -> .. -> frame -> (out of time (extrapolation))
@@ -463,8 +463,6 @@ int BufferCore::walkToTopParent(
     }
   }
 
-  assert(true);
-
   // These checks have done:
   // s --> (extrapolation)
   // s --> t
@@ -488,7 +486,7 @@ int BufferCore::walkToTopParent(
     ReadUnLocker locker(frame_each_mutex_->at(frame));
     locker.rLock();
 
-    CompactFrameID parent = f.gather(cache, time, error_string);
+    CompactFrameID parent = f.gather(cache, time, error_string, stat);
     if (parent == 0)
     {
       if (error_string)
@@ -754,9 +752,9 @@ int BufferCore::walkToTopParentLatest(
   {
   }
 
-  CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
+  CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string, ReadStat *stat = nullptr)
   {
-    if (!cache->getData(time, st, error_string))
+    if (!cache->getData(time, st, error_string, stat))
     {
       return 0;
     }
@@ -968,7 +966,7 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(const std::string& t
 
 struct CanTransformAccum
 {
-  CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
+  CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string, ReadStat *stat = nullptr)
   {
     return cache->getParent(time, error_string);
   }

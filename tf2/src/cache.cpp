@@ -37,6 +37,7 @@
 #include <tf2/LinearMath/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <assert.h>
+#include <tf2/read_stat.h>
 
 namespace tf2 {
 
@@ -160,6 +161,8 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two, r
   TransformStorage storage_target_time;
   storage_target_time.stamp_ = target_time;
 
+
+
   storage_it = std::lower_bound(
       storage_.begin(),
       storage_.end(),
@@ -195,10 +198,14 @@ void TimeCache::interpolate(const TransformStorage& one, const TransformStorage&
   output.child_frame_id_ = one.child_frame_id_;
 }
 
-bool TimeCache::getData(ros::Time time, TransformStorage & data_out, std::string* error_str) //returns false if data not available
+bool TimeCache::getData(ros::Time time, TransformStorage & data_out, std::string* error_str, ReadStat *stat) //returns false if data not available
 {
   TransformStorage* p_temp_1;
   TransformStorage* p_temp_2;
+
+  if(stat){
+    stat->dequeSize = storage_.size();
+  }
 
   int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
   if (num_nodes == 0)

@@ -10,6 +10,7 @@
 struct ReadStat {
   std::vector<uint64_t> timestamps{};
   size_t tryReadLockCount{};
+  size_t dequeSize{};
 
   uint64_t getTimeStampsAve() const{
     // don't sum!

@@ -33,6 +33,7 @@
 #define TF2_TIME_CACHE_H
 
 #include "transform_storage.h"
+#include "read_stat.h"
 
 #include <deque>
 
@@ -57,7 +58,7 @@ class TimeCacheInterface
 {
 public:
   /** \brief Access data from the cache */
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = 0)=0; //returns false if data unavailable (should be thrown as lookup exception
+  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr)=0; //returns false if data unavailable (should be thrown as lookup exception
 
   /** \brief Insert data into the cache */
   virtual bool insertData(const TransformStorage& new_data)=0;
@@ -101,7 +102,7 @@ class TimeCache : public TimeCacheInterface
 
   /// Virtual methods
 
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = 0);
+  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr);
   virtual bool insertData(const TransformStorage& new_data);
   virtual void clearList();
   virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
@@ -138,7 +139,7 @@ class StaticCache : public TimeCacheInterface
  public:
   /// Virtual methods
 
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = 0); //returns false if data unavailable (should be thrown as lookup exception
+  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr); //returns false if data unavailable (should be thrown as lookup exception
   virtual bool insertData(const TransformStorage& new_data);
   virtual void clearList();
   virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
