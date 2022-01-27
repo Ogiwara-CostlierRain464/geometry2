@@ -257,11 +257,13 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<chrono::duration<double>> vars_acc_thread(read_threads);
   CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
   CountAccum<double> read_wait_count(read_threads);
+  CountAccum<double> deque_count_thread(read_threads);
 
   for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([t,&wait, &bfc_w, &delay_acc_thread,
                           &vars_acc_thread, &latencies_acc_read_thread,
-                          &throughput_acc_read_thread, &read_wait_count](){
+                          &throughput_acc_read_thread, &read_wait_count,
+                          &deque_count_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
@@ -270,6 +272,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
       size_t read_wait_count_acc{};
+      size_t deque_count_acc{};
 
       for(;;){
         ReadStat stat{};
@@ -286,6 +289,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
         latency_iter_acc += after - before;
         read_wait_count_acc += stat.tryReadLockCount;
+        deque_count_acc += stat.dequeSize;
 
         if(FLAGS_frequency != 0){
           this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
@@ -305,6 +309,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       vars_acc_thread.record(t, var_iter_acc / (double) iter_count);
       latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
       read_wait_count.record(t, (double) read_wait_count_acc / (double) iter_count);
+      deque_count_thread.record(t, (double) deque_count_acc / (double) iter_count);
     });
   }
 
@@ -386,6 +391,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.writeThroughput = throughput_acc_write_thread.sum();
 
   cout << "read wait count: " << read_wait_count.average() << endl;
+  cout << "deque size in snapshot: " << deque_count_thread.average() << endl;
 
   return result;
 }
