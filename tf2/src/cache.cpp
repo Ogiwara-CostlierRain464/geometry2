@@ -161,8 +161,6 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two, r
   TransformStorage storage_target_time;
   storage_target_time.stamp_ = target_time;
 
-
-
   storage_it = std::lower_bound(
       storage_.begin(),
       storage_.end(),

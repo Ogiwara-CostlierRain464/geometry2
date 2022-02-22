@@ -23,7 +23,7 @@ if(var == 6){
 }
 
 if(out_offset == 7){
-  set ylabel "Throughput(ope/sec)"
+  set ylabel "Throughput(task/sec)"
 }
 if(out_offset == 11){
   set ylabel "read latency (ms)"
@@ -37,7 +37,7 @@ if(out_offset == 17){
   exit
 }
 if(out_offset == 10){
-  set ylabel "abort ratio(abort count/ope)"
+  set ylabel "abort ratio(abort count/task)"
   plot data using var:10 w lp title "latest"
   exit
 }
@@ -45,10 +45,10 @@ if(out_offset == 18){
   set ylabel "write latency (ms)"
 }
 if(out_offset == 21){
-  set ylabel "Read Throughput(ope/sec)"
+  set ylabel "Read Throughput(task/sec)"
 }
 if(out_offset == 24){
-  set ylabel "Write Throughput(ope/sec)"
+  set ylabel "Write Throughput(task/sec)"
 }
 
 if(only == 3){
