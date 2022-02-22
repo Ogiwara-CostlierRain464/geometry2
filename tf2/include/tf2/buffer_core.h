@@ -337,7 +337,7 @@ private:
   std::vector<TimeCacheInterfacePtr> frames_;
   /** \brief Used for high-granularity locking. */
 //  mutable tbb::concurrent_vector<RWLockPtr> frame_each_mutex_{};
-  mutable std::array<RWLock, 1'000'005> *frame_each_mutex_ = nullptr;
+  mutable std::array<RWLock, 3'500'000> *frame_each_mutex_ = nullptr;
 
   /** \brief A map from string frame ids to CompactFrameID */
   boost::unordered_map<std::string, CompactFrameID> frameIDs_;
