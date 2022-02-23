@@ -27,7 +27,6 @@ DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 67, "Number of reading vehicles size ∈ [0, vehicle]");
 DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 5, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "loop second");
 
@@ -70,9 +69,8 @@ void make_base_station(T &bfc){
 template <typename T>
 struct BufferCoreWrapper{
   void init(){}
-  void read(size_t link, size_t until, ReadStat &out_stat)const{}
-  // return abort count
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){}
+  void read(size_t start)const{}
+  void write(size_t id, double nano_time, size_t &iter_acc){}
 };
 
 template <>
@@ -82,109 +80,40 @@ struct BufferCoreWrapper<OldBufferCore>{
     bfc.clear();
     make_base_station(bfc);
   }
-  void read(size_t link, size_t until, ReadStat &out_stat) const{
-    // Read from low to high for performance.
-    assert(until > link);
-    auto trans = bfc.lookupTransform("link" + to_string(link),
-                                     "link" + to_string(until),
-                                     ros::Time(0));
-    out_stat.timestamps.push_back(trans.header.stamp.toNSec());
-
-    // you have to add new interface for old at first.
-  }
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
-    // Write from low to high for performance.
-    assert(until > link);
-    if(FLAGS_opposite_write_direction){
-      for(size_t j = link; j < until; j++){
-        bfc.setTransform(trans("link" + to_string(j),
-                               "link" + to_string(j+1),
-                               nano_time), "me");
-        iter_acc++;
-      }
-    }else{
-      for(size_t j = until; j > link; j--){
-        bfc.setTransform(trans("link" + to_string(j-1),
-                               "link" + to_string(j),
-                               nano_time), "me");
-        iter_acc++;
-      }
+  void read(size_t start) const{
+    // read from start to start+FLAGS_vehicle
+    vector<string> frames{};
+    for(size_t i = start; i < start + FLAGS_vehicle; i++){
+      frames.push_back("link" + to_string(i));
     }
+    bfc.justReadFrames(frames);
   }
-};
 
-enum AccessType{
-  Snapshot, Latest
+  void write(size_t id, double nano_time, size_t &iter_acc){
+    bfc.setTransform(trans("map", "link" + to_string(id), nano_time), "me");
+    iter_acc++;
+  }
 };
 
 template <>
 struct BufferCoreWrapper<BufferCore>{
-
-  explicit BufferCoreWrapper(AccessType accessType_)
-    : accessType(accessType_){}
-
   BufferCore bfc{};
-  AccessType accessType;
 
   void init(){
     bfc.clear();
-    make_snake(bfc);
+    make_base_station(bfc);
   }
-  void read(size_t link, size_t until, ReadStat &out_stat) const{
-    if(accessType == Snapshot){
-      assert(until > link);
-      auto trans = bfc.lookupTransform("link" + to_string(link),
-                                       "link" + to_string(until),
-                                       ros::Time(0), &out_stat);
-      out_stat.timestamps.push_back(trans.header.stamp.toNSec());
-    }else{
-      bfc.lookupLatestTransform("link" + to_string(link),
-                                "link" + to_string(until), &out_stat);
+  void read(size_t start) const{
+    vector<string> frames{};
+    for(size_t i = start; i < start + FLAGS_vehicle; i++){
+      frames.push_back("link" + to_string(i));
     }
+    bfc.justReadFrames(frames);
   }
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
-    assert(until > link);
-    if(accessType == Snapshot){
-      if(FLAGS_opposite_write_direction){
-        for(size_t j = link; j < until; j++){
-          bfc.setTransform(trans("link" + to_string(j),
-                                 "link" + to_string(j+1),
-                                 nano_time), "me");
-          iter_acc++;
-        }
-      }else{
-        for(size_t j = until; j > link; j--){
-          bfc.setTransform(trans("link" + to_string(j-1),
-                                 "link" + to_string(j),
-                                 nano_time), "me");
-          iter_acc++;
-        }
-      }
-    }else{
-      // which write direction is proper?
-      vector<TransformStamped> vec{};
-//      for(size_t j = until; j > link; j--){
-//        vec.push_back(trans("link" + to_string(j-1),
-//                            "link" + to_string(j),
-//                            nano_time));
-//      }
-      if(FLAGS_opposite_write_direction){
-        for(size_t j = link; j < until; j++){
-          vec.push_back(trans("link" + to_string(j),
-                              "link" + to_string(j+1),
-                              nano_time));
-        }
-      }else{
-        for(size_t j = until; j > link; j--){
-          vec.push_back(trans("link" + to_string(j-1),
-                              "link" + to_string(j),
-                              nano_time));
-        }
-      }
 
-      bfc.setTransforms(vec, "me", false, &out_stat);
-      iter_acc++;
-    }
+  void write(size_t id, double nano_time, size_t &iter_acc){
+    bfc.setTransform(trans("map", "link" + to_string(id), nano_time), "me");
+    iter_acc++;
   }
 };
 
@@ -261,43 +190,28 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   vector<thread> threads{};
 
   CountAccum<double> throughput_acc_read_thread(read_threads);
-  CountAccum<chrono::duration<double>> delay_acc_thread(read_threads);
-  CountAccum<chrono::duration<double>> vars_acc_thread(read_threads);
   CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
-  CountAccum<double> read_wait_count(read_threads);
-  CountAccum<double> deque_count_thread(read_threads);
 
   for(size_t t = 0; t < read_threads; t++){
-    threads.emplace_back([t,&wait, &bfc_w, &delay_acc_thread,
-                           &vars_acc_thread, &latencies_acc_read_thread,
-                           &throughput_acc_read_thread, &read_wait_count,
-                           &deque_count_thread](){
+    threads.emplace_back([t,&wait, &bfc_w,  &latencies_acc_read_thread,
+                           &throughput_acc_read_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
-      chrono::duration<double> delay_iter_acc{}, var_iter_acc{}, latency_iter_acc{};
+      chrono::duration<double> latency_iter_acc{};
       size_t iter_count = 0;
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
-      size_t read_wait_count_acc{};
-      size_t deque_count_acc{};
 
       for(;;){
-        ReadStat stat{};
-        size_t link = r.next() % FLAGS_joint;
-        auto until = link + FLAGS_read_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
+        //        size_t start = r.next() % FLAGS_vehicle;
+        size_t start = 0;
+
         auto before = chrono::steady_clock::now();
-        bfc_w.read(link, until, stat);
+        bfc_w.read(start);
         auto after = chrono::steady_clock::now();
 
-        auto access_ave = operator""ns(stat.getTimeStampsAve());
-//          assert(now.time_since_epoch() > access_ave);
-        delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
-        var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
         latency_iter_acc += after - before;
-        read_wait_count_acc += stat.tryReadLockCount;
-        deque_count_acc += stat.dequeSize;
 
         if(FLAGS_frequency != 0){
           this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
@@ -313,41 +227,35 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       }
 
       throughput_acc_read_thread.record(t, throughput(end_iter - start_iter, iter_count));
-      delay_acc_thread.record(t,delay_iter_acc / (double) iter_count);
-      vars_acc_thread.record(t, var_iter_acc / (double) iter_count);
       latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
-      read_wait_count.record(t, (double) read_wait_count_acc / (double) iter_count);
-      deque_count_thread.record(t, (double) deque_count_acc / (double) iter_count);
     });
   }
 
-  CountAccum<double> abort_acc_thread(write_threads);
   CountAccum<double> throughput_acc_write_thread(write_threads);
   CountAccum<chrono::duration<double>> latencies_acc_write_thread(write_threads);
 
   for(size_t t = 0; t < write_threads; t++){
-    threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread,
-                           &throughput_acc_write_thread, &latencies_acc_write_thread, read_threads](){
+    threads.emplace_back([t, &bfc_w, &wait,
+                          &throughput_acc_write_thread,
+                          &latencies_acc_write_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
-      uint64_t abort_iter_acc{};
+
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
       size_t iter_count = 0;
       chrono::duration<double> latency_iter_acc{};
 
       for(;;){
-        size_t link = r.next() % FLAGS_joint;
-        auto until = link + FLAGS_write_len;
-        if(until > FLAGS_joint) until = FLAGS_joint;
+        size_t id = r.next() % FLAGS_vehicle;
+
         vector<TransformStamped> vec{};
         auto before = chrono::steady_clock::now();
         double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         WriteStat stat{};
-        bfc_w.write(link, until, nano, stat, iter_count);
+        bfc_w.write(id, nano, iter_count);
         auto after = chrono::steady_clock::now();
-        abort_iter_acc += stat.getAbortCount();
         latency_iter_acc += after - before;
 
         if(FLAGS_frequency != 0){
@@ -362,7 +270,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       }
 
       throughput_acc_write_thread.record(t, throughput(end_iter - start_iter, iter_count));
-      abort_acc_thread.record(t, (double) abort_iter_acc / (double) iter_count);
       latencies_acc_write_thread.record(t, latency_iter_acc / (double) iter_count);
     });
   }
@@ -392,44 +299,39 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.throughput = throughput_acc_read_thread.sum() + throughput_acc_write_thread.sum();
   result.readLatency = latencies_acc_read_thread.average();
   result.writeLatency = latencies_acc_write_thread.average();
-  result.delay = delay_acc_thread.average();
-  result.var = vars_acc_thread.average();
-  result.aborts = abort_acc_thread.average();
+
   result.readThroughput = throughput_acc_read_thread.sum();
   result.writeThroughput = throughput_acc_write_thread.sum();
 
-  cout << "read wait count: " << read_wait_count.average() << endl;
-  cout << "deque size in snapshot: " << deque_count_thread.average() << endl;
 
   return result;
 }
 
 int main(int argc, char* argv[]){
-  gflags::SetUsageMessage("speed check");
+  gflags::SetUsageMessage("car check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 
   CONSOLE_BRIDGE_logInform("thread: %d", FLAGS_thread);
-  CONSOLE_BRIDGE_logInform("joint: %d", FLAGS_joint);
+  CONSOLE_BRIDGE_logInform("vehicle: %d", FLAGS_vehicle);
   CONSOLE_BRIDGE_logInform("read ratio: %lf", FLAGS_read_ratio);
   if(!(0. <= FLAGS_read_ratio and FLAGS_read_ratio <= 1.)){
     CONSOLE_BRIDGE_logError("wrong read ratio");
     exit(-1);
   }
   CONSOLE_BRIDGE_logInform("read len: %d", FLAGS_read_len);
-  if(!(0 <= FLAGS_read_len and FLAGS_read_len <= FLAGS_joint)){
+  if(!(0 <= FLAGS_read_len and FLAGS_read_len <= FLAGS_vehicle)){
     CONSOLE_BRIDGE_logError("wrong read len");
     exit(-1);
   }
   CONSOLE_BRIDGE_logInform("write len: %d", FLAGS_write_len);
-  if(!(0 <= FLAGS_write_len and FLAGS_write_len <= FLAGS_joint)){
+  if(!(0 <= FLAGS_write_len and FLAGS_write_len <= FLAGS_vehicle)){
     CONSOLE_BRIDGE_logError("wrong write len");
     exit(-1);
   }
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
-  CONSOLE_BRIDGE_logInform("Only: %d", FLAGS_only);
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
-  CONSOLE_BRIDGE_logInform("Opposite write direction: %s", FLAGS_opposite_write_direction ? "true" : "false");
+  CONSOLE_BRIDGE_logInform("loop sec: %lf", FLAGS_loop_sec);
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
@@ -437,76 +339,42 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   RunResult old_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 4){
-    BufferCoreWrapper<OldBufferCore> bfc_w{};
-    old_result = run(bfc_w);
-  }
+  BufferCoreWrapper<OldBufferCore> bfc_w{};
+  old_result = run(bfc_w);
 
-  RunResult snapshot_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 1 or FLAGS_only == 3){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::Snapshot);
-    snapshot_result = run(bfc_w);
-  }
-
-  RunResult latest_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::Latest);
-    latest_result = run(bfc_w);
-  }
+  RunResult xact_result{};
+  BufferCoreWrapper<BufferCore> bfc_w_xact{};
+  xact_result = run(bfc_w_xact);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
   cout << "old: " << endl;
   cout << "\t" << "time: " << chrono::duration<double, std::milli>(old_result.time).count() << "ms" << endl;
   cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
   cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "delay: " << chrono::duration<double, std::milli>(old_result.delay).count() << "ms" << endl;
+  cout << "\t" << "throughput: " << old_result.throughput << endl;
 
-  cout << "snapshot:" << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(snapshot_result.time).count() << "ms" << endl;
-  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << "ms" << endl;
-  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "delay: " << chrono::duration<double, std::milli>(snapshot_result.delay).count() << "ms" << endl;
-
-  cout << "latest:" << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(latest_result.time).count() << "ms" << endl;
-  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(latest_result.readLatency).count() << "ms" << endl;
-  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "delay: " << chrono::duration<double, std::milli>(latest_result.delay).count() << "ms" << endl;
-  cout << "\t" << "var: " << chrono::duration<double, std::milli>(latest_result.var).count() << "ms" << endl;
-  cout << "\t" << "aborts: " << latest_result.aborts << " times" << endl;
+  cout << "xact: " << endl;
+  cout << "\t" << "time: " << chrono::duration<double, std::milli>(xact_result.time).count() << "ms" << endl;
+  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(xact_result.readLatency).count() << "ms" << endl;
+  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << "ms" << endl;
+  cout << "\t" << "throughput: " << xact_result.throughput << endl;
 
   if(FLAGS_frequency != 0){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
   }
 
   output << FLAGS_thread << " "; // 1
-  output << FLAGS_joint << " "; // 2
+  output << FLAGS_vehicle << " "; // 2
   output << FLAGS_read_ratio << " "; // 3
   output << FLAGS_read_len << " "; // 4
   output << FLAGS_write_len << " "; // 5
   output << FLAGS_frequency << " "; // 6
   output << old_result.throughput << " "; // 7
-  output << snapshot_result.throughput << " "; // 8
-  output << latest_result.throughput << " "; // 9
-  output << latest_result.aborts << " "; // 10
-  output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 11
-  output << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(latest_result.readLatency).count() << " "; // 13
-  output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 14
-  output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 15
-  output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 16
-  output << chrono::duration<double, std::milli>(latest_result.var).count() << " "; // 17
-  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 18
-  output << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << " "; // 19
-  output << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << " "; // 20
-  output << old_result.readThroughput << " "; // 21
-  output << snapshot_result.readThroughput << " "; // 22
-  output << latest_result.readThroughput << " "; // 23
-  output << old_result.writeThroughput << " "; // 24
-  output << snapshot_result.writeThroughput << " "; // 25
-  output << latest_result.writeThroughput << " "; // 26
-  output << (FLAGS_opposite_write_direction ? "opposite" : "direct") << " ";
-
+  output << xact_result.throughput << " "; // 8
+  output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 9
+  output << chrono::duration<double, std::milli>(xact_result.readLatency).count() << " "; // 10
+  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 11
+  output << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << " "; // 12
   output << endl;
   output.close();
 
