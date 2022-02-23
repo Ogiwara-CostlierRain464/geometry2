@@ -1675,6 +1675,11 @@ void BufferCore::_getFrameStrings(std::vector<std::string> & vec) const
 void BufferCore::testTransformableRequests()
 {
   // assert frame_mutex_ is unlocked by this thread.
+  if(transformable_requests_.empty()){
+    // you have nothing to do.
+    return;
+  }
+
   transformable_requests_mutex_.w_lock(); // actually, we need write lock!
   auto it = transformable_requests_.begin();
 
