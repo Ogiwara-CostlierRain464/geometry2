@@ -141,9 +141,11 @@ public:
   ~DummySetUnLocker() override{};
 };
 
+constexpr size_t XACT_TF_MAX_NODE_SIZE = 1000;
+
 class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
 public:
-  explicit ScopedWriteSetUnLocker(std::array<RWLock, 3'500'000> &mutexes_)
+  explicit ScopedWriteSetUnLocker(std::array<RWLock, XACT_TF_MAX_NODE_SIZE> &mutexes_)
     : mutexes(mutexes_){}
 
   void wLockIfNot(uint32_t id) override{
@@ -206,7 +208,7 @@ public:
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};
-  std::array<RWLock, 3'500'000> &mutexes;
+  std::array<RWLock, XACT_TF_MAX_NODE_SIZE> &mutexes;
 };
 
 class ReadUnLocker{

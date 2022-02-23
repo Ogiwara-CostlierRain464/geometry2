@@ -179,7 +179,7 @@ BufferCore::BufferCore(ros::Duration cache_time)
   frameIDs_reverse[0] = "NO_PARENT";
 //  frame_each_mutex_.emplace_back(std::make_shared<RWLock>());
 
-  frame_each_mutex_ = new std::array<RWLock, 3'500'000>();
+  frame_each_mutex_ = new std::array<RWLock, XACT_TF_MAX_NODE_SIZE>();
   CONSOLE_BRIDGE_logWarn("Now using ALT TF!!!");
 }
 
@@ -1144,18 +1144,17 @@ CompactFrameID BufferCore::lookupFrameNumber(const std::string& frameid_str) con
   return retval;
 }
 
-// thread safe??
+
 CompactFrameID BufferCore::lookupOrInsertFrameNumber(
   const std::string& frameid_str) noexcept{
   CompactFrameID retval = 0;
   auto map_it = frameIDs_.find(frameid_str);
   if (map_it == frameIDs_.end()){
     // if we could get id atomically, then no problem, right?
-
-    auto next_id = next_frame_id_.fetch_add(1);
+    retval = next_frame_id_.fetch_add(1);
     //frames_.emplace_back();//Just a place holder for iteration
     frameIDs_[frameid_str] = retval;
-    frameIDs_reverse[next_id] = frameid_str;
+    frameIDs_reverse[retval] = frameid_str;
   }
   else
     retval = frameIDs_[frameid_str];

@@ -579,6 +579,12 @@ TEST_F(MultithreadTest, vec_index){
   cout << "2: " << vec[2] << endl;
 }
 
+TEST_F(MultithreadTest, fetch_add){
+  atomic_uint64_t a{0};
+  auto ret =  a.fetch_add(1);
+  EXPECT_EQ(ret, 0);
+}
+
 
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
