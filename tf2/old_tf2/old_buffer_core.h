@@ -98,6 +98,8 @@ public:
     lookupTransform(const std::string& target_frame, const std::string& source_frame,
 		    const ros::Time& time) const;
 
+  void justReadFrames(const std::vector<std::string> &frames) const;
+
   /** \brief Get the transform between two frames by frame ID assuming fixed frame.
    * \param target_frame The frame to which data should be transformed
    * \param target_time The time to which the data should be transformed. (0 will get the latest)
@@ -114,7 +116,6 @@ public:
     lookupTransform(const std::string& target_frame, const ros::Time& target_time,
 		    const std::string& source_frame, const ros::Time& source_time,
 		    const std::string& fixed_frame) const;
-
   /* \brief Lookup the twist of the tracking_frame with respect to the observation frame in the reference_frame using the reference point
    * \param tracking_frame The frame to track
    * \param observation_frame The frame from which to measure the twist

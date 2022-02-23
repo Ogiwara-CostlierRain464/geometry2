@@ -55,6 +55,23 @@ target_link_libraries(speed_check
 add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
 
 
+add_executable(car_check
+  ${SRC}
+  ${INCLUDE}
+  old_tf2/old_buffer_core.h
+  old_tf2/old_buffer_core.cpp
+  measure/car_check.cpp
+  measure/xoroshiro128_plus.h
+  )
+target_link_libraries(car_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  gflags
+  tbb
+  )
+add_dependencies(car_check ${catkin_EXPORTED_TARGETS})
+
 add_executable(rw_lock_check
   ${SRC}
   ${INCLUDE}

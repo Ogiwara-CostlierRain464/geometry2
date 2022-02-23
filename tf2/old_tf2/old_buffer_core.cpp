@@ -557,6 +557,20 @@ namespace old_tf2
     tf2::Vector3 result_vec;
   };
 
+  void OldBufferCore::justReadFrames(const std::vector<std::string> &frames) const{
+    boost::mutex::scoped_lock lock(frame_mutex_);
+    tf2::TransformStorage __attribute__((used)) st{};
+
+    for(auto &frame_str: frames){
+      auto frame_id = lookupFrameNumber(frame_str);
+      assert(frame_id != 0);
+      auto frame = getFrame(frame_id);
+      frame->getData(ros::Time(0), st, nullptr);
+    }
+
+    // just access and do nothing
+  }
+
   geometry_msgs::TransformStamped OldBufferCore::lookupTransform(const std::string& target_frame,
                                                               const std::string& source_frame,
                                                               const ros::Time& time) const
