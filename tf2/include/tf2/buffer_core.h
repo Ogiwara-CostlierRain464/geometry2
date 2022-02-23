@@ -139,6 +139,8 @@ public:
     lookupTransform(const std::string& target_frame, const std::string& source_frame,
 		    const ros::Time& time, ReadStat *stat = nullptr) const noexcept(false);
 
+  void justReadFrames(const std::vector<std::string> &frames) const;
+
   geometry_msgs::TransformStamped
   lookupLatestTransform(const std::string& target_frame, const std::string& source_frame, ReadStat *stat = nullptr) const noexcept(false);
 
