@@ -570,6 +570,16 @@ TEST_F(MultithreadTest, affinity){
   }
 }
 
+TEST_F(MultithreadTest, vec_index){
+  vector<std::size_t> vec{};
+  vec.reserve(5);
+  vec[0] = 9;
+  vec[2] = 1;
+  cout << "0: " << vec[0] << endl;
+  cout << "2: " << vec[2] << endl;
+}
+
+
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_WARN);

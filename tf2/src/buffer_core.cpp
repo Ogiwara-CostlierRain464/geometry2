@@ -176,9 +176,7 @@ BufferCore::BufferCore(ros::Duration cache_time)
 , using_dedicated_thread_(false)
 {
   frameIDs_["NO_PARENT"] = 0;
-  frames_.reserve(10005);
-  frames_.push_back(TimeCacheInterfacePtr());
-  frameIDs_reverse.emplace_back("NO_PARENT");
+  frameIDs_reverse[0] = "NO_PARENT";
 //  frame_each_mutex_.emplace_back(std::make_shared<RWLock>());
 
   frame_each_mutex_ = new std::array<RWLock, 3'500'000>();
@@ -1152,13 +1150,12 @@ CompactFrameID BufferCore::lookupOrInsertFrameNumber(
   CompactFrameID retval = 0;
   auto map_it = frameIDs_.find(frameid_str);
   if (map_it == frameIDs_.end()){
-    retval = CompactFrameID(frames_.size());
+    // if we could get id atomically, then no problem, right?
 
-    // TODO: is this really safe? what happen when push_back causes different timing??
-    frames_.emplace_back();//Just a place holder for iteration
-//    frame_each_mutex_.emplace_back(std::make_unique<RWLock>());
+    auto next_id = next_frame_id_.fetch_add(1);
+    //frames_.emplace_back();//Just a place holder for iteration
     frameIDs_[frameid_str] = retval;
-    frameIDs_reverse.push_back(frameid_str);
+    frameIDs_reverse[next_id] = frameid_str;
   }
   else
     retval = frameIDs_[frameid_str];
@@ -1452,9 +1449,9 @@ std::string BufferCore::allFramesAsYAML(double current_time) const noexcept
     frame_id_num = temp.frame_id_;
 
     std::string authority = "no recorded authority";
-    auto it = frame_authority_.find(cfid);
-    if (it != frame_authority_.end()) {
-      authority = it->second;
+    auto it = frame_authority_[cfid];
+    if (!it.empty()) {
+      authority = it;
     }
 
     double rate = cache->getListLength() / std::max((cache->getLatestTimestamp().toSec() -
@@ -1794,9 +1791,9 @@ std::string BufferCore::_allFramesAsDot(double current_time) const
       frame_id_num = temp.frame_id_;
     }
     std::string authority = "no recorded authority";
-    auto it = frame_authority_.find(counter);
-    if (it != frame_authority_.end())
-      authority = it->second;
+    auto it = frame_authority_[counter];
+    if (!it.empty())
+      authority = it;
 
     double rate = counter_frame->getListLength() / std::max((counter_frame->getLatestTimestamp().toSec() -
                                                              counter_frame->getOldestTimestamp().toSec()), 0.0001);

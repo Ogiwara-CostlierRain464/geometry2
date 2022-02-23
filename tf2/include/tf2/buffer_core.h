@@ -97,6 +97,8 @@ public:
   static const int DEFAULT_CACHE_TIME = INT_MAX;  //!< The default amount of time to cache data in seconds
   static const uint64_t MAX_GRAPH_DEPTH = 1000'000'000'000UL;  //!< Maximum graph search depth (deeper graphs will be assumed to have loops)
 
+  static const uint64_t CAPACITY = 3'500'000;
+
   /** Constructor
    * \param interpolating Whether to interpolate, if this is false the closest value will be returned
    * \param cache_time How long to keep a history of transforms in nanoseconds
@@ -334,17 +336,19 @@ private:
   
   /** \brief The pointers to potential frames that the tree can be made of.
    * The frames will be dynamically allocated at run time when set the first time. */
-  std::vector<TimeCacheInterfacePtr> frames_;
+  std::array<TimeCacheInterfacePtr, CAPACITY> frames_{};
   /** \brief Used for high-granularity locking. */
 //  mutable tbb::concurrent_vector<RWLockPtr> frame_each_mutex_{};
-  mutable std::array<RWLock, 3'500'000> *frame_each_mutex_ = nullptr;
+  mutable std::array<RWLock, CAPACITY> *frame_each_mutex_ = nullptr;
+
+  std::atomic_uint64_t next_frame_id_{0};
 
   /** \brief A map from string frame ids to CompactFrameID */
-  boost::unordered_map<std::string, CompactFrameID> frameIDs_;
+  boost::unordered_map<std::string, CompactFrameID> frameIDs_{};
   /** \brief A map from CompactFrameID frame_id_numbers to string for debugging and output */
-  std::vector<std::string> frameIDs_reverse;
+  std::array<std::string, CAPACITY> frameIDs_reverse{};
   /** \brief A map to lookup the most recent authority for a given frame */
-  boost::unordered_map<CompactFrameID, std::string> frame_authority_;
+  std::array<std::string, CAPACITY> frame_authority_{};
 
   /// How long to cache transform history
   ros::Duration cache_time_;
