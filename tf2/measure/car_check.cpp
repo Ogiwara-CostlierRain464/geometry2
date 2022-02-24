@@ -29,6 +29,8 @@ DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]")
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "loop second");
+DEFINE_double(insert_span, 0.5, "new car arrive span in sec");
+
 
 using std::chrono::operator""s;
 using std::chrono::duration_cast;
@@ -207,10 +209,9 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
       for(;;){
         //        size_t start = r.next() % FLAGS_vehicle;
-        size_t start = 0;
 
         auto before = chrono::steady_clock::now();
-        bfc_w.read(start);
+        bfc_w.read(read_start);
         auto after = chrono::steady_clock::now();
 
         latency_iter_acc += after - before;
@@ -222,6 +223,10 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         iter_count++;
 
         end_iter = chrono::steady_clock::now();
+
+        if(end_iter - start_iter > operator""s(read_start+1)){
+          read_start++;
+        }
 
         if(end_iter - start_iter > operator""s(FLAGS_loop_sec)){
           break;
@@ -249,8 +254,10 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       size_t iter_count = 0;
       chrono::duration<double> latency_iter_acc{};
 
+      size_t write_offset = 0;
+
       for(;;){
-        size_t id = r.next() % FLAGS_vehicle;
+        size_t id = r.next() % FLAGS_vehicle + write_offset;
 
         vector<TransformStamped> vec{};
         auto before = chrono::steady_clock::now();
@@ -264,6 +271,11 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         }
 
         end_iter = chrono::steady_clock::now();
+
+        if(end_iter - start_iter > operator""s((double)(write_offset+1) * FLAGS_insert_span)){
+          write_offset++;
+          bfc_w.write(write_offset+FLAGS_vehicle, nano, iter_count);
+        }
 
         if(end_iter - start_iter > operator""s(FLAGS_loop_sec)){
           break;
