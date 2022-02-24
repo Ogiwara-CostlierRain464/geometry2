@@ -203,6 +203,8 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
 
+      size_t read_start = 0;
+
       for(;;){
         //        size_t start = r.next() % FLAGS_vehicle;
         size_t start = 0;
@@ -253,7 +255,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         vector<TransformStamped> vec{};
         auto before = chrono::steady_clock::now();
         double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
-        WriteStat stat{};
         bfc_w.write(id, nano, iter_count);
         auto after = chrono::steady_clock::now();
         latency_iter_acc += after - before;
@@ -352,12 +353,17 @@ int main(int argc, char* argv[]){
   cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
   cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.writeLatency).count() << "ms" << endl;
   cout << "\t" << "throughput: " << old_result.throughput << endl;
+  cout << "\t" << "read throughput: " << old_result.readThroughput << endl;
+  cout << "\t" << "write throughput: " << old_result.writeThroughput << endl;
+
 
   cout << "xact: " << endl;
   cout << "\t" << "time: " << chrono::duration<double, std::milli>(xact_result.time).count() << "ms" << endl;
   cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(xact_result.readLatency).count() << "ms" << endl;
   cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << "ms" << endl;
   cout << "\t" << "throughput: " << xact_result.throughput << endl;
+  cout << "\t" << "read throughput: " << xact_result.readThroughput << endl;
+  cout << "\t" << "write throughput: " << xact_result.writeThroughput << endl;
 
   if(FLAGS_frequency != 0){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
