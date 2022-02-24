@@ -357,8 +357,8 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   RunResult old_result{};
-//  BufferCoreWrapper<OldBufferCore> bfc_w{};
-//  old_result = run(bfc_w);
+  BufferCoreWrapper<OldBufferCore> bfc_w{};
+  old_result = run(bfc_w);
 
   RunResult xact_result{};
   BufferCoreWrapper<BufferCore> bfc_w_xact{};
