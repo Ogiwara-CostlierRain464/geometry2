@@ -275,7 +275,6 @@ bool BufferCore::setTransforms(
   }
 
   // before testTransformableRequests, you have to unlock.
-  // you are doing wrong! you forgot to do abort!!!!!
   {
     ScopedWriteSetUnLocker un_locker(*frame_each_mutex_);
     std::vector<std::tuple<TimeCacheInterfacePtr, geometry_msgs::TransformStamped, CompactFrameID>> write_set{};
