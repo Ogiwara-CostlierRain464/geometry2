@@ -141,7 +141,7 @@ public:
   ~DummySetUnLocker() override{};
 };
 
-constexpr size_t XACT_TF_MAX_NODE_SIZE = 1000;
+constexpr size_t XACT_TF_MAX_NODE_SIZE = 300;
 
 class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
 public:
