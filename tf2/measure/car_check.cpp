@@ -85,7 +85,7 @@ struct BufferCoreWrapper<OldBufferCore>{
   void read(size_t start) const{
     // read from start to start+FLAGS_vehicle
     vector<string> frames{};
-    for(size_t i = start; i < start + FLAGS_vehicle; i++){
+    for(size_t i = start; i < start + FLAGS_read_len; i++){
       frames.push_back("link" + to_string(i));
     }
     bfc.justReadFrames(frames);
@@ -107,7 +107,7 @@ struct BufferCoreWrapper<BufferCore>{
   }
   void read(size_t start) const{
     vector<string> frames{};
-    for(size_t i = start; i < start + FLAGS_vehicle; i++){
+    for(size_t i = start; i < start + FLAGS_read_len; i++){
       frames.push_back("link" + to_string(i));
     }
     bfc.justReadFrames(frames);
