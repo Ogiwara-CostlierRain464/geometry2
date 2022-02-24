@@ -28,8 +28,8 @@ DEFINE_uint64(read_len, 67, "Number of reading vehicles size ∈ [0, vehicle]");
 DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 60, "loop second");
-DEFINE_double(insert_span, 0.5, "new car arrive span in sec");
+DEFINE_uint64(loop_sec, 5, "loop second");
+DEFINE_double(insert_span, 6, "new car arrive span in sec");
 
 
 using std::chrono::operator""s;
@@ -359,8 +359,8 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   RunResult old_result{};
-  BufferCoreWrapper<OldBufferCore> bfc_w{};
-  old_result = run(bfc_w);
+//  BufferCoreWrapper<OldBufferCore> bfc_w{};
+//  old_result = run(bfc_w);
 
   RunResult xact_result{};
   BufferCoreWrapper<BufferCore> bfc_w_xact{};
