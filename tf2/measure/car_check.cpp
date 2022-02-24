@@ -28,7 +28,7 @@ DEFINE_uint64(read_len, 67, "Number of reading vehicles size ∈ [0, vehicle]");
 DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 10, "loop second");
+DEFINE_uint64(loop_sec, 60, "loop second");
 DEFINE_double(insert_span, 0.5, "new car arrive span in sec");
 
 

@@ -822,10 +822,13 @@ void BufferCore::justReadFrames(const std::vector<std::string> &frames) const{
   ScopedWriteSetUnLocker un_locker(*frame_each_mutex_);
   for(auto &frame_str: frames){
     auto frame_id = lookupFrameNumber(frame_str);
-    assert(frame_id != 0);
-    auto frame = getFrame(frame_id);
-    un_locker.rLockIfNot(frame_id);
-    frame->getData(ros::Time(0), st, nullptr);
+
+    // just allow to fail insert
+    if(frame_id != 0){
+      auto frame = getFrame(frame_id);
+      un_locker.rLockIfNot(frame_id);
+      frame->getData(ros::Time(0), st, nullptr);
+    }
   }
 }
 
