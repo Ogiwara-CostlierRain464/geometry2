@@ -563,9 +563,11 @@ namespace old_tf2
 
     for(auto &frame_str: frames){
       auto frame_id = lookupFrameNumber(frame_str);
-      assert(frame_id != 0);
-      auto frame = getFrame(frame_id);
-      frame->getData(ros::Time(0), st, nullptr);
+
+      if(frame_id != 0){
+        auto frame = getFrame(frame_id);
+        frame->getData(ros::Time(0), st, nullptr);
+      }
     }
 
     // just access and do nothing
