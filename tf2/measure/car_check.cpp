@@ -114,7 +114,14 @@ struct BufferCoreWrapper<BufferCore>{
   }
 
   void write(size_t id, double nano_time, size_t &iter_acc){
-    bfc.setTransform(trans("map", "link" + to_string(id), nano_time), "me");
+    vector<TransformStamped> vec{};
+    vec.push_back(trans("map", "link" + to_string(id), nano_time));
+
+    WriteStat stat{};
+    bfc.setTransforms(vec, "me", false, &stat);
+
+    assert(stat.getAbortCount() == 0);
+
     iter_acc++;
   }
 };
