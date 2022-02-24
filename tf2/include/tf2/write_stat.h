@@ -13,8 +13,8 @@ public:
     return localAbortCounts;
   }
 
-private:
   alignas(64) uint64_t localAbortCounts{0};
+  alignas(64) uint64_t tryWriteCount{0};
 };
 
 #endif //GEOMETRY2_WRITE_STAT_H

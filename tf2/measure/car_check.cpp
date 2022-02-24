@@ -120,8 +120,6 @@ struct BufferCoreWrapper<BufferCore>{
     WriteStat stat{};
     bfc.setTransforms(vec, "me", false, &stat);
 
-    assert(stat.getAbortCount() == 0);
-
     iter_acc++;
   }
 };

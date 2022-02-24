@@ -288,7 +288,11 @@ try_lock:
       }
 
       if(un_locker.wLockedSize() == 0){
-        un_locker.wLockIfNot(id);
+        while (!un_locker.tryWLockIfNot(id)){
+          if(result){
+            result->tryWriteCount++;
+          }
+        }
       }else{
         // wLockedSize() >= 1
         bool locked_suc = un_locker.tryWLockIfNot(id);
