@@ -331,7 +331,7 @@ int main(int argc, char* argv[]){
   }
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
-  CONSOLE_BRIDGE_logInform("loop sec: %lf", FLAGS_loop_sec);
+  CONSOLE_BRIDGE_logInform("loop sec: %d", FLAGS_loop_sec);
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
