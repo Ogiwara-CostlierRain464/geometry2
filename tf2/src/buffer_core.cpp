@@ -194,19 +194,9 @@ BufferCore::~BufferCore()
 // not thread safe
 void BufferCore::clear()
 {
-  if ( frames_.size() > 1 )
-  {
-//    for(size_t i = 1; i < frame_each_mutex_->size(); i++){
-//      if(frames_[i] != nullptr){
-//        frame_each_mutex_->at(i).w_lock();
-//        frames_[i]->clearList();
-//        frame_each_mutex_->at(i).w_unlock();
-//      }
-//    }
-    for(auto & frame : frames_){
-      if(frame != nullptr){
-        frame->clearList();
-      }
+  for(auto & frame : frames_){
+    if(frame != nullptr){
+      frame->clearList();
     }
   }
 }
@@ -1137,7 +1127,7 @@ bool BufferCore::canTransform(const std::string& target_frame, const ros::Time& 
 // should be protected
 tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const noexcept
 {
-  if (frame_id >= frames_.size())
+  if (frame_id >= next_frame_id_)
     return TimeCacheInterfacePtr();
   else
   {
