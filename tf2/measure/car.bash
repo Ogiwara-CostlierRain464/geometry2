@@ -15,3 +15,4 @@ for T in $(seq 14 14 224); do
 ../cmake-build-release/devel/lib/tf2/car_check --thread=$T --vehicle=$V --read_ratio=$READ_RATIO --read_len=$READ_LEN --write_len=$WRITE_LEN --output=$OUTPUT --frequency=0 --loop_sec=$LOOP_SEC
 done
 
+gnuplot -e "data='$OUTPUT'; filename='$OUTPUT_PLOT';" car.plt
