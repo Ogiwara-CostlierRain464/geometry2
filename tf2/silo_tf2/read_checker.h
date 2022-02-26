@@ -36,6 +36,10 @@ struct ReadChecker{
     }
     return true;
   }
+
+  void clear(){
+    vHistory.clear();
+  }
 };
 
 #endif //GEOMETRY2_READ_CHECKER_H

@@ -299,6 +299,8 @@ namespace silo_tf2
     ReadChecker &read_checker,
     ReadStat *stat) const noexcept
   {
+retry:
+
     // Short circuit if zero length transform to allow lookups on non existant links
     if (source_id == target_id)
     {
@@ -344,6 +346,13 @@ namespace silo_tf2
       // Early out... target frame is a direct parent of the source frame
       if (frame == target_id)
       {
+        if(!read_checker.check()){
+          stat->abortCount++;
+          read_checker.clear();
+          stat->timestamps.clear();
+          goto retry;
+        }
+
         f.finalize(TargetParentOfSource, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -399,6 +408,13 @@ namespace silo_tf2
       // Early out... source frame is a direct parent of the target frame
       if (frame == source_id)
       {
+        if(!read_checker.check()){
+          stat->abortCount++;
+          read_checker.clear();
+          stat->timestamps.clear();
+          goto retry;
+        }
+
         f.finalize(SourceParentOfTarget, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -437,6 +453,13 @@ namespace silo_tf2
 
       createConnectivityErrorString(source_id, target_id, error_string);
       return tf2_msgs::TF2Error::CONNECTIVITY_ERROR;
+    }
+
+    if(!read_checker.check()){
+      stat->abortCount++;
+      read_checker.clear();
+      stat->timestamps.clear();
+      goto retry;
     }
 
     f.finalize(FullPath, ros::Time(0));

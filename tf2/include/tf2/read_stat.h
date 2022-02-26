@@ -11,6 +11,7 @@ struct ReadStat {
   std::vector<uint64_t> timestamps{};
   size_t tryReadLockCount{};
   size_t dequeSize{};
+  size_t abortCount{};
 
   uint64_t getTimeStampsAve() const{
     // don't sum!
