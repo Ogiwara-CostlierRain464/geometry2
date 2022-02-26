@@ -104,12 +104,6 @@ namespace silo_tf2
 
   private:
 
-    /** \brief A way to see what frames have been cached
-     * Useful for debugging. Use this call internally.
-     */
-    std::string allFramesAsStringNoLock() const noexcept;
-
-
     /******************** Internal Storage ****************/
 
     /** \brief The pointers to potential frames that the tree can be made of.

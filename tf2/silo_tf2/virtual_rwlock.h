@@ -57,6 +57,7 @@ struct VRWLock{
     // if success, increment version
     auto copy_v = v.load(std::memory_order_acquire);
     copy_v.version++;
+    copy_v.locked = false;
     v.store(copy_v);
   }
 };

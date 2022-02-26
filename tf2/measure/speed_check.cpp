@@ -18,6 +18,7 @@
 #include "xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
+using silo_tf2::SiloBufferCore;
 using tf2::BufferCore;
 using namespace geometry_msgs;
 using namespace std;
@@ -28,7 +29,7 @@ DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 4, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 4, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 3, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot, 6: Only Silo");
+DEFINE_uint32(only, 6, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot, 6: Only Silo");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "loop second");
 DEFINE_bool(opposite_write_direction, true, "when true, opposite write direction");
@@ -180,6 +181,35 @@ struct BufferCoreWrapper<BufferCore>{
     }
   }
 };
+
+template <>
+struct BufferCoreWrapper<SiloBufferCore>{
+
+  explicit BufferCoreWrapper(){}
+
+  SiloBufferCore bfc{};
+
+  void init(){
+    make_snake(bfc);
+  }
+  void read(size_t link, size_t until, ReadStat &out_stat) const{
+    assert(until > link);
+    bfc.lookupLatestTransform("link" + to_string(link),
+                              "link" + to_string(until), &out_stat);
+  }
+  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
+    assert(until > link);
+    vector<TransformStamped> vec{};
+    for(size_t j = link; j < until; j++){
+      vec.push_back(trans("link" + to_string(j),
+                          "link" + to_string(j+1),
+                          nano_time));
+    }
+    bfc.setTransforms(vec, "me", false, &out_stat);
+    iter_acc++;
+  }
+};
+
 
 template <typename T>
 T make_ave(const std::vector<T> &vec){
@@ -430,7 +460,7 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   RunResult old_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 4){
+  if(FLAGS_only == 0 or FLAGS_only == 4 or FLAGS_only == 5){
     BufferCoreWrapper<OldBufferCore> bfc_w{};
     old_result = run(bfc_w);
   }
@@ -442,9 +472,15 @@ int main(int argc, char* argv[]){
   }
 
   RunResult latest_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3){
+  if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3 or FLAGS_only == 5){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::Latest);
     latest_result = run(bfc_w);
+  }
+
+  RunResult silo_result{};
+  if(FLAGS_only == 0 or FLAGS_only == 6){
+    BufferCoreWrapper<SiloBufferCore> bfc_w{};
+    silo_result = run(bfc_w);
   }
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
@@ -467,6 +503,10 @@ int main(int argc, char* argv[]){
   cout << "\t" << "delay: " << chrono::duration<double, std::milli>(latest_result.delay).count() << "ms" << endl;
   cout << "\t" << "var: " << chrono::duration<double, std::milli>(latest_result.var).count() << "ms" << endl;
   cout << "\t" << "aborts: " << latest_result.aborts << " times" << endl;
+
+  cout << "Silo:" << endl;
+  cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_result.time).count() << "ms" << endl;
+  cout << "\t" << "throughput: " << silo_result.throughput << endl;
 
   if(FLAGS_frequency != 0){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;

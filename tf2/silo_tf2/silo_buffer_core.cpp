@@ -262,7 +262,6 @@ namespace silo_tf2
         auto write = tf2::TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id);
         *frame = write;
         frame_authority_[id] = authority;
-
         frame_each_mutex_->at(id).wUnLock();
       }
     }
@@ -360,8 +359,7 @@ namespace silo_tf2
         if (error_string)
         {
           std::stringstream ss;
-          ss << "The tf tree is invalid because it contains a loop." << std::endl
-             << allFramesAsStringNoLock() << std::endl;
+          ss << "The tf tree is invalid because it contains a loop." << std::endl;
           *error_string = ss.str();
         }
         return tf2_msgs::TF2Error::LOOKUP_ERROR;
@@ -415,8 +413,7 @@ namespace silo_tf2
         if (error_string)
         {
           std::stringstream ss;
-          ss << "The tf tree is invalid because it contains a loop." << std::endl
-             << allFramesAsStringNoLock() << std::endl;
+          ss << "The tf tree is invalid because it contains a loop." << std::endl;
           *error_string = ss.str();
         }
         return tf2_msgs::TF2Error::LOOKUP_ERROR;
