@@ -264,7 +264,8 @@ struct RunResult{
   chrono::duration<double> delay; // how far does took data from now
   // optional
   chrono::duration<double> var; // should be zero except latest
-  double aborts; // should be zero expect latest
+  double aborts; // aborts in write, should be zero expect latest
+  double readAborts;
 
   double readThroughput;
   double writeThroughput;
@@ -289,12 +290,15 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
   CountAccum<double> read_wait_count(read_threads);
   CountAccum<double> deque_count_thread(read_threads);
+  CountAccum<double> abort_acc_read_thread(read_threads);
+
 
   for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([t,&wait, &bfc_w, &delay_acc_thread,
                           &vars_acc_thread, &latencies_acc_read_thread,
                           &throughput_acc_read_thread, &read_wait_count,
-                          &deque_count_thread](){
+                          &deque_count_thread,
+                          &abort_acc_read_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
@@ -304,6 +308,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       auto end_iter = start_iter;
       size_t read_wait_count_acc{};
       size_t deque_count_acc{};
+      uint64_t abort_iter_acc{};
 
       for(;;){
         ReadStat stat{};
@@ -321,6 +326,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         latency_iter_acc += after - before;
         read_wait_count_acc += stat.tryReadLockCount;
         deque_count_acc += stat.dequeSize;
+        abort_iter_acc += stat.abortCount;
 
         if(FLAGS_frequency != 0){
           this_thread::sleep_for(operator""s((1. / FLAGS_frequency)));
@@ -341,6 +347,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
       read_wait_count.record(t, (double) read_wait_count_acc / (double) iter_count);
       deque_count_thread.record(t, (double) deque_count_acc / (double) iter_count);
+      abort_acc_read_thread.record(t, (double) abort_iter_acc / (double) iter_count);
     });
   }
 
@@ -420,6 +427,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.aborts = abort_acc_thread.average();
   result.readThroughput = throughput_acc_read_thread.sum();
   result.writeThroughput = throughput_acc_write_thread.sum();
+  result.readAborts = abort_acc_read_thread.average();
 
   cout << "read wait count: " << read_wait_count.average() << endl;
   cout << "deque size in snapshot: " << deque_count_thread.average() << endl;
@@ -459,57 +467,65 @@ int main(int argc, char* argv[]){
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
+  cout << std::setprecision(std::numeric_limits<double>::digits10);
+
   RunResult old_result{};
   if(FLAGS_only == 0 or FLAGS_only == 4 or FLAGS_only == 5){
     BufferCoreWrapper<OldBufferCore> bfc_w{};
     old_result = run(bfc_w);
+
+    cout << "old: " << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(old_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << old_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(old_result.delay).count() << "ms" << endl;
   }
 
   RunResult snapshot_result{};
   if(FLAGS_only == 0 or FLAGS_only == 1 or FLAGS_only == 3){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::Snapshot);
     snapshot_result = run(bfc_w);
+
+    cout << "snapshot:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(snapshot_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << snapshot_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(snapshot_result.delay).count() << "ms" << endl;
+
   }
 
   RunResult latest_result{};
   if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3 or FLAGS_only == 5){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::Latest);
     latest_result = run(bfc_w);
+
+    cout << "latest:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(latest_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << latest_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(latest_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(latest_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(latest_result.var).count() << "ms" << endl;
+    cout << "\t" << "aborts: " << latest_result.aborts << " times" << endl;
+
   }
 
   RunResult silo_result{};
   if(FLAGS_only == 0 or FLAGS_only == 6){
     BufferCoreWrapper<SiloBufferCore> bfc_w{};
     silo_result = run(bfc_w);
+
+    cout << "Silo:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << silo_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(silo_result.var).count() << "ms" << endl;
+    cout << "\t" << "read aborts: " << silo_result.readAborts << " times" << endl;
   }
-
-  cout << std::setprecision(std::numeric_limits<double>::digits10);
-  cout << "old: " << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(old_result.time).count() << "ms" << endl;
-  cout << "\t" << "throughput: " << old_result.throughput << endl;
-  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
-  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "delay: " << chrono::duration<double, std::milli>(old_result.delay).count() << "ms" << endl;
-
-  cout << "snapshot:" << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(snapshot_result.time).count() << "ms" << endl;
-  cout << "\t" << "throughput: " << snapshot_result.throughput << endl;
-  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << "ms" << endl;
-  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "delay: " << chrono::duration<double, std::milli>(snapshot_result.delay).count() << "ms" << endl;
-
-  cout << "latest:" << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(latest_result.time).count() << "ms" << endl;
-  cout << "\t" << "throughput: " << latest_result.throughput << endl;
-  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(latest_result.readLatency).count() << "ms" << endl;
-  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "delay: " << chrono::duration<double, std::milli>(latest_result.delay).count() << "ms" << endl;
-  cout << "\t" << "var: " << chrono::duration<double, std::milli>(latest_result.var).count() << "ms" << endl;
-  cout << "\t" << "aborts: " << latest_result.aborts << " times" << endl;
-
-  cout << "Silo:" << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_result.time).count() << "ms" << endl;
-  cout << "\t" << "throughput: " << silo_result.throughput << endl;
 
   if(FLAGS_frequency != 0){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
@@ -541,7 +557,12 @@ int main(int argc, char* argv[]){
   output << old_result.writeThroughput << " "; // 24
   output << snapshot_result.writeThroughput << " "; // 25
   output << latest_result.writeThroughput << " "; // 26
-  output << (FLAGS_opposite_write_direction ? "opposite" : "direct") << " ";
+  output << (FLAGS_opposite_write_direction ? "opposite" : "direct") << " "; // 27
+  output << silo_result.throughput << " "; // 28
+  output << silo_result.readAborts << " "; // 29
+  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 30
+  output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
+  output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
 
   output << endl;
   output.close();
