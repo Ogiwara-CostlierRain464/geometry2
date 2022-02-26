@@ -22,8 +22,16 @@ struct VRWLock{
   std::atomic<Version> v{};
 
   uint32_t virtualRLock() const{
-    // return current version;
-    return v.load(std::memory_order_acquire).version;
+    // wait for w unlock, and get version.
+    for(;;){
+      auto expected = v.load(std::memory_order_acquire);
+      if(expected.locked){
+        continue;
+      }else{
+        // though it may be temporal, but write lock has been released!
+        return expected.version;
+      }
+    }
   }
 
   void wLock(){

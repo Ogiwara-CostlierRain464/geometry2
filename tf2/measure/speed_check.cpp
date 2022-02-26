@@ -13,6 +13,7 @@
 
 #include "tf2/read_stat.h"
 #include "../old_tf2/old_buffer_core.h"
+#include "../silo_tf2/silo_buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "xoroshiro128_plus.h"
 
@@ -27,7 +28,7 @@ DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 4, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 4, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 3, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot");
+DEFINE_uint32(only, 3, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot, 6: Only Silo");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "loop second");
 DEFINE_bool(opposite_write_direction, true, "when true, opposite write direction");
