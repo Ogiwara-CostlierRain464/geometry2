@@ -1,12 +1,17 @@
-set terminal pdf size 4in,3in
+set terminal pdf size 4in,3in font "arial,16"
 set output filename
-set key left top
+set key left top font "arial,14"
 set size ratio 0.75
 
 old_label = "{/Times-Italic LT}"
 snapshot_label = "{/Times-Italic LT-P}"
 latest_label = "{/Times-Italic LT-2PL}"
 silo_label = "{/Times-Italic LT-Silo}"
+
+set linetype 1 lc rgb "dark-magenta" lw 2 pt 1 ps 1.5
+set linetype 2 lc rgb "#009e73" lw 2 pt 2 ps 1.5
+set linetype 3 lc rgb "#56b4e9" lw 2 pt 3 ps 1.5
+set linetype 4 lc rgb "#e69f00" lw 2 pt 4 ps 1.5
 
 silo_var = 0
 
@@ -32,7 +37,7 @@ if(out_offset == 14){
 
 if(out_offset == 10){
   set ylabel "abort ratio(abort count/task)"
-  plot data using var:10 w lp title latest_label, data using var:29 w lp title silo_label
+  plot data using var:10 w lp ls 3 title latest_label, data using var:29 w lp ls 4 title silo_label
   exit
 }
 if(out_offset == 18){
@@ -41,18 +46,19 @@ if(out_offset == 18){
 }
 if(out_offset == 21){
   set ylabel "Read Throughput(task/sec)"
+  silo_var = 28
 }
 if(out_offset == 24){
   set ylabel "Write Throughput(task/sec)"
 }
 
 if(only == 3){
-  plot data using var:out_offset+1 w lp title snapshot_label, data using var:out_offset+2 w lp title latest_label, data using var:silo_var w lp title silo_label
+  plot data using var:out_offset+1 w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title latest_label, data using var:silo_var w lp ls 4 title silo_label
   exit
 }
 if(only == 5){
-  plot data using var:out_offset w lp title snapshot_label, data using var:out_offset+2 w lp title latest_label, data using var:silo_var w lp title silo_label
+  plot data using var:out_offset w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title latest_label, data using var:silo_var w lp ls 4 title silo_label
   exit
 }
 
-plot data using var:out_offset w lp title old_label, data using var:out_offset+1 w lp title snapshot_label, data using var:out_offset+2 w lp title latest_label, data using var:silo_var w lp title silo_label
+plot data using var:out_offset w lp ls 1 title old_label, data using var:out_offset+1 w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title latest_label, data using var:silo_var w lp ls 4 title silo_label
