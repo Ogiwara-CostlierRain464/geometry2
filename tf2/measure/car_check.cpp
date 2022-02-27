@@ -447,6 +447,8 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(xact_result.readLatency).count() << " "; // 10
   output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 11
   output << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 13
+
   output << endl;
   output.close();
 
