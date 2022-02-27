@@ -62,6 +62,8 @@ add_executable(car_check
   ${INCLUDE}
   old_tf2/old_buffer_core.h
   old_tf2/old_buffer_core.cpp
+  silo_tf2/silo_buffer_core.h
+  silo_tf2/silo_buffer_core.cpp
   measure/car_check.cpp
   measure/xoroshiro128_plus.h
   )

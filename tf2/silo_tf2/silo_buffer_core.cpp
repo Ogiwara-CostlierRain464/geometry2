@@ -540,6 +540,30 @@ retry:
     tf2::Vector3 result_vec;
   };
 
+  void SiloBufferCore::justReadFrames(const std::vector<std::string> &frames) const{
+    tf2::TransformStorage __attribute__((used)) st{};
+    ReadChecker read_checker(*frame_each_mutex_);
+
+    retry:
+
+    for(auto &frame_str: frames){
+      auto frame_id = lookupFrameNumber(frame_str);
+
+      if(frame_id != 0){
+        auto frame = getFrame(frame_id);
+        if(frame != nullptr){
+          read_checker.addRLock(frame_id);
+          st = *frame;
+        }
+      }
+    }
+
+    if(!read_checker.check()){
+      read_checker.clear();
+      goto retry;
+    }
+  }
+
 // thread safe, but throws.
   geometry_msgs::TransformStamped SiloBufferCore::lookupLatestTransform(
     const std::string& target_frame,

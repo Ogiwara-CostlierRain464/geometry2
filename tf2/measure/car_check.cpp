@@ -13,11 +13,13 @@
 
 #include "tf2/read_stat.h"
 #include "../old_tf2/old_buffer_core.h"
+#include "../silo_tf2/silo_buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
 using tf2::BufferCore;
+using silo_tf2::SiloBufferCore;
 using namespace geometry_msgs;
 using namespace std;
 
@@ -30,6 +32,7 @@ DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 5, "loop second");
 DEFINE_double(insert_span, 6, "new car arrive span in sec");
+DEFINE_double(only, 3, "0: All, 1: old, 2: 2PL, 3: Silo");
 
 
 using std::chrono::operator""s;
@@ -123,6 +126,34 @@ struct BufferCoreWrapper<BufferCore>{
     iter_acc++;
   }
 };
+
+
+template <>
+struct BufferCoreWrapper<SiloBufferCore>{
+  SiloBufferCore bfc{};
+
+  void init(){
+    make_base_station(bfc);
+  }
+  void read(size_t start) const{
+    vector<string> frames{};
+    for(size_t i = start; i < start + FLAGS_read_len; i++){
+      frames.push_back("link" + to_string(i));
+    }
+    bfc.justReadFrames(frames);
+  }
+
+  void write(size_t id, double nano_time, size_t &iter_acc){
+    vector<TransformStamped> vec{};
+    vec.push_back(trans("map", "link" + to_string(id), nano_time));
+
+    WriteStat stat{};
+    bfc.setTransforms(vec, "me", false, &stat);
+
+    iter_acc++;
+  }
+};
+
 
 template <typename T>
 T make_ave(const std::vector<T> &vec){
@@ -356,31 +387,49 @@ int main(int argc, char* argv[]){
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
+  cout << std::setprecision(std::numeric_limits<double>::digits10);
+
   RunResult old_result{};
-  BufferCoreWrapper<OldBufferCore> bfc_w{};
-  old_result = run(bfc_w);
+  if(FLAGS_only == 0 or FLAGS_only == 1){
+    BufferCoreWrapper<OldBufferCore> bfc_w{};
+    old_result = run(bfc_w);
+    cout << "old: " << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(old_result.time).count() << "ms" << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << old_result.throughput << endl;
+    cout << "\t" << "read throughput: " << old_result.readThroughput << endl;
+    cout << "\t" << "write throughput: " << old_result.writeThroughput << endl;
+  }
+
 
   RunResult xact_result{};
-  BufferCoreWrapper<BufferCore> bfc_w_xact{};
-  xact_result = run(bfc_w_xact);
+  if(FLAGS_only == 0 or FLAGS_only == 2){
+    BufferCoreWrapper<BufferCore> bfc_w_xact{};
+    xact_result = run(bfc_w_xact);
 
-  cout << std::setprecision(std::numeric_limits<double>::digits10);
-  cout << "old: " << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(old_result.time).count() << "ms" << endl;
-  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
-  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "throughput: " << old_result.throughput << endl;
-  cout << "\t" << "read throughput: " << old_result.readThroughput << endl;
-  cout << "\t" << "write throughput: " << old_result.writeThroughput << endl;
+    cout << "xact: " << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(xact_result.time).count() << "ms" << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(xact_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << xact_result.throughput << endl;
+    cout << "\t" << "read throughput: " << xact_result.readThroughput << endl;
+    cout << "\t" << "write throughput: " << xact_result.writeThroughput << endl;
+  }
 
+  RunResult silo_result{};
+  if(FLAGS_only == 0 or FLAGS_only == 3){
+    BufferCoreWrapper<SiloBufferCore> bfc_w_silo{};
+    silo_result = run(bfc_w_silo);
 
-  cout << "xact: " << endl;
-  cout << "\t" << "time: " << chrono::duration<double, std::milli>(xact_result.time).count() << "ms" << endl;
-  cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(xact_result.readLatency).count() << "ms" << endl;
-  cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << "ms" << endl;
-  cout << "\t" << "throughput: " << xact_result.throughput << endl;
-  cout << "\t" << "read throughput: " << xact_result.readThroughput << endl;
-  cout << "\t" << "write throughput: " << xact_result.writeThroughput << endl;
+    cout << "silo: " << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_result.time).count() << "ms" << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << silo_result.throughput << endl;
+    cout << "\t" << "read throughput: " << silo_result.readThroughput << endl;
+    cout << "\t" << "write throughput: " << silo_result.writeThroughput << endl;
+  }
 
   if(FLAGS_frequency != 0){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
