@@ -108,17 +108,19 @@ namespace silo_tf2
 
     /** \brief The pointers to potential frames that the tree can be made of.
      * The frames will be dynamically allocated at run time when set the first time. */
-    std::vector<TimeCacheInterfacePtr> frames_;
+    std::array<TimeCacheInterfacePtr, 300> frames_{};
     /** \brief Used for high-granularity locking. */
 //  mutable tbb::concurrent_vector<RWLockPtr> frame_each_mutex_{};
     mutable std::array<VRWLock, 1'000'005> *frame_each_mutex_ = nullptr;
 
+    std::atomic_uint64_t next_frame_id_{1};
+
     /** \brief A map from string frame ids to CompactFrameID */
-    boost::unordered_map<std::string, tf2::CompactFrameID> frameIDs_;
+    tbb::concurrent_unordered_map<std::string, tf2::CompactFrameID> frameIDs_;
     /** \brief A map from CompactFrameID frame_id_numbers to string for debugging and output */
-    std::vector<std::string> frameIDs_reverse;
+    std::array<std::string, 300> frameIDs_reverse{};
     /** \brief A map to lookup the most recent authority for a given frame */
-    boost::unordered_map<tf2::CompactFrameID, std::string> frame_authority_;
+    std::array<std::string, 300> frame_authority_{};
 
     /// How long to cache transform history
     ros::Duration cache_time_;
@@ -133,18 +135,6 @@ namespace silo_tf2
       std::string target_string;
       std::string source_string;
     };
-    // NOTE: to support erase, we can't use tbb::concurrent_vector!!
-    std::vector<TransformableRequest> transformable_requests_{};
-    VRWLock transformable_requests_mutex_{};
-    std::atomic_uint64_t transformable_requests_counter_{};
-
-    struct RemoveRequestByCallback;
-    struct RemoveRequestByID;
-
-    // Backwards compatability for tf message_filter
-    typedef boost::signals2::signal<void(void)> TransformsChangedSignal;
-    /// Signal which is fired whenever new transform data has arrived, from the thread the data arrived in
-    TransformsChangedSignal _transforms_changed_;
 
 
     /************************* Internal Functions ****************************/

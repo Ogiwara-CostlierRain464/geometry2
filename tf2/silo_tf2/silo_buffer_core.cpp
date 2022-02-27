@@ -144,9 +144,7 @@ namespace silo_tf2
     , using_dedicated_thread_(false)
   {
     frameIDs_["NO_PARENT"] = 0;
-    frames_.reserve(10005);
-    frames_.push_back(TimeCacheInterfacePtr());
-    frameIDs_reverse.emplace_back("NO_PARENT");
+    frameIDs_reverse[0] = "NO_PARENT";
 //  frame_each_mutex_.emplace_back(std::make_shared<RWLock>());
 
     frame_each_mutex_ = new std::array<VRWLock, 1'000'005>();
@@ -602,7 +600,7 @@ retry:
 
   TimeCacheInterfacePtr SiloBufferCore::getFrame(CompactFrameID frame_id) const noexcept
   {
-    if (frame_id >= frames_.size())
+    if (frame_id >= next_frame_id_)
       return nullptr;
     else
     {
@@ -631,13 +629,11 @@ retry:
     CompactFrameID retval = 0;
     auto map_it = frameIDs_.find(frameid_str);
     if (map_it == frameIDs_.end()){
-      retval = CompactFrameID(frames_.size());
+      retval = next_frame_id_.fetch_add(1);
 
       // TODO: is this really safe? what happen when push_back causes different timing??
-      frames_.emplace_back();//Just a place holder for iteration
-//    frame_each_mutex_.emplace_back(std::make_unique<RWLock>());
       frameIDs_[frameid_str] = retval;
-      frameIDs_reverse.push_back(frameid_str);
+      frameIDs_reverse[retval] = frameid_str;
     }
     else
       retval = frameIDs_[frameid_str];
