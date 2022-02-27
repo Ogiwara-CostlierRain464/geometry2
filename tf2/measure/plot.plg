@@ -3,46 +3,41 @@ set output filename
 set key left top
 set size ratio 0.75
 
+old_label = "{/Times-Italic LT}"
+snapshot_label = "{/Times-Italic LT-P}"
+latest_label = "{/Times-Italic LT-2PL}"
+silo_label = "{/Times-Italic LT-Silo}"
+
+silo_var = 0
+
 if(var == 1){
   set xlabel "thread"
 }
-if(var == 2){
-  set xlabel "joint"
-}
-if(var == 3){
-   set xlabel "read ratio"
-}
-if(var == 4){
-   set xlabel "read len"
-}
-if(var == 5){
-    set xlabel "write len"
-}
-if(var == 6){
-    set xlabel "frequency (Hz)"
-}
+
 
 if(out_offset == 7){
   set ylabel "Throughput(task/sec)"
+  silo_var = 28
+
 }
 if(out_offset == 11){
   set ylabel "read latency (ms)"
+  silo_var = 30
 }
 if(out_offset == 14){
   set ylabel "delay (ms)"
+  silo_var = 32
 }
-if(out_offset == 17){
-  set ylabel "delay standard div(ms)"
-  plot data using var:17 w lp title "latest"
-  exit
-}
+
+
 if(out_offset == 10){
   set ylabel "abort ratio(abort count/task)"
-  plot data using var:10 w lp title "latest"
+  plot data using var:10 w lp title latest_label, data using var:29 w lp title silo_label
   exit
 }
 if(out_offset == 18){
   set ylabel "write latency (ms)"
+  silo_var = 31
 }
 if(out_offset == 21){
   set ylabel "Read Throughput(task/sec)"
@@ -52,12 +47,12 @@ if(out_offset == 24){
 }
 
 if(only == 3){
-  plot data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"
+  plot data using var:out_offset+1 w lp title snapshot_label, data using var:out_offset+2 w lp title latest_label, data using var:silo_var w lp title silo_label
   exit
 }
 if(only == 5){
-  plot data using var:out_offset w lp title "old", data using var:out_offset+2 w lp title "latest"
+  plot data using var:out_offset w lp title snapshot_label, data using var:out_offset+2 w lp title latest_label, data using var:silo_var w lp title silo_label
   exit
 }
 
-plot data using var:out_offset w lp title "old", data using var:out_offset+1 w lp title "snapshot", data using var:out_offset+2 w lp title "latest"
+plot data using var:out_offset w lp title old_label, data using var:out_offset+1 w lp title snapshot_label, data using var:out_offset+2 w lp title latest_label, data using var:silo_var w lp title silo_label
