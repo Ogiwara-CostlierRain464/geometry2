@@ -23,16 +23,16 @@ using silo_tf2::SiloBufferCore;
 using namespace geometry_msgs;
 using namespace std;
 
-DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(vehicle, 67, "Vehicle count per ");
-DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 67, "Number of reading vehicles size ∈ [0, vehicle]");
 DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 5, "loop second");
-DEFINE_double(insert_span, 6, "new car arrive span in sec");
+DEFINE_double(insert_span, 1, "new car arrive span in sec");
 DEFINE_double(only, 3, "0: All, 1: old, 2: 2PL, 3: Silo");
+DEFINE_uint64(read_thread, 1, "read thread count");
+DEFINE_uint64(write_thread, 1, "write thread count");
 
 
 using std::chrono::operator""s;
@@ -221,16 +221,13 @@ double throughput(chrono::duration<double> time, size_t iter){
 // time, delay, latency, aborts, var
 template <typename T>
 RunResult run(BufferCoreWrapper<T> &bfc_w){
-  auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
-  size_t write_threads = FLAGS_thread - read_threads;
-
   atomic_bool wait{true};
   vector<thread> threads{};
 
-  CountAccum<double> throughput_acc_read_thread(read_threads);
-  CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
+  CountAccum<double> throughput_acc_read_thread(FLAGS_read_thread);
+  CountAccum<chrono::duration<double>> latencies_acc_read_thread(FLAGS_read_thread);
 
-  for(size_t t = 0; t < read_threads; t++){
+  for(size_t t = 0; t < FLAGS_read_thread; t++){
     threads.emplace_back([t,&wait, &bfc_w,  &latencies_acc_read_thread,
                            &throughput_acc_read_thread](){
       std::random_device rnd;
@@ -274,10 +271,10 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
     });
   }
 
-  CountAccum<double> throughput_acc_write_thread(write_threads);
-  CountAccum<chrono::duration<double>> latencies_acc_write_thread(write_threads);
+  CountAccum<double> throughput_acc_write_thread(FLAGS_write_thread);
+  CountAccum<chrono::duration<double>> latencies_acc_write_thread(FLAGS_write_thread);
 
-  for(size_t t = 0; t < write_threads; t++){
+  for(size_t t = 0; t < FLAGS_write_thread; t++){
     threads.emplace_back([t, &bfc_w, &wait,
                           &throughput_acc_write_thread,
                           &latencies_acc_write_thread](){
@@ -361,13 +358,7 @@ int main(int argc, char* argv[]){
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 
-  CONSOLE_BRIDGE_logInform("thread: %d", FLAGS_thread);
   CONSOLE_BRIDGE_logInform("vehicle: %d", FLAGS_vehicle);
-  CONSOLE_BRIDGE_logInform("read ratio: %lf", FLAGS_read_ratio);
-  if(!(0. <= FLAGS_read_ratio and FLAGS_read_ratio <= 1.)){
-    CONSOLE_BRIDGE_logError("wrong read ratio");
-    exit(-1);
-  }
   CONSOLE_BRIDGE_logInform("read len: %d", FLAGS_read_len);
   if(!(0 <= FLAGS_read_len and FLAGS_read_len <= FLAGS_vehicle)){
     CONSOLE_BRIDGE_logError("wrong read len");
@@ -381,6 +372,8 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
   CONSOLE_BRIDGE_logInform("loop sec: %d", FLAGS_loop_sec);
+  CONSOLE_BRIDGE_logInform("read thread: %d", FLAGS_read_thread);
+  CONSOLE_BRIDGE_logInform("write thread: %d", FLAGS_write_thread);
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
@@ -435,12 +428,12 @@ int main(int argc, char* argv[]){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
   }
 
-  output << FLAGS_thread << " "; // 1
-  output << FLAGS_vehicle << " "; // 2
-  output << FLAGS_read_ratio << " "; // 3
-  output << FLAGS_read_len << " "; // 4
-  output << FLAGS_write_len << " "; // 5
-  output << FLAGS_frequency << " "; // 6
+  output << FLAGS_vehicle << " "; // 1
+  output << FLAGS_read_len << " "; // 2
+  output << FLAGS_write_len << " "; // 3
+  output << FLAGS_frequency << " "; // 4
+  output << FLAGS_read_thread << " "; // 5
+  output << FLAGS_write_thread << " "; // 6
   output << old_result.throughput << " "; // 7
   output << xact_result.throughput << " "; // 8
   output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 9
