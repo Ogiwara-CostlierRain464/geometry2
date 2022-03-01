@@ -9,6 +9,7 @@ set linetype 3 lc rgb "#56b4e9" lw 2 pt 3 ps 1.5
 set linetype 4 lc rgb "#e69f00" lw 2 pt 4 ps 1.5
 
 set xlabel "frequency"
+set logscale x
 set ylabel "read latency (ms)"
 
 plot data using 4:9 w lp ls 2 title "{/Times-Italic LT}", data using 4:10 w lp ls 3 title "{/Times-Italic LT-2PL}", data using 4:13 w lp ls 4 title "{/Times-Italic LT-Silo}"

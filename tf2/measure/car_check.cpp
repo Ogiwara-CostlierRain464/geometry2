@@ -438,9 +438,13 @@ int main(int argc, char* argv[]){
   output << xact_result.throughput << " "; // 8
   output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 9
   output << chrono::duration<double, std::milli>(xact_result.readLatency).count() << " "; // 10
-  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 11
-  output << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 11
+  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 14
+  output << chrono::duration<double, std::milli>(xact_result.delay).count() << " "; // 15
+  output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 16
+
 
   output << endl;
   output.close();
