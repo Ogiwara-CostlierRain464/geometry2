@@ -372,6 +372,7 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
   CONSOLE_BRIDGE_logInform("loop sec: %d", FLAGS_loop_sec);
+  CONSOLE_BRIDGE_logInform("only: %d", FLAGS_only);
   CONSOLE_BRIDGE_logInform("read thread: %d", FLAGS_read_thread);
   CONSOLE_BRIDGE_logInform("write thread: %d", FLAGS_write_thread);
 

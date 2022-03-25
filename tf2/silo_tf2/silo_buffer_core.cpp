@@ -540,8 +540,7 @@ retry:
     tf2::Vector3 result_vec;
   };
 
-  void SiloBufferCore::justReadFrames(const std::vector<std::string> &frames) const{
-    tf2::TransformStorage __attribute__((used)) st{};
+  void SiloBufferCore::justReadFrames(const std::vector<std::string> &frames, ReadStat *stat) const{
     ReadChecker read_checker(*frame_each_mutex_);
 
     retry:
@@ -552,8 +551,11 @@ retry:
       if(frame_id != 0){
         auto frame = getFrame(frame_id);
         if(frame != nullptr){
+          if(stat){
+            stat->timestamps.push_back(frame->stamp_.toNSec());
+          }
+
           read_checker.addRLock(frame_id);
-          st = *frame;
         }
       }
     }

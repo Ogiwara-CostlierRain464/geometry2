@@ -1,7 +1,6 @@
 #ifndef SILO_TF_RWLOCK_H
 #define SILO_TF_RWLOCK_H
 
-#include <xmmintrin.h>
 #include <atomic>
 
 struct Version{

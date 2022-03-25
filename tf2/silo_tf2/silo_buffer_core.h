@@ -102,7 +102,7 @@ namespace silo_tf2
     geometry_msgs::TransformStamped
     lookupLatestTransform(const std::string& target_frame, const std::string& source_frame, ReadStat *stat = nullptr) const noexcept(false);
 
-    void justReadFrames(const std::vector<std::string> &frames) const;
+    void justReadFrames(const std::vector<std::string> &frames, ReadStat *stat = nullptr) const;
 
   private:
 
@@ -120,6 +120,12 @@ namespace silo_tf2
     /** \brief A map from string frame ids to CompactFrameID */
     tbb::concurrent_unordered_map<std::string, tf2::CompactFrameID> frameIDs_;
     /** \brief A map from CompactFrameID frame_id_numbers to string for debugging and output */
+
+    // you can just use vec, and alloc at constructor.
+    // Give hint by constructor.
+
+    // Problem: How do we support callback functions?
+    // Well, broken version is not a problem.
     std::array<std::string, 300> frameIDs_reverse{};
     /** \brief A map to lookup the most recent authority for a given frame */
     std::array<std::string, 300> frame_authority_{};

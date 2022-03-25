@@ -810,8 +810,8 @@ int BufferCore::walkToTopParentLatest(
   tf2::Vector3 result_vec;
 };
 
-void BufferCore::justReadFrames(const std::vector<std::string> &frames) const{
-  tf2::TransformStorage __attribute__((used)) st{};
+void BufferCore::justReadFrames(const std::vector<std::string> &frames, ReadStat *stat) const{
+  tf2::TransformStorage st{};
   ScopedWriteSetUnLocker un_locker(*frame_each_mutex_);
   for(auto &frame_str: frames){
     auto frame_id = lookupFrameNumber(frame_str);
@@ -822,6 +822,9 @@ void BufferCore::justReadFrames(const std::vector<std::string> &frames) const{
       if(frame != nullptr){ // register id -> alloc runs in setTransforms
         un_locker.rLockIfNot(frame_id);
         frame->getData(ros::Time(0), st, nullptr);
+        if(stat){
+          stat->timestamps.push_back(st.stamp_.toNSec());
+        }
       }
     }
   }
