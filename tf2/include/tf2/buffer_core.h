@@ -346,6 +346,7 @@ private:
   /** \brief A map from string frame ids to CompactFrameID */
   tbb::concurrent_unordered_map<std::string, CompactFrameID> frameIDs_{};
   /** \brief A map from CompactFrameID frame_id_numbers to string for debugging and output */
+  // let's use concurrent
   std::array<std::string, XACT_TF_MAX_NODE_SIZE> frameIDs_reverse{};
   /** \brief A map to lookup the most recent authority for a given frame */
   std::array<std::string, XACT_TF_MAX_NODE_SIZE> frame_authority_{};
