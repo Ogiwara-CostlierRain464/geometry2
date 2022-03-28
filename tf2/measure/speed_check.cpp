@@ -11,28 +11,28 @@
 #include <fstream>
 #include <limits>
 
-#include "tf2/read_stat.h"
+#include "tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
-#include "../silo_tf2/silo_buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
-using silo_tf2::SiloBufferCore;
 using tf2::BufferCore;
+using tf2::ReadStat;
+using tf2::WriteStat;
 using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 10, "Joint size");
-DEFINE_double(read_ratio, 1, "read ratio, within [0,1]");
+DEFINE_double(read_ratio, 1, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 4, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 4, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 0, "0: All, 1: Only snapshot, 2: Only Latest, 3: except old, 4: Only old, 5: except snapshot, 6: Only Silo");
-DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 10, "loop second");
-DEFINE_bool(opposite_write_direction, true, "when true, opposite write direction");
+DEFINE_uint32(only, 0, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
+DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
+DEFINE_uint64(loop_sec, 10, "Loop second");
+DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
 
 
 using std::chrono::operator""s;
@@ -108,16 +108,19 @@ struct BufferCoreWrapper<OldBufferCore>{
 };
 
 enum AccessType{
-  Snapshot, Latest
+  TF_Par, TF_2PL, TF_Silo
 };
 
 template <>
 struct BufferCoreWrapper<BufferCore>{
 
   explicit BufferCoreWrapper(AccessType accessType_)
-  : accessType(accessType_){}
+  : accessType(accessType_)
+  , bfc(ros::Duration(100),
+        1'000'005,
+        accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
 
-  BufferCore bfc{};
+  BufferCore bfc;
   AccessType accessType;
 
   void init(){
@@ -125,20 +128,20 @@ struct BufferCoreWrapper<BufferCore>{
     make_snake(bfc);
   }
   void read(size_t link, size_t until, ReadStat &out_stat) const{
-    if(accessType == Snapshot){
+    if(accessType == TF_Par){
       assert(until > link);
       auto trans = bfc.lookupTransform("link" + to_string(link),
                                        "link" + to_string(until),
                                        ros::Time(0), &out_stat);
       out_stat.timestamps.push_back(trans.header.stamp.toNSec());
     }else{
-      bfc.lookupLatestTransform("link" + to_string(link),
+      bfc.lookupLatestTransformXact("link" + to_string(link),
                                 "link" + to_string(until), &out_stat);
     }
   }
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
     assert(until > link);
-    if(accessType == Snapshot){
+    if(accessType == TF_Par){
       if(FLAGS_opposite_write_direction){
         for(size_t j = link; j < until; j++){
           bfc.setTransform(trans("link" + to_string(j),
@@ -176,40 +179,11 @@ struct BufferCoreWrapper<BufferCore>{
         }
       }
 
-      bfc.setTransforms(vec, "me", false, &out_stat);
+      bfc.setTransformsXact(vec, "me", false, &out_stat);
       iter_acc++;
     }
   }
 };
-
-template <>
-struct BufferCoreWrapper<SiloBufferCore>{
-
-  explicit BufferCoreWrapper(){}
-
-  SiloBufferCore bfc{};
-
-  void init(){
-    make_snake(bfc);
-  }
-  void read(size_t link, size_t until, ReadStat &out_stat) const{
-    assert(until > link);
-    bfc.lookupLatestTransform("link" + to_string(link),
-                              "link" + to_string(until), &out_stat);
-  }
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
-    assert(until > link);
-    vector<TransformStamped> vec{};
-    for(size_t j = link; j < until; j++){
-      vec.push_back(trans("link" + to_string(j),
-                          "link" + to_string(j+1),
-                          nano_time));
-    }
-    bfc.setTransforms(vec, "me", false, &out_stat);
-    iter_acc++;
-  }
-};
-
 
 template <typename T>
 T make_ave(const std::vector<T> &vec){
@@ -461,6 +435,8 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Only: %d", FLAGS_only);
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
   CONSOLE_BRIDGE_logInform("Opposite write direction: %s", FLAGS_opposite_write_direction ? "true" : "false");
+  CONSOLE_BRIDGE_logInform("Loop sec: %d", FLAGS_loop_sec);
+
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
@@ -482,42 +458,40 @@ int main(int argc, char* argv[]){
     cout << "\t" << "delay: " << chrono::duration<double, std::milli>(old_result.delay).count() << "ms" << endl;
   }
 
-  RunResult snapshot_result{};
+  RunResult par_result{};
   if(FLAGS_only == 0 or FLAGS_only == 1 or FLAGS_only == 3){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::Snapshot);
-    snapshot_result = run(bfc_w);
+    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Par);
+    par_result = run(bfc_w);
 
-    cout << "snapshot:" << endl;
-    cout << "\t" << "time: " << chrono::duration<double, std::milli>(snapshot_result.time).count() << "ms" << endl;
-    cout << "\t" << "throughput: " << snapshot_result.throughput << endl;
-    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << "ms" << endl;
-    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << "ms" << endl;
-    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(snapshot_result.delay).count() << "ms" << endl;
-
+    cout << "TF-Par:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(par_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << par_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(par_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(par_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(par_result.delay).count() << "ms" << endl;
   }
 
-  RunResult latest_result{};
+  RunResult _2pl_result{};
   if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3 or FLAGS_only == 5){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::Latest);
-    latest_result = run(bfc_w);
+    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_2PL);
+    _2pl_result = run(bfc_w);
 
-    cout << "latest:" << endl;
-    cout << "\t" << "time: " << chrono::duration<double, std::milli>(latest_result.time).count() << "ms" << endl;
-    cout << "\t" << "throughput: " << latest_result.throughput << endl;
-    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(latest_result.readLatency).count() << "ms" << endl;
-    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << "ms" << endl;
-    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(latest_result.delay).count() << "ms" << endl;
-    cout << "\t" << "var: " << chrono::duration<double, std::milli>(latest_result.var).count() << "ms" << endl;
-    cout << "\t" << "aborts: " << latest_result.aborts << " times" << endl;
-
+    cout << "TF-2PL:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(_2pl_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << _2pl_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(_2pl_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(_2pl_result.var).count() << "ms" << endl;
+    cout << "\t" << "aborts: " << _2pl_result.aborts << " times" << endl;
   }
 
   RunResult silo_result{};
   if(FLAGS_only == 0 or FLAGS_only == 6){
-    BufferCoreWrapper<SiloBufferCore> bfc_w{};
+    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo);
     silo_result = run(bfc_w);
 
-    cout << "Silo:" << endl;
+    cout << "TF-Silo:" << endl;
     cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_result.time).count() << "ms" << endl;
     cout << "\t" << "throughput: " << silo_result.throughput << endl;
     cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_result.readLatency).count() << "ms" << endl;
@@ -538,25 +512,25 @@ int main(int argc, char* argv[]){
   output << FLAGS_write_len << " "; // 5
   output << FLAGS_frequency << " "; // 6
   output << old_result.throughput << " "; // 7
-  output << snapshot_result.throughput << " "; // 8
-  output << latest_result.throughput << " "; // 9
-  output << latest_result.aborts << " "; // 10
+  output << par_result.throughput << " "; // 8
+  output << _2pl_result.throughput << " "; // 9
+  output << _2pl_result.aborts << " "; // 10
   output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 11
-  output << chrono::duration<double, std::milli>(snapshot_result.readLatency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(latest_result.readLatency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(par_result.readLatency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << " "; // 13
   output << chrono::duration<double, std::milli>(old_result.delay).count() << " "; // 14
-  output << chrono::duration<double, std::milli>(snapshot_result.delay).count() << " "; // 15
-  output << chrono::duration<double, std::milli>(latest_result.delay).count() << " "; // 16
-  output << chrono::duration<double, std::milli>(latest_result.var).count() << " "; // 17
+  output << chrono::duration<double, std::milli>(par_result.delay).count() << " "; // 15
+  output << chrono::duration<double, std::milli>(_2pl_result.delay).count() << " "; // 16
+  output << chrono::duration<double, std::milli>(_2pl_result.var).count() << " "; // 17
   output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 18
-  output << chrono::duration<double, std::milli>(snapshot_result.writeLatency).count() << " "; // 19
-  output << chrono::duration<double, std::milli>(latest_result.writeLatency).count() << " "; // 20
+  output << chrono::duration<double, std::milli>(par_result.writeLatency).count() << " "; // 19
+  output << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << " "; // 20
   output << old_result.readThroughput << " "; // 21
-  output << snapshot_result.readThroughput << " "; // 22
-  output << latest_result.readThroughput << " "; // 23
+  output << par_result.readThroughput << " "; // 22
+  output << _2pl_result.readThroughput << " "; // 23
   output << old_result.writeThroughput << " "; // 24
-  output << snapshot_result.writeThroughput << " "; // 25
-  output << latest_result.writeThroughput << " "; // 26
+  output << par_result.writeThroughput << " "; // 25
+  output << _2pl_result.writeThroughput << " "; // 26
   output << (FLAGS_opposite_write_direction ? "opposite" : "direct") << " "; // 27
   output << silo_result.throughput << " "; // 28
   output << silo_result.readAborts << " "; // 29

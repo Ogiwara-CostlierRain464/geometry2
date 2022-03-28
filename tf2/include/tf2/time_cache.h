@@ -33,7 +33,7 @@
 #define TF2_TIME_CACHE_H
 
 #include "transform_storage.h"
-#include "read_stat.h"
+#include "stat.h"
 
 #include <deque>
 

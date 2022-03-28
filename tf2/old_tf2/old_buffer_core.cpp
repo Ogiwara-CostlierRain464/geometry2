@@ -569,7 +569,6 @@ namespace old_tf2
         frame->getData(ros::Time(0), st, nullptr);
       }
     }
-
     // just access and do nothing
   }
 

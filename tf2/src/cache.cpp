@@ -37,7 +37,7 @@
 #include <tf2/LinearMath/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <assert.h>
-#include <tf2/read_stat.h>
+#include "tf2/stat.h"
 
 namespace tf2 {
 

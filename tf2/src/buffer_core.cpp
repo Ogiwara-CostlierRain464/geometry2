@@ -998,6 +998,42 @@ retry:
     return output_transform;
   }
 
+  void BufferCore::justReadFrames(const std::vector<std::string> &frames, ReadStat *stat) const{
+    tf2::TransformStorage st{};
+    ScopedWriteSetUnLocker un_locker(frame_rw_lock_);
+    ReadChecker read_checker(frame_vrw_lock_);
+    
+  retry:
+    for(auto &frame_str: frames){
+      auto frame_id = lookupFrameNumber(frame_str);
+
+      // just allow to fail insert
+      if(frame_id != 0){
+        auto frame = getFrame(frame_id);
+        if(frame != nullptr){ 
+          if(cc == TwoPhaseLock){
+            un_locker.rLockIfNot(frame_id);
+          }else if(cc == Silo){
+            read_checker.addRLock(frame_id);
+          }
+          frame->getData(ros::Time(0), st, nullptr);
+          
+          if(stat){
+            stat->timestamps.push_back(st.stamp_.toNSec());
+          }
+        }
+      }
+    }
+    
+    if(cc == Silo and !read_checker.check()){
+      if(stat){
+        stat->timestamps.clear();
+        read_checker.clear();
+        goto retry;
+      }
+    }
+  }
+
 
   geometry_msgs::TransformStamped BufferCore::lookupTransform(const std::string& target_frame,
                                                               const ros::Time& target_time,
