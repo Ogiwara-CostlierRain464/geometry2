@@ -31,7 +31,7 @@ int main(int argc, char **argv){
   mutex mutex_{};
   RWLock mutex2_{};
   std::vector<RWLock> locks(JOINT+1);
-  std::vector<RWLockPtr> locks2(JOINT+1, std::make_shared<RWLock>());
+  std::vector<std::shared_ptr<RWLock>> locks2(JOINT+1, std::make_shared<RWLock>());
   atomic_bool wait{true};
 
   vector<thread> threads{};
