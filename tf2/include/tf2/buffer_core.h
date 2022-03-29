@@ -64,8 +64,8 @@ namespace tf2
   typedef uint32_t TransformableCallbackHandle;
   typedef uint64_t TransformableRequestHandle;
 
-  class TimeCache;
-  typedef TimeCache* TimeCacheInterfacePtr;
+  class TimeCacheInterface;
+  typedef TimeCacheInterface* TimeCacheInterfacePtr;
 
   enum TransformableResult
   {

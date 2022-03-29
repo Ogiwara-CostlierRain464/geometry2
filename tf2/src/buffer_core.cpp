@@ -377,8 +377,7 @@ namespace tf2
   {
     TimeCacheInterfacePtr frame_ptr = frames_[cfid];
     if (is_static) {
-      assert(false);
-//      frames_[cfid] = TimeCacheInterfacePtr(new StaticCache());
+      frames_[cfid] = TimeCacheInterfacePtr(new StaticCache());
     } else {
       frames_[cfid] = TimeCacheInterfacePtr(new TimeCache(cache_time_));
     }
