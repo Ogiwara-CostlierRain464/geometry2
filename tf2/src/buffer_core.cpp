@@ -811,10 +811,10 @@ retry:
 
     CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
     {
-      if (!cache->getData(time, st, error_string))
-      {
-        return 0;
-      }
+//      if (!cache->getData(time, st, error_string))
+//      {
+//        return 0;
+//      }
 
       return st.frame_id_;
     }
