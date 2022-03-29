@@ -678,13 +678,6 @@ retry:
       // Early out... target frame is a direct parent of the source frame
       if (frame == target_id)
       {
-        if(!read_checker.check()){
-          stat->abortCount++;
-          read_checker.clear();
-          stat->timestamps.clear();
-          goto retry;
-        }
-
         f.finalize(TargetParentOfSource, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -747,13 +740,6 @@ retry:
       // Early out... source frame is a direct parent of the target frame
       if (frame == source_id)
       {
-        if(!read_checker.check()){
-          stat->abortCount++;
-          read_checker.clear();
-          stat->timestamps.clear();
-          goto retry;
-        }
-
         f.finalize(SourceParentOfTarget, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
