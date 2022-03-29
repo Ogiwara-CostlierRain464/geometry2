@@ -62,16 +62,15 @@ struct VRWLock{
   }
 };
 
-template<uint64_t MAX_NODE_SIZE>
 struct ReadChecker{
-  std::array<VRWLock, MAX_NODE_SIZE> &mutexes;
+  VRWLock* mutexes;
   std::unordered_map<uint32_t, uint32_t> vHistory{}; // frame id -> version
 
-  explicit ReadChecker(std::array<VRWLock, MAX_NODE_SIZE> &mutexes_)
+  explicit ReadChecker(VRWLock* mutexes_)
     : mutexes(mutexes_){}
 
   void addRLock(uint32_t frame_id){
-    auto v = mutexes.at(frame_id).virtualRLock();
+    auto v = mutexes[frame_id].virtualRLock();
     vHistory[frame_id] = v;
   }
 
@@ -87,7 +86,7 @@ struct ReadChecker{
     for(auto &pair: vHistory){
       auto frame_id = pair.first;
       auto old_v = pair.second;
-      auto current_v = mutexes.at(frame_id).v.load(std::memory_order_acquire);
+      auto current_v = mutexes[frame_id].v.load(std::memory_order_acquire);
       if(current_v.locked or old_v != current_v.version){
         return false;
       }

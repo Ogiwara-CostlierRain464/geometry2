@@ -112,7 +112,7 @@ struct BufferCoreWrapper<BufferCore>{
   explicit BufferCoreWrapper(AccessType accessType_)
     : accessType(accessType_)
     , bfc(ros::Duration(100),
-          120,
+          10,
           accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
 
   void init(){

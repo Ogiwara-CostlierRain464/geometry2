@@ -118,10 +118,9 @@ public:
   }
 };
 
-template<uint64_t MAX_NODE_SIZE>
 class ScopedWriteSetUnLocker{
 public:
-  explicit ScopedWriteSetUnLocker(std::array<RWLock, MAX_NODE_SIZE> &mutexes_)
+  explicit ScopedWriteSetUnLocker(RWLock* mutexes_)
     : mutexes(mutexes_){}
 
   void wLockIfNot(uint32_t id){
@@ -184,7 +183,7 @@ public:
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};
-  std::array<RWLock, MAX_NODE_SIZE> &mutexes;
+  RWLock* mutexes;
 };
 
 class ReadUnLocker{

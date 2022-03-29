@@ -96,7 +96,6 @@ namespace tf2
  *
  * All function calls which pass frame ids can potentially throw the exception tf::LookupException
  */
-  template <uint64_t MAX_NODE_SIZE = 1000>
   class BufferCore
   {
   public:
@@ -353,10 +352,10 @@ namespace tf2
 
     CCMethod cc;
     /** \brief The pointers to potential frames that the tree can be made of. */
-    std::array<TimeCacheInterfacePtr, MAX_NODE_SIZE> frames_{};
+    TimeCacheInterfacePtr* frames_{};
 
-    mutable std::array<RWLock, MAX_NODE_SIZE> *frame_rw_lock_{}; // for 2PL
-    mutable std::array<VRWLock, MAX_NODE_SIZE> *frame_vrw_lock_{}; // for Silo
+    RWLock* frame_rw_lock_{}; // for 2PL
+    VRWLock* frame_vrw_lock_{}; // for Silo
 
     std::atomic_uint64_t next_frame_id_{1};
 
@@ -460,8 +459,8 @@ namespace tf2
   class TestBufferCore
   {
   public:
-    int _walkToTopParent(BufferCore<>& buffer, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const;
-    const std::string& _lookupFrameString(BufferCore<>& buffer, CompactFrameID frame_id_num) const
+    int _walkToTopParent(BufferCore& buffer, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const;
+    const std::string& _lookupFrameString(BufferCore& buffer, CompactFrameID frame_id_num) const
     {
       return buffer.lookupFrameString(frame_id_num);
     }
