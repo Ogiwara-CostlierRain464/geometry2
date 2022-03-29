@@ -183,7 +183,8 @@ namespace tf2
       frame_vrw_lock_ = new VRWLock[max_node_size]();
     }
 
-    frameIDs_reverse.resize(max_node_size);
+    frameIDs_reverse = new std::string[max_node_size]();
+    frame_authority_ = new std::string[max_node_size]();
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
@@ -1314,7 +1315,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
   const std::string& BufferCore::lookupFrameString(CompactFrameID frame_id_num) const
   {
-    if (frame_id_num >= frameIDs_reverse.size())
+    if (frame_id_num >= next_frame_id_)
     {
       std::stringstream ss;
       ss << "Reverse lookup of frame id " << frame_id_num << " failed!";
@@ -1633,10 +1634,7 @@ retry:
       frame_id_num = temp.frame_id_;
 
       std::string authority = "no recorded authority";
-      auto it = frame_authority_.find(cfid);
-      if (it != frame_authority_.end()) {
-        authority = it->second;
-      }
+      authority = frame_authority_[cfid];
 
       double rate = cache->getListLength() / std::max((cache->getLatestTimestamp().toSec() -
                                                        cache->getOldestTimestamp().toSec() ), 0.0001);
@@ -1976,9 +1974,7 @@ retry:
         frame_id_num = temp.frame_id_;
       }
       std::string authority = "no recorded authority";
-      auto it = frame_authority_.find(counter);
-      if (it != frame_authority_.end())
-        authority = it->second;
+      authority = frame_authority_[counter];
 
       double rate = counter_frame->getListLength() / std::max((counter_frame->getLatestTimestamp().toSec() -
                                                                counter_frame->getOldestTimestamp().toSec()), 0.0001);
