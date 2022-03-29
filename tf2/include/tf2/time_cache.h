@@ -54,43 +54,11 @@ namespace tf2
 
 typedef std::pair<ros::Time, CompactFrameID> P_TimeAndFrameID;
 
-class TimeCacheInterface
-{
-public:
-  /** \brief Access data from the cache */
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr)=0; //returns false if data unavailable (should be thrown as lookup exception
-
-  /** \brief Insert data into the cache */
-  virtual bool insertData(const TransformStorage& new_data)=0;
-
-  /** @brief Clear the list of stored values */
-  virtual void clearList()=0;
-
-  /** \brief Retrieve the parent at a specific time */
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str) = 0;
-
-  /**
-   * \brief Get the latest time stored in this cache, and the parent associated with it.  Returns parent = 0 if no data.
-   */
-  virtual P_TimeAndFrameID getLatestTimeAndParent() = 0;
-
-
-  /// Debugging information methods
-  /** @brief Get the length of the stored list */
-  virtual unsigned int getListLength()=0;
-
-  /** @brief Get the latest timestamp cached */
-  virtual ros::Time getLatestTimestamp()=0;
-
-  /** @brief Get the oldest timestamp cached */
-  virtual ros::Time getOldestTimestamp()=0;
-};
-
 /** \brief A class to keep a sorted linked list in time
  * This builds and maintains a list of timestamped
  * data.  And provides lookup functions to get
  * data out as a function of time. */
-class TimeCache : public TimeCacheInterface
+class TimeCache
 {
  public:
   static const int MIN_INTERPOLATION_DISTANCE = 500; //!< Number of nano-seconds to not interpolate below.
@@ -102,16 +70,16 @@ class TimeCache : public TimeCacheInterface
 
   /// Virtual methods
 
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr);
-  virtual bool insertData(const TransformStorage& new_data);
-  virtual void clearList();
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
-  virtual P_TimeAndFrameID getLatestTimeAndParent();
+  bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr);
+  bool insertData(const TransformStorage& new_data);
+  void clearList();
+  CompactFrameID getParent(ros::Time time, std::string* error_str);
+  P_TimeAndFrameID getLatestTimeAndParent();
 
   /// Debugging information methods
-  virtual unsigned int getListLength();
-  virtual ros::Time getLatestTimestamp();
-  virtual ros::Time getOldestTimestamp();
+  unsigned int getListLength();
+  ros::Time getLatestTimestamp();
+  ros::Time getOldestTimestamp();
   
 
 private:
@@ -132,28 +100,6 @@ private:
 
 
 
-};
-
-class StaticCache : public TimeCacheInterface
-{
- public:
-  /// Virtual methods
-
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr); //returns false if data unavailable (should be thrown as lookup exception
-  virtual bool insertData(const TransformStorage& new_data);
-  virtual void clearList();
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
-  virtual P_TimeAndFrameID getLatestTimeAndParent();
-
-
-  /// Debugging information methods
-  virtual unsigned int getListLength();
-  virtual ros::Time getLatestTimestamp();
-  virtual ros::Time getOldestTimestamp();
-  
-
-private:
-  TransformStorage  storage_;
 };
 
 }
