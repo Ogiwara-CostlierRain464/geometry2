@@ -205,7 +205,7 @@ namespace tf2
     for(size_t i = 0; i < next_frame_id_; i++){
       auto frame = frames_[i];
       if(frame != nullptr){
-        frame->clearList();
+        ;
       }
     }
   }
@@ -328,12 +328,9 @@ namespace tf2
           auto id = std::get<2>(w);
 
           std::string err_str;
-          if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
-            frame_authority_[id] = authority;
-          }else{
-            CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
-            // TODO: Impl rollback
-          }
+          auto write = tf2::TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id);
+          *frame = write;
+          frame_authority_[id] = authority;
         }
       }else if(cc == Silo){
         phase_1:
@@ -357,14 +354,9 @@ namespace tf2
           auto id = std::get<2>(w);
 
           std::string err_str;
-          if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
-            frame_authority_[id] = authority;
-          }else{
-            CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
-            // TODO: Impl rollback
-          }
-
-          // TODO: Silo read may cause segmentation fault.
+          auto write = tf2::TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id);
+          *frame = write;
+          frame_authority_[id] = authority;
           frame_vrw_lock_[id].wUnLock();
         }
       }
@@ -670,7 +662,7 @@ retry:
       }
 
       if(stat != nullptr){
-        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+        stat->timestamps.push_back(cache->stamp_.toNSec());
       }
 
       CompactFrameID parent = f.gather(cache, ros::Time(0), &extrapolation_error_string);
@@ -735,7 +727,7 @@ retry:
       }
 
       if(stat != nullptr){
-        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+        stat->timestamps.push_back(cache->stamp_.toNSec());
       }
 
       CompactFrameID parent = f.gather(cache, ros::Time(0), error_string);
@@ -826,11 +818,7 @@ retry:
 
     CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
     {
-      if (!cache->getData(time, st, error_string))
-      {
-        return 0;
-      }
-
+      st = *cache;
       return st.frame_id_;
     }
 
@@ -909,12 +897,12 @@ retry:
         if (cache) {
           if(cc == TwoPhaseLock){
             frame_rw_lock_[target_id].r_lock();
-            identity.header.stamp = cache->getLatestTimestamp();
+            identity.header.stamp = cache->stamp_;
             frame_rw_lock_[target_id].r_unlock();
           }else if(cc == Silo){
           retry:
             auto old_v = frame_vrw_lock_[target_id].virtualRLock();
-            identity.header.stamp = cache->getLatestTimestamp();
+            identity.header.stamp = cache->stamp_;
             auto new_v = frame_vrw_lock_[target_id].virtualRLock();
             if(old_v != new_v) goto retry;
           }
@@ -972,12 +960,12 @@ retry:
       if(cache){
         if(cc == TwoPhaseLock){
           frame_rw_lock_[target_id].r_lock();
-          identity.header.stamp = cache->getLatestTimestamp();
+          identity.header.stamp = cache->stamp_;
           frame_rw_lock_[target_id].r_unlock();
         } else if(cc == Silo){
         retry:
           auto old_v = frame_vrw_lock_[target_id].virtualRLock();
-          identity.header.stamp = cache->getLatestTimestamp();
+          identity.header.stamp = cache->stamp_;
           auto new_v = frame_vrw_lock_[target_id].virtualRLock();
           if(old_v != new_v) goto retry;
         }
@@ -1038,7 +1026,7 @@ retry:
           }else if(cc == Silo){
             read_checker.addRLock(frame_id);
           }
-          frame->getData(ros::Time(0), st, nullptr);
+//          frame->getData(ros::Time(0), st, nullptr);
           
           if(stat){
             stat->timestamps.push_back(st.stamp_.toNSec());
@@ -1150,7 +1138,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
   {
     CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
     {
-      return cache->getParent(time, error_string);
+      return cache->frame_id_;
     }
 
     void accum(bool source)
@@ -1372,12 +1360,12 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       bool result;
       if(cc == TwoPhaseLock){
         frame_rw_lock_[counter].r_lock();
-        result = frame_ptr->getData(ros::Time(), temp);
+        result = true;
         frame_rw_lock_[counter].r_unlock();
       } else if(cc == Silo){
       retry:
         auto old_v = frame_vrw_lock_[counter].virtualRLock();
-        result = frame_ptr->getData(ros::Time(), temp);
+        result = true;
         auto new_v = frame_vrw_lock_[counter].virtualRLock();
         if(old_v != new_v) goto retry;
       }
@@ -1420,12 +1408,12 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       if (cache) {
         if(cc == TwoPhaseLock){
           frame_rw_lock_[source_id].r_lock();
-          time = cache->getLatestTimestamp();
+          time = cache->stamp_;
           frame_rw_lock_[source_id].r_unlock();
         }else if(cc == Silo){
         retry:
           auto old_v = frame_vrw_lock_[source_id].virtualRLock();
-          time = cache->getLatestTimestamp();
+          time = cache->stamp_;
           auto new_v = frame_vrw_lock_[source_id].virtualRLock();
           if(old_v != new_v) goto retry;
         }
@@ -1455,12 +1443,12 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       P_TimeAndFrameID latest;
       if(cc == TwoPhaseLock){
         frame_rw_lock_[frame].r_lock();
-        latest = cache->getLatestTimeAndParent();
+        latest = std::make_pair(cache->stamp_, cache->frame_id_);
         frame_rw_lock_[frame].r_unlock();
       }else if(cc == Silo){
       retry2:
         auto old_v = frame_vrw_lock_[frame].virtualRLock();
-        latest = cache->getLatestTimeAndParent();
+        latest = std::make_pair(cache->stamp_, cache->frame_id_);
         auto new_v = frame_vrw_lock_[frame].virtualRLock();
         if(old_v != new_v) goto retry2;
       }
@@ -1522,12 +1510,12 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       P_TimeAndFrameID latest;
       if(cc == TwoPhaseLock){
         frame_rw_lock_[frame].r_lock();
-        latest = cache->getLatestTimeAndParent();
+        latest = std::make_pair(cache->stamp_, cache->frame_id_);
         frame_rw_lock_[frame].r_unlock();
       }else if(cc == Silo){
       retry3:
         auto old_v = frame_vrw_lock_[frame].virtualRLock();
-        latest = cache->getLatestTimeAndParent();
+        latest = std::make_pair(cache->stamp_, cache->frame_id_);
         auto new_v = frame_vrw_lock_[frame].virtualRLock();
         if(old_v != new_v) goto retry3;
       }
@@ -1640,19 +1628,17 @@ retry:
         old_v = frame_vrw_lock_[cfid].virtualRLock();
       }
 
-      if(!cache->getData(ros::Time(), temp))
-      {
-        continue;
-      }
+//      if(!cache->getData(ros::Time(), temp))
+//      {
+//        continue;
+//      }
 
       frame_id_num = temp.frame_id_;
 
       std::string authority = "no recorded authority";
       authority = frame_authority_[cfid];
 
-      double rate = cache->getListLength() / std::max((cache->getLatestTimestamp().toSec() -
-                                                       cache->getOldestTimestamp().toSec() ), 0.0001);
-
+      double rate = 4;
       std::stringstream tmp;
       tmp << std::fixed; //fixed point notation
       tmp.precision(3); //3 decimal places
@@ -1660,12 +1646,6 @@ retry:
       tmp << "  parent: '" << frameIDs_reverse[frame_id_num] << "'" << std::endl;
       tmp << "  broadcaster: '" << authority << "'" << std::endl;
       tmp << "  rate: " << rate << std::endl;
-      tmp << "  most_recent_transform: " << (cache->getLatestTimestamp()).toSec() << std::endl;
-      tmp << "  oldest_transform: " << (cache->getOldestTimestamp()).toSec() << std::endl;
-      if ( current_time > 0 ) {
-        tmp << "  transform_delay: " << current_time - cache->getLatestTimestamp().toSec() << std::endl;
-      }
-      tmp << "  buffer_length: " << (cache->getLatestTimestamp() - cache->getOldestTimestamp()).toSec() << std::endl;
 
       if(cc == TwoPhaseLock){
         frame_rw_lock_[cfid].r_unlock();
@@ -1837,12 +1817,12 @@ retry:
     CompactFrameID parent_id;
     if(cc == TwoPhaseLock){
       frame_rw_lock_[frame_number].r_lock();
-      parent_id = frame->getParent(time, nullptr);
+      parent_id = frame->frame_id_;
       frame_rw_lock_[frame_number].r_unlock();
     }else if(cc == Silo){
     retry:
       auto old_v = frame_vrw_lock_[frame_number].virtualRLock();
-      parent_id = frame->getParent(time, nullptr);
+      parent_id = frame->frame_id_;
       auto new_v = frame_vrw_lock_[frame_number].virtualRLock();
       if(old_v != new_v) goto retry;
     }
@@ -1982,16 +1962,10 @@ retry:
         old_v = frame_vrw_lock_[counter].virtualRLock();
       }
 
-      if(!counter_frame->getData(ros::Time(), temp)) {
-        continue;
-      } else {
-        frame_id_num = temp.frame_id_;
-      }
+
       std::string authority = "no recorded authority";
       authority = frame_authority_[counter];
 
-      double rate = counter_frame->getListLength() / std::max((counter_frame->getLatestTimestamp().toSec() -
-                                                               counter_frame->getOldestTimestamp().toSec()), 0.0001);
 
       std::stringstream tmp;
       tmp << std::fixed; //fixed point notation
@@ -1999,17 +1973,8 @@ retry:
       tmp << "\"" << frameIDs_reverse[frame_id_num] << "\"" << " -> "
               << "\"" << frameIDs_reverse[counter] << "\"" << "[label=\""
               //<< "Time: " << current_time.toSec() << "\\n"
-              << "Broadcaster: " << authority << "\\n"
-              << "Average rate: " << rate << " Hz\\n"
-              << "Most recent transform: " << (counter_frame->getLatestTimestamp()).toSec() <<" ";
-      if (current_time > 0)
-        tmp << "( "<<  current_time - counter_frame->getLatestTimestamp().toSec() << " sec old)";
-      tmp << "\\n"
-              //    << "(time: " << getFrame(counter)->getLatestTimestamp().toSec() << ")\\n"
-              //    << "Oldest transform: " << (current_time - getFrame(counter)->getOldestTimestamp()).toSec() << " sec old \\n"
-              //    << "(time: " << (getFrame(counter)->getOldestTimestamp()).toSec() << ")\\n"
-              << "Buffer length: " << (counter_frame->getLatestTimestamp()-counter_frame->getOldestTimestamp()).toSec() << " sec\\n"
-              <<"\"];" <<std::endl;
+              << "Broadcaster: " << authority << "\\n";
+
 
       if(cc == TwoPhaseLock){
         frame_rw_lock_[counter].r_unlock();
@@ -2041,12 +2006,6 @@ retry:
         frame_rw_lock_[counter].r_lock();
       }else if(cc == Silo){
         old_v = frame_vrw_lock_[counter].virtualRLock();
-      }
-
-      if (counter_frame->getData(ros::Time(), temp)) {
-        frame_id_num = temp.frame_id_;
-      } else {
-        frame_id_num = 0;
       }
 
       std::stringstream tmp;
