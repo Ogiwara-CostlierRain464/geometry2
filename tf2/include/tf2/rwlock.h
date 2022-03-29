@@ -118,26 +118,13 @@ public:
   }
 };
 
-class ScopedSetUnLocker{
+template<uint64_t MAX_NODE_SIZE>
+class ScopedWriteSetUnLocker{
 public:
-  virtual void wLockIfNot(uint32_t id) = 0;
-  virtual void rLockIfNot(uint32_t id) = 0;
-  virtual ~ScopedSetUnLocker(){};
-};
-
-class DummySetUnLocker: public ScopedSetUnLocker{
-public:
-  void wLockIfNot(uint32_t id) override{};
-  void rLockIfNot(uint32_t id) override{};
-  ~DummySetUnLocker() override{};
-};
-
-class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
-public:
-  explicit ScopedWriteSetUnLocker(tbb::concurrent_vector<RWLock> &mutexes_)
+  explicit ScopedWriteSetUnLocker(std::array<RWLock, MAX_NODE_SIZE> &mutexes_)
     : mutexes(mutexes_){}
 
-  void wLockIfNot(uint32_t id) override{
+  void wLockIfNot(uint32_t id){
     // if not write locked, then add to write lock set.
     // upgrade is not allowed!
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
@@ -166,7 +153,7 @@ public:
     return true;
   }
 
-  void rLockIfNot(uint32_t id) override{
+  void rLockIfNot(uint32_t id){
     // if not write locked, then add to read lock set.
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
       if(readLockedIdSet.find(id) == readLockedIdSet.end()){
@@ -191,13 +178,13 @@ public:
     return writeLockedIdSet.size();
   }
 
-  ~ScopedWriteSetUnLocker() override{
+  ~ScopedWriteSetUnLocker(){
     unlockAll();
   }
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};
-  tbb::concurrent_vector<RWLock> &mutexes;
+  std::array<RWLock, MAX_NODE_SIZE> &mutexes;
 };
 
 class ReadUnLocker{

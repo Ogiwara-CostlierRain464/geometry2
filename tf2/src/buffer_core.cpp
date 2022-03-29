@@ -121,8 +121,8 @@ namespace tf2
     return out;
   }
 
-
-  bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& frame_id) const
+  template <uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::warnFrameId(const char* function_name_arg, const std::string& frame_id) const
   {
     if (frame_id.empty())
     {
@@ -143,7 +143,8 @@ namespace tf2
     return false;
   }
 
-  CompactFrameID BufferCore::validateFrameId(const char* function_name_arg, const std::string& frame_id) const
+  template <uint64_t MAX_NODE_SIZE>
+  CompactFrameID BufferCore<MAX_NODE_SIZE>::validateFrameId(const char* function_name_arg, const std::string& frame_id) const
   {
     if (frame_id.empty())
     {
@@ -170,29 +171,32 @@ namespace tf2
     return id;
   }
 
-  BufferCore::BufferCore(ros::Duration cache_time, uint64_t max_node_size, CCMethod cc)
+  template <uint64_t MAX_NODE_SIZE>
+  BufferCore<MAX_NODE_SIZE>::BufferCore(ros::Duration cache_time, uint64_t max_node_size, CCMethod cc)
     : cache_time_(cache_time)
     , transformable_callbacks_counter_(0)
     , transformable_requests_counter_(0)
     , using_dedicated_thread_(false)
     , cc(cc)
   {
-    frames_.resize(max_node_size);
     if(cc == TwoPhaseLock){
-      frame_rw_lock_.resize(max_node_size);
+      frame_rw_lock_ = new std::array<RWLock, MAX_NODE_SIZE>;
     }else if(cc == Silo){
-      frame_vrw_lock_.resize(max_node_size);
+      frame_vrw_lock_ = new std::array<VRWLock, MAX_NODE_SIZE>;
     }
+
     frameIDs_reverse.resize(max_node_size);
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
   }
 
-  BufferCore::~BufferCore()
+  template <uint64_t MAX_NODE_SIZE>
+  BufferCore<MAX_NODE_SIZE>::~BufferCore()
   {}
 
-  void BufferCore::clear()
+  template <uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::clear()
   {
     for(auto & frame : frames_){
       if(frame != nullptr){
@@ -201,13 +205,15 @@ namespace tf2
     }
   }
 
-  bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static)
+  template <uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static)
   {
     std::vector<geometry_msgs::TransformStamped> vec{transform_in};
     setTransformsXact(vec, authority, is_static);
   }
 
-  bool BufferCore::setTransformsXact(const std::vector<geometry_msgs::TransformStamped> &transforms,
+  template <uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::setTransformsXact(const std::vector<geometry_msgs::TransformStamped> &transforms,
                                      const std::string& authority, bool is_static, WriteStat *stat)
   {
     std::vector<geometry_msgs::TransformStamped> stripped{};
@@ -279,7 +285,7 @@ namespace tf2
         CompactFrameID>> write_set{};
 
       if(cc == TwoPhaseLock){
-        ScopedWriteSetUnLocker un_locker(frame_rw_lock_);
+        ScopedWriteSetUnLocker<MAX_NODE_SIZE> un_locker(*frame_rw_lock_);
 
         try_lock:
         for(auto &e: stripped){
@@ -335,7 +341,7 @@ namespace tf2
             frame = allocateFrame(id, is_static);
           }
 
-          frame_vrw_lock_.at(id).wLock();
+          frame_vrw_lock_->at(id).wLock();
           write_set.emplace_back(frame, e, id);
         }
 
@@ -356,7 +362,7 @@ namespace tf2
           }
 
           // TODO: Silo read may cause segmentation fault.
-          frame_vrw_lock_.at(id).wUnLock();
+          frame_vrw_lock_->at(id).wUnLock();
         }
       }
     }
@@ -365,7 +371,8 @@ namespace tf2
     return true;
   }
 
-  TimeCacheInterfacePtr BufferCore::allocateFrame(CompactFrameID cfid, bool is_static)
+  template <uint64_t MAX_NODE_SIZE>
+  TimeCacheInterfacePtr BufferCore<MAX_NODE_SIZE>::allocateFrame(CompactFrameID cfid, bool is_static)
   {
     TimeCacheInterfacePtr frame_ptr = frames_[cfid];
     if (is_static) {
@@ -386,14 +393,16 @@ namespace tf2
   };
 
 // TODO for Jade: Merge walkToTopParent functions; this is now a stub to preserve ABI
+  template<uint64_t MAX_NODE_SIZE>
   template<typename F>
-  int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const
+  int BufferCore<MAX_NODE_SIZE>::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const
   {
     return walkToTopParent(f, time, target_id, source_id, error_string, NULL);
   }
 
+  template<uint64_t MAX_NODE_SIZE>
   template<typename F>
-  int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
+  int BufferCore<MAX_NODE_SIZE>::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
                                   CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID>
                                   *frame_chain, ReadStat *stat) const
   {
@@ -440,18 +449,18 @@ namespace tf2
 
       CompactFrameID parent;
       if(cc == TwoPhaseLock){
-        while (!frame_rw_lock_.at(frame).r_trylock()){
+        while (!frame_rw_lock_->at(frame).r_trylock()){
           if(stat){
             stat->tryReadLockCount++;
           }
         }
         parent = f.gather(cache, time, &extrapolation_error_string);
-        frame_rw_lock_.at(frame).r_unlock();
+        frame_rw_lock_->at(frame).r_unlock();
       }else if(cc == Silo) {
       retry:
-        auto old_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto old_v = frame_vrw_lock_->at(frame).virtualRLock();
         parent = f.gather(cache, time, &extrapolation_error_string);
-        auto new_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(frame).virtualRLock();
         if(old_v != new_v) goto retry;
       }
 
@@ -507,18 +516,18 @@ namespace tf2
 
       CompactFrameID parent;
       if(cc == TwoPhaseLock){
-        while (!frame_rw_lock_.at(frame).r_trylock()){
+        while (!frame_rw_lock_->at(frame).r_trylock()){
           if(stat){
             stat->tryReadLockCount++;
           }
         }
         parent = f.gather(cache, time, &extrapolation_error_string);
-        frame_rw_lock_.at(frame).r_unlock();
+        frame_rw_lock_->at(frame).r_unlock();
       }else if(cc == Silo) {
       retry2:
-        auto old_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto old_v = frame_vrw_lock_->at(frame).virtualRLock();
         parent = f.gather(cache, time, &extrapolation_error_string);
-        auto new_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(frame).virtualRLock();
         if(old_v != new_v) goto retry2;
       }
 
@@ -620,15 +629,15 @@ namespace tf2
     return tf2_msgs::TF2Error::NO_ERROR;
   }
 
-
+  template<uint64_t MAX_NODE_SIZE>
   template<typename F>
-  int BufferCore::walkToTopParentLatest(F& f, CompactFrameID target_id,
+  int BufferCore<MAX_NODE_SIZE>::walkToTopParentLatest(F& f, CompactFrameID target_id,
                                   CompactFrameID source_id, std::string* error_string,
                                   ReadStat *stat) const
   {
 retry:
-    ScopedWriteSetUnLocker un_locker(frame_rw_lock_);
-    ReadChecker read_checker(frame_vrw_lock_);
+    ScopedWriteSetUnLocker<MAX_NODE_SIZE> un_locker(*frame_rw_lock_);
+    ReadChecker<MAX_NODE_SIZE> read_checker(*frame_vrw_lock_);
 
     // Short circuit if zero length transform to allow lookups on non existant links
     if (source_id == target_id)
@@ -869,7 +878,8 @@ retry:
     tf2::Vector3 result_vec;
   };
 
-  geometry_msgs::TransformStamped BufferCore::lookupTransform(
+  template<uint64_t MAX_NODE_SIZE>
+  geometry_msgs::TransformStamped BufferCore<MAX_NODE_SIZE>::lookupTransform(
     const std::string& target_frame,
     const std::string& source_frame,
     const ros::Time& time, ReadStat *stat) const
@@ -886,14 +896,14 @@ retry:
         TimeCacheInterfacePtr cache = getFrame(target_id);
         if (cache) {
           if(cc == TwoPhaseLock){
-            frame_rw_lock_.at(target_id).r_lock();
+            frame_rw_lock_->at(target_id).r_lock();
             identity.header.stamp = cache->getLatestTimestamp();
-            frame_rw_lock_.at(target_id).r_unlock();
+            frame_rw_lock_->at(target_id).r_unlock();
           }else if(cc == Silo){
           retry:
-            auto old_v = frame_vrw_lock_.at(target_id).virtualRLock();
+            auto old_v = frame_vrw_lock_->at(target_id).virtualRLock();
             identity.header.stamp = cache->getLatestTimestamp();
-            auto new_v = frame_vrw_lock_.at(target_id).virtualRLock();
+            auto new_v = frame_vrw_lock_->at(target_id).virtualRLock();
             if(old_v != new_v) goto retry;
           }
         }else
@@ -934,7 +944,8 @@ retry:
     return output_transform;
   }
 
-  geometry_msgs::TransformStamped BufferCore::lookupLatestTransformXact(
+  template<uint64_t MAX_NODE_SIZE>
+  geometry_msgs::TransformStamped BufferCore<MAX_NODE_SIZE>::lookupLatestTransformXact(
     const std::string& target_frame,
     const std::string& source_frame,
     ReadStat *stat) const
@@ -949,14 +960,14 @@ retry:
       TimeCacheInterfacePtr cache = getFrame(target_id);
       if(cache){
         if(cc == TwoPhaseLock){
-          frame_rw_lock_.at(target_id).r_lock();
+          frame_rw_lock_->at(target_id).r_lock();
           identity.header.stamp = cache->getLatestTimestamp();
-          frame_rw_lock_.at(target_id).r_unlock();
+          frame_rw_lock_->at(target_id).r_unlock();
         } else if(cc == Silo){
         retry:
-          auto old_v = frame_vrw_lock_.at(target_id).virtualRLock();
+          auto old_v = frame_vrw_lock_->at(target_id).virtualRLock();
           identity.header.stamp = cache->getLatestTimestamp();
-          auto new_v = frame_vrw_lock_.at(target_id).virtualRLock();
+          auto new_v = frame_vrw_lock_->at(target_id).virtualRLock();
           if(old_v != new_v) goto retry;
         }
       }else{
@@ -998,10 +1009,11 @@ retry:
     return output_transform;
   }
 
-  void BufferCore::justReadFrames(const std::vector<std::string> &frames, ReadStat *stat) const{
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::justReadFrames(const std::vector<std::string> &frames, ReadStat *stat) const{
     tf2::TransformStorage st{};
-    ScopedWriteSetUnLocker un_locker(frame_rw_lock_);
-    ReadChecker read_checker(frame_vrw_lock_);
+    ScopedWriteSetUnLocker<MAX_NODE_SIZE> un_locker(*frame_rw_lock_);
+    ReadChecker<MAX_NODE_SIZE> read_checker(*frame_vrw_lock_);
     
   retry:
     for(auto &frame_str: frames){
@@ -1034,8 +1046,8 @@ retry:
     }
   }
 
-
-  geometry_msgs::TransformStamped BufferCore::lookupTransform(const std::string& target_frame,
+  template<uint64_t MAX_NODE_SIZE>
+  geometry_msgs::TransformStamped BufferCore<MAX_NODE_SIZE>::lookupTransform(const std::string& target_frame,
                                                               const ros::Time& target_time,
                                                               const std::string& source_frame,
                                                               const ros::Time& source_time,
@@ -1143,7 +1155,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     TransformStorage st;
   };
 
-  bool BufferCore::canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id,
+  template<uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id,
                                       const ros::Time& time, std::string* error_msg) const
   {
     if (target_id == 0 || source_id == 0)
@@ -1180,13 +1193,15 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return false;
   }
 
-  bool BufferCore::canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
+  template<uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
                                         const ros::Time& time, std::string* error_msg) const
   {
     return canTransformNoLock(target_id, source_id, time, error_msg);
   }
 
-  bool BufferCore::canTransform(const std::string& target_frame, const std::string& source_frame,
+  template<uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::canTransform(const std::string& target_frame, const std::string& source_frame,
                                 const ros::Time& time, std::string* error_msg) const
   {
     // Short circuit if target_frame == source_frame
@@ -1223,7 +1238,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return canTransformNoLock(target_id, source_id, time, error_msg);
   }
 
-  bool BufferCore::canTransform(const std::string& target_frame, const ros::Time& target_time,
+  template<uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::canTransform(const std::string& target_frame, const ros::Time& target_time,
                                 const std::string& source_frame, const ros::Time& source_time,
                                 const std::string& fixed_frame, std::string* error_msg) const
   {
@@ -1268,8 +1284,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return canTransformNoLock(target_id, fixed_id, target_time, error_msg) && canTransformNoLock(fixed_id, source_id, source_time, error_msg);
   }
 
-
-  tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const
+  template<uint64_t MAX_NODE_SIZE>
+  tf2::TimeCacheInterfacePtr BufferCore<MAX_NODE_SIZE>::getFrame(CompactFrameID frame_id) const
   {
     if (frame_id >= next_frame_id_)
       return TimeCacheInterfacePtr();
@@ -1279,7 +1295,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     }
   }
 
-  CompactFrameID BufferCore::lookupFrameNumber(const std::string& frameid_str) const
+  template<uint64_t MAX_NODE_SIZE>
+  CompactFrameID BufferCore<MAX_NODE_SIZE>::lookupFrameNumber(const std::string& frameid_str) const
   {
     CompactFrameID retval;
     auto map_it = frameIDs_.find(frameid_str);
@@ -1292,7 +1309,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return retval;
   }
 
-  CompactFrameID BufferCore::lookupOrInsertFrameNumber(const std::string& frameid_str)
+  template<uint64_t MAX_NODE_SIZE>
+  CompactFrameID BufferCore<MAX_NODE_SIZE>::lookupOrInsertFrameNumber(const std::string& frameid_str)
   {
     CompactFrameID retval = 0;
     auto map_it = frameIDs_.find(frameid_str);
@@ -1307,7 +1325,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return retval;
   }
 
-  const std::string& BufferCore::lookupFrameString(CompactFrameID frame_id_num) const
+  template<uint64_t MAX_NODE_SIZE>
+  const std::string& BufferCore<MAX_NODE_SIZE>::lookupFrameString(CompactFrameID frame_id_num) const
   {
     if (frame_id_num >= frameIDs_reverse.size())
     {
@@ -1319,7 +1338,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       return frameIDs_reverse[frame_id_num];
   }
 
-  void BufferCore::createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const
   {
     if (!out)
     {
@@ -1330,12 +1350,14 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
                        "Tf has two or more unconnected trees.");
   }
 
-  std::string BufferCore::allFramesAsString() const
+  template<uint64_t MAX_NODE_SIZE>
+  std::string BufferCore<MAX_NODE_SIZE>::allFramesAsString() const
   {
     return this->allFramesAsStringNoLock();
   }
 
-  std::string BufferCore::allFramesAsStringNoLock() const
+  template<uint64_t MAX_NODE_SIZE>
+  std::string BufferCore<MAX_NODE_SIZE>::allFramesAsStringNoLock() const
   {
     std::stringstream mstream;
 
@@ -1351,14 +1373,14 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
       bool result;
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(counter).r_lock();
+        frame_rw_lock_->at(counter).r_lock();
         result = frame_ptr->getData(ros::Time(), temp);
-        frame_rw_lock_.at(counter).r_unlock();
+        frame_rw_lock_->at(counter).r_unlock();
       } else if(cc == Silo){
       retry:
-        auto old_v = frame_vrw_lock_.at(counter).virtualRLock();
+        auto old_v = frame_vrw_lock_->at(counter).virtualRLock();
         result = frame_ptr->getData(ros::Time(), temp);
-        auto new_v = frame_vrw_lock_.at(counter).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(counter).virtualRLock();
         if(old_v != new_v) goto retry;
       }
 
@@ -1388,7 +1410,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     CompactFrameID id;
   };
 
-  int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string) const
+  template<uint64_t MAX_NODE_SIZE>
+  int BufferCore<MAX_NODE_SIZE>::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string) const
   {
     // Error if one of the frames don't exist.
     if (source_id == 0 || target_id == 0) return tf2_msgs::TF2Error::LOOKUP_ERROR;
@@ -1399,14 +1422,14 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       //Set time to latest timestamp of frameid in case of target and source frame id are the same
       if (cache) {
         if(cc == TwoPhaseLock){
-          frame_rw_lock_.at(source_id).r_lock();
+          frame_rw_lock_->at(source_id).r_lock();
           time = cache->getLatestTimestamp();
-          frame_rw_lock_.at(source_id).r_unlock();
+          frame_rw_lock_->at(source_id).r_unlock();
         }else if(cc == Silo){
         retry:
-          auto old_v = frame_vrw_lock_.at(source_id).virtualRLock();
+          auto old_v = frame_vrw_lock_->at(source_id).virtualRLock();
           time = cache->getLatestTimestamp();
-          auto new_v = frame_vrw_lock_.at(source_id).virtualRLock();
+          auto new_v = frame_vrw_lock_->at(source_id).virtualRLock();
           if(old_v != new_v) goto retry;
         }
       }else
@@ -1434,14 +1457,14 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
       P_TimeAndFrameID latest;
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(frame).r_lock();
+        frame_rw_lock_->at(frame).r_lock();
         latest = cache->getLatestTimeAndParent();
-        frame_rw_lock_.at(frame).r_unlock();
+        frame_rw_lock_->at(frame).r_unlock();
       }else if(cc == Silo){
       retry2:
-        auto old_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto old_v = frame_vrw_lock_->at(frame).virtualRLock();
         latest = cache->getLatestTimeAndParent();
-        auto new_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(frame).virtualRLock();
         if(old_v != new_v) goto retry2;
       }
 
@@ -1501,14 +1524,14 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
       P_TimeAndFrameID latest;
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(frame).r_lock();
+        frame_rw_lock_->at(frame).r_lock();
         latest = cache->getLatestTimeAndParent();
-        frame_rw_lock_.at(frame).r_unlock();
+        frame_rw_lock_->at(frame).r_unlock();
       }else if(cc == Silo){
       retry3:
-        auto old_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto old_v = frame_vrw_lock_->at(frame).virtualRLock();
         latest = cache->getLatestTimeAndParent();
-        auto new_v = frame_vrw_lock_.at(frame).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(frame).virtualRLock();
         if(old_v != new_v) goto retry3;
       }
 
@@ -1589,7 +1612,8 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return tf2_msgs::TF2Error::NO_ERROR;
   }
 
-  std::string BufferCore::allFramesAsYAML(double current_time) const
+  template<uint64_t MAX_NODE_SIZE>
+  std::string BufferCore<MAX_NODE_SIZE>::allFramesAsYAML(double current_time) const
   {
     std::stringstream mstream;
 
@@ -1615,9 +1639,9 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 retry:
       uint32_t old_v;
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(cfid).r_lock();
+        frame_rw_lock_->at(cfid).r_lock();
       }else if(cc == Silo){
-        old_v = frame_vrw_lock_.at(cfid).virtualRLock();
+        old_v = frame_vrw_lock_->at(cfid).virtualRLock();
       }
 
       if(!cache->getData(ros::Time(), temp))
@@ -1651,9 +1675,9 @@ retry:
       tmp << "  buffer_length: " << (cache->getLatestTimestamp() - cache->getOldestTimestamp()).toSec() << std::endl;
 
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(cfid).r_unlock();
+        frame_rw_lock_->at(cfid).r_unlock();
       }else if(cc == Silo){
-        auto new_v = frame_vrw_lock_.at(cfid).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(cfid).virtualRLock();
         if(old_v != new_v) goto retry;
       }
 
@@ -1663,12 +1687,14 @@ retry:
     return mstream.str();
   }
 
-  std::string BufferCore::allFramesAsYAML() const
+  template<uint64_t MAX_NODE_SIZE>
+  std::string BufferCore<MAX_NODE_SIZE>::allFramesAsYAML() const
   {
     return this->allFramesAsYAML(0.0);
   }
 
-  TransformableCallbackHandle BufferCore::addTransformableCallback(const TransformableCallback& cb)
+  template<uint64_t MAX_NODE_SIZE>
+  TransformableCallbackHandle BufferCore<MAX_NODE_SIZE>::addTransformableCallback(const TransformableCallback& cb)
   {
     boost::mutex::scoped_lock lock(transformable_callbacks_mutex_);
     TransformableCallbackHandle handle = ++transformable_callbacks_counter_;
@@ -1680,7 +1706,8 @@ retry:
     return handle;
   }
 
-  struct BufferCore::RemoveRequestByCallback
+  template<uint64_t MAX_NODE_SIZE>
+  struct BufferCore<MAX_NODE_SIZE>::RemoveRequestByCallback
   {
     RemoveRequestByCallback(TransformableCallbackHandle handle)
       : handle_(handle)
@@ -1694,7 +1721,8 @@ retry:
     TransformableCallbackHandle handle_;
   };
 
-  void BufferCore::removeTransformableCallback(TransformableCallbackHandle handle)
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::removeTransformableCallback(TransformableCallbackHandle handle)
   {
     {
       boost::mutex::scoped_lock lock(transformable_callbacks_mutex_);
@@ -1703,12 +1731,13 @@ retry:
 
     {
       boost::mutex::scoped_lock lock(transformable_requests_mutex_);
-      V_TransformableRequest::iterator it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByCallback(handle));
+      auto it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByCallback(handle));
       transformable_requests_.erase(it, transformable_requests_.end());
     }
   }
 
-  TransformableRequestHandle BufferCore::addTransformableRequest(TransformableCallbackHandle handle, const std::string& target_frame, const std::string& source_frame, ros::Time time)
+  template<uint64_t MAX_NODE_SIZE>
+  TransformableRequestHandle BufferCore<MAX_NODE_SIZE>::addTransformableRequest(TransformableCallbackHandle handle, const std::string& target_frame, const std::string& source_frame, ros::Time time)
   {
     // shortcut if target == source
     if (target_frame == source_frame)
@@ -1763,7 +1792,8 @@ retry:
     return req.request_handle;
   }
 
-  struct BufferCore::RemoveRequestByID
+  template<uint64_t MAX_NODE_SIZE>
+  struct BufferCore<MAX_NODE_SIZE>::RemoveRequestByID
   {
     RemoveRequestByID(TransformableRequestHandle handle)
       : handle_(handle)
@@ -1777,10 +1807,11 @@ retry:
     TransformableCallbackHandle handle_;
   };
 
-  void BufferCore::cancelTransformableRequest(TransformableRequestHandle handle)
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::cancelTransformableRequest(TransformableRequestHandle handle)
   {
     boost::mutex::scoped_lock lock(transformable_requests_mutex_);
-    V_TransformableRequest::iterator it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByID(handle));
+    auto it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByID(handle));
 
     if (it != transformable_requests_.end())
     {
@@ -1791,25 +1822,28 @@ retry:
 
 
 // backwards compability for tf methods
-  boost::signals2::connection BufferCore::_addTransformsChangedListener(boost::function<void(void)> callback)
+  template<uint64_t MAX_NODE_SIZE>
+  boost::signals2::connection BufferCore<MAX_NODE_SIZE>::_addTransformsChangedListener(boost::function<void(void)> callback)
   {
     boost::mutex::scoped_lock lock(transformable_requests_mutex_);
     return _transforms_changed_.connect(callback);
   }
 
-  void BufferCore::_removeTransformsChangedListener(boost::signals2::connection c)
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::_removeTransformsChangedListener(boost::signals2::connection c)
   {
     boost::mutex::scoped_lock lock(transformable_requests_mutex_);
     c.disconnect();
   }
 
-
-  bool BufferCore::_frameExists(const std::string& frame_id_str) const
+  template<uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::_frameExists(const std::string& frame_id_str) const
   {
     return frameIDs_.count(frame_id_str);
   }
 
-  bool BufferCore::_getParent(const std::string& frame_id, ros::Time time, std::string& parent) const
+  template<uint64_t MAX_NODE_SIZE>
+  bool BufferCore<MAX_NODE_SIZE>::_getParent(const std::string& frame_id, ros::Time time, std::string& parent) const
   {
 
     CompactFrameID frame_number = lookupFrameNumber(frame_id);
@@ -1820,14 +1854,14 @@ retry:
 
     CompactFrameID parent_id;
     if(cc == TwoPhaseLock){
-      frame_rw_lock_.at(frame_number).r_lock();
+      frame_rw_lock_->at(frame_number).r_lock();
       parent_id = frame->getParent(time, nullptr);
-      frame_rw_lock_.at(frame_number).r_unlock();
+      frame_rw_lock_->at(frame_number).r_unlock();
     }else if(cc == Silo){
     retry:
-      auto old_v = frame_vrw_lock_.at(frame_number).virtualRLock();
+      auto old_v = frame_vrw_lock_->at(frame_number).virtualRLock();
       parent_id = frame->getParent(time, nullptr);
-      auto new_v = frame_vrw_lock_.at(frame_number).virtualRLock();
+      auto new_v = frame_vrw_lock_->at(frame_number).virtualRLock();
       if(old_v != new_v) goto retry;
     }
 
@@ -1838,7 +1872,8 @@ retry:
     return true;
   };
 
-  void BufferCore::_getFrameStrings(std::vector<std::string> & vec) const
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::_getFrameStrings(std::vector<std::string> & vec) const
   {
     vec.clear();
 
@@ -1852,10 +1887,8 @@ retry:
     return;
   }
 
-
-
-
-  void BufferCore::testTransformableRequests()
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::testTransformableRequests()
   {
     if(transformable_requests_.empty()){
       return;
@@ -1941,8 +1974,8 @@ retry:
     _transforms_changed_();
   }
 
-
-  std::string BufferCore::_allFramesAsDot(double current_time) const
+  template<uint64_t MAX_NODE_SIZE>
+  std::string BufferCore<MAX_NODE_SIZE>::_allFramesAsDot(double current_time) const
   {
     std::stringstream mstream;
     mstream << "digraph G {" << std::endl;
@@ -1965,9 +1998,9 @@ retry:
     retry:
       uint32_t old_v;
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(counter).r_lock();
+        frame_rw_lock_->at(counter).r_lock();
       }else if(cc == Silo){
-        old_v = frame_vrw_lock_.at(counter).virtualRLock();
+        old_v = frame_vrw_lock_->at(counter).virtualRLock();
       }
 
       if(!counter_frame->getData(ros::Time(), temp)) {
@@ -2002,9 +2035,9 @@ retry:
               <<"\"];" <<std::endl;
 
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(counter).r_unlock();
+        frame_rw_lock_->at(counter).r_unlock();
       }else if(cc == Silo){
-        auto new_v = frame_vrw_lock_.at(counter).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(counter).virtualRLock();
         if(old_v != new_v) goto retry;
       }
 
@@ -2028,9 +2061,9 @@ retry:
     retry2:
       uint32_t old_v;
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(counter).r_lock();
+        frame_rw_lock_->at(counter).r_lock();
       }else if(cc == Silo){
-        old_v = frame_vrw_lock_.at(counter).virtualRLock();
+        old_v = frame_vrw_lock_->at(counter).virtualRLock();
       }
 
       if (counter_frame->getData(ros::Time(), temp)) {
@@ -2050,9 +2083,9 @@ retry:
       }
 
       if(cc == TwoPhaseLock){
-        frame_rw_lock_.at(counter).r_unlock();
+        frame_rw_lock_->at(counter).r_unlock();
       }else if(cc == Silo){
-        auto new_v = frame_vrw_lock_.at(counter).virtualRLock();
+        auto new_v = frame_vrw_lock_->at(counter).virtualRLock();
         if(old_v != new_v) goto retry2;
       }
       mstream << tmp.str();
@@ -2061,12 +2094,14 @@ retry:
     return mstream.str();
   }
 
-  std::string BufferCore::_allFramesAsDot() const
+  template<uint64_t MAX_NODE_SIZE>
+  std::string BufferCore<MAX_NODE_SIZE>::_allFramesAsDot() const
   {
     return _allFramesAsDot(0.0);
   }
 
-  void BufferCore::_chainAsVector(const std::string & target_frame, ros::Time target_time, const std::string & source_frame, ros::Time source_time, const std::string& fixed_frame, std::vector<std::string>& output) const
+  template<uint64_t MAX_NODE_SIZE>
+  void BufferCore<MAX_NODE_SIZE>::_chainAsVector(const std::string & target_frame, ros::Time target_time, const std::string & source_frame, ros::Time source_time, const std::string& fixed_frame, std::vector<std::string>& output) const
   {
     std::string error_string;
 
@@ -2138,10 +2173,12 @@ retry:
     }
   }
 
-  int TestBufferCore::_walkToTopParent(BufferCore& buffer, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const
+  int TestBufferCore::_walkToTopParent(BufferCore<>& buffer, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain) const
   {
     TransformAccum accum;
     return buffer.walkToTopParent(accum, time, target_id, source_id, error_string, frame_chain);
   }
 
+  template class BufferCore<1'000'005>;
+  template class BufferCore<1'005>;
 } // namespace tf2

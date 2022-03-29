@@ -62,11 +62,12 @@ struct VRWLock{
   }
 };
 
+template<uint64_t MAX_NODE_SIZE>
 struct ReadChecker{
-  tbb::concurrent_vector<VRWLock> &mutexes;
+  std::array<VRWLock, MAX_NODE_SIZE> &mutexes;
   std::unordered_map<uint32_t, uint32_t> vHistory{}; // frame id -> version
 
-  explicit ReadChecker(tbb::concurrent_vector<VRWLock> &mutexes_)
+  explicit ReadChecker(std::array<VRWLock, MAX_NODE_SIZE> &mutexes_)
     : mutexes(mutexes_){}
 
   void addRLock(uint32_t frame_id){

@@ -112,7 +112,7 @@ enum AccessType{
 };
 
 template <>
-struct BufferCoreWrapper<BufferCore>{
+struct BufferCoreWrapper<BufferCore<1'000'005>>{
 
   explicit BufferCoreWrapper(AccessType accessType_)
   : accessType(accessType_)
@@ -120,7 +120,7 @@ struct BufferCoreWrapper<BufferCore>{
         1'000'005,
         accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
 
-  BufferCore bfc;
+  BufferCore<1'000'005> bfc;
   AccessType accessType;
 
   void init(){
@@ -460,7 +460,7 @@ int main(int argc, char* argv[]){
 
   RunResult par_result{};
   if(FLAGS_only == 0 or FLAGS_only == 1 or FLAGS_only == 3){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Par);
+    BufferCoreWrapper<BufferCore<1'000'005>> bfc_w(AccessType::TF_Par);
     par_result = run(bfc_w);
 
     cout << "TF-Par:" << endl;
@@ -473,7 +473,7 @@ int main(int argc, char* argv[]){
 
   RunResult _2pl_result{};
   if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3 or FLAGS_only == 5){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_2PL);
+    BufferCoreWrapper<BufferCore<1'000'005>> bfc_w(AccessType::TF_2PL);
     _2pl_result = run(bfc_w);
 
     cout << "TF-2PL:" << endl;
@@ -488,7 +488,7 @@ int main(int argc, char* argv[]){
 
   RunResult silo_result{};
   if(FLAGS_only == 0 or FLAGS_only == 6){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo);
+    BufferCoreWrapper<BufferCore<1'000'005>> bfc_w(AccessType::TF_Silo);
     silo_result = run(bfc_w);
 
     cout << "TF-Silo:" << endl;
