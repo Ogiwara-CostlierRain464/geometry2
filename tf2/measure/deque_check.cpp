@@ -16,7 +16,7 @@ using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "thread num");
 DEFINE_string(output, "/tmp/d.dat", "output file");
-DEFINE_uint64(loop_sec, 5, "loop second");
+DEFINE_uint64(loop_sec, 10, "loop second");
 
 double throughput(chrono::duration<double> time, size_t iter){
   return ((double) iter) * (1. / chrono::duration<double>(time).count());
@@ -141,6 +141,7 @@ int main(int argc, char* argv[]){
   arr = new old_tf2::TimeCacheInterface*[1'000'000]();
   for(size_t i = 0; i < 1'000'000; i++){
     arr[i] = new old_tf2::TimeCache();
+    arr[i]->insertData({});
   }
 
   // one ref

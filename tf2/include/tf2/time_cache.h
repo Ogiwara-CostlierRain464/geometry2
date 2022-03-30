@@ -53,15 +53,15 @@ public:
   TimeCache(const TimeCache& other) = delete;
   TimeCache(TimeCache&& other) = delete;
 
-  bool getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str = nullptr);
-  bool insertData(const tf2::TransformStorage& new_data);
+  inline bool getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str = nullptr);
+  inline bool insertData(const tf2::TransformStorage& new_data);
   void clearList();
   tf2::CompactFrameID getParent(ros::Time time, std::string* error_str);
   P_TimeAndFrameID getLatestTimeAndParent();
 
   /// Debugging information methods
   unsigned int getListLength();
-  ros::Time getLatestTimestamp();
+  inline ros::Time getLatestTimestamp();
   ros::Time getOldestTimestamp();
 
 private:
