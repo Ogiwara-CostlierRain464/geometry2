@@ -126,6 +126,8 @@ add_dependencies(shared_ptr_check ${catkin_EXPORTED_TARGETS})
 add_executable(deque_check
   ${SRC}
   ${INCLUDE}
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
   measure/deque_check.cpp
 )
 target_link_libraries(deque_check

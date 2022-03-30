@@ -9,6 +9,7 @@
 #include <atomic>
 #include "../include/tf2/time_cache.h"
 #include "../include/tf2/buffer_core.h"
+#include "../old_tf2/time_cache.h"
 #include "xoroshiro128_plus.h"
 
 using namespace std;
@@ -27,13 +28,13 @@ struct ArrWrapper{
 };
 
 template <>
-struct ArrWrapper<tf2::TimeCacheInterfacePtr>{
-  tf2::TimeCacheInterfacePtr* arr;
-  explicit ArrWrapper(tf2::TimeCacheInterfacePtr *arr)
+struct ArrWrapper<old_tf2::TimeCacheInterface*>{
+  old_tf2::TimeCacheInterface** arr;
+  explicit ArrWrapper(old_tf2::TimeCacheInterface **arr)
   : arr(arr){}
 
   auto read(size_t i) const{
-    tf2::TimeCacheInterfacePtr ptr = arr[i];
+    auto ptr = arr[i];
     return ptr->getLatestTimestamp();
   }
 };
@@ -57,6 +58,17 @@ struct ArrWrapper<std::deque<tf2::TransformStorage>>{
 
   auto read(size_t i) const{
     return arr[i].front().stamp_;
+  }
+};
+
+template <>
+struct ArrWrapper<tf2::TimeCache>{
+  tf2::TimeCache* arr;
+  explicit ArrWrapper(tf2::TimeCache *arr)
+    : arr(arr){}
+
+  auto read(size_t i) const{
+    return arr[i].getLatestTimestamp();
   }
 };
 
@@ -124,27 +136,40 @@ int main(int argc, char* argv[]){
   cout << "Output: " << FLAGS_output << endl;
   cout << "Loop sec: " << FLAGS_loop_sec << endl;
 
-  tf2::TimeCacheInterfacePtr *arr;
-  arr = new tf2::TimeCacheInterfacePtr[1'000'000]();
+  // double ref, dynamic dispatch
+  old_tf2::TimeCacheInterface **arr;
+  arr = new old_tf2::TimeCacheInterface*[1'000'000]();
   for(size_t i = 0; i < 1'000'000; i++){
-    arr[i] = tf2::TimeCacheInterfacePtr(new tf2::TimeCache());
+    arr[i] = new old_tf2::TimeCache();
   }
 
+  // one ref
   tf2::TransformStorage *arr2;
   arr2 = new tf2::TransformStorage[1'000'000]();
+
+  // one ref with deque wrap
   std::deque<tf2::TransformStorage> *arr3;
   arr3 = new std::deque<tf2::TransformStorage>[1'000'000]();
   for(size_t i = 0; i < 1'000'000; i++){
-    arr3[i] = std::deque<tf2::TransformStorage>();
     arr3[i].emplace_back();
   }
 
-  cout << "TimeCache" << endl;
-  auto time_t = a(ArrWrapper<tf2::TimeCacheInterfacePtr>(arr));
-  cout << "TransformStorage" << endl;
+  // one ref with TimeCache wrap
+  tf2::TimeCache *arr4;
+  arr4 = new tf2::TimeCache[1'000'000]();
+  for(size_t i = 0; i < 1'000'000; i++){
+    arr4[i].insertData({});
+  }
+
+  cout << "double ref, dynamic dispatch" << endl;
+  auto time_t = a(ArrWrapper<old_tf2::TimeCacheInterface*>(arr));
+  cout << "one ref" << endl;
   auto storage_t = a(ArrWrapper<tf2::TransformStorage>(arr2));
-  cout << "deque" << endl;
+  cout << "one ref with deque wrap" << endl;
   auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
+  cout << "one ref with TimeCache wrap" << endl;
+  auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
+
 
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
