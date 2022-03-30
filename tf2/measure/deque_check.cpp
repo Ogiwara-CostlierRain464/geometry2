@@ -49,6 +49,18 @@ struct ArrWrapper<tf2::TransformStorage>{
   }
 };
 
+template <>
+struct ArrWrapper<std::deque<tf2::TransformStorage>>{
+  std::deque<tf2::TransformStorage>* arr;
+  explicit ArrWrapper(std::deque<tf2::TransformStorage> *arr)
+    : arr(arr){}
+
+  auto read(size_t i) const{
+    return arr[i].front().stamp_;
+  }
+};
+
+
 template <typename T>
 struct CountAccum{
   explicit CountAccum(size_t count): vec(count, T{}){}
@@ -120,17 +132,26 @@ int main(int argc, char* argv[]){
 
   tf2::TransformStorage *arr2;
   arr2 = new tf2::TransformStorage[1'000'000]();
+  std::deque<tf2::TransformStorage> *arr3;
+  arr3 = new std::deque<tf2::TransformStorage>[1'000'000]();
+  for(size_t i = 0; i < 1'000'000; i++){
+    arr3[i] = std::deque<tf2::TransformStorage>();
+    arr3[i].emplace_back();
+  }
 
   cout << "TimeCache" << endl;
   auto time_t = a(ArrWrapper<tf2::TimeCacheInterfacePtr>(arr));
   cout << "TransformStorage" << endl;
   auto storage_t = a(ArrWrapper<tf2::TransformStorage>(arr2));
+  cout << "deque" << endl;
+  auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
 
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
   output << FLAGS_thread << " ";
   output << time_t << " ";
   output << storage_t << " ";
+  output << deque_t << " ";
   output << endl;
   output.close();
 
