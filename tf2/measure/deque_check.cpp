@@ -185,11 +185,11 @@ int main(int argc, char* argv[]){
 //  }
 
   // one ref with TimeCache wrap
-//  tf2::TimeCache *arr4;
-//  arr4 = new tf2::TimeCache[1'000'000]();
-//  for(size_t i = 0; i < 1'000'000; i++){
-//    arr4[i].insertData({});
-//  }
+  tf2::TimeCache *arr4;
+  arr4 = new tf2::TimeCache[1'000'000]();
+  for(size_t i = 0; i < 1'000'000; i++){
+    arr4[i].insertData({});
+  }
 
   // double ref, no dynamic dispatch
 //  tf2::TimeCache **arr5;
@@ -212,8 +212,8 @@ int main(int argc, char* argv[]){
   auto storage_t = a(ArrWrapper<tf2::TransformStorage>(arr2));
 //  cout << "one ref with deque wrap" << endl;
 //  auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
-//  cout << "one ref with TimeCache wrap" << endl;
-//  auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
+  cout << "one ref with TimeCache wrap" << endl;
+  auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
 //  cout << "double ref, no dynamic dispatch" << endl;
 //  auto time_t2 = a(ArrWrapper<tf2::TimeCache*>(arr5));
   cout << "custom wrap" << endl;
