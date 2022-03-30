@@ -292,7 +292,7 @@ P_TimeAndFrameID TimeCache::getLatestTimeAndParent()
   return std::make_pair(ts.stamp_, ts.frame_id_);
 }
 
-ros::Time TimeCache::getLatestTimestamp() 
+ros::Time TimeCache::getLatestTimestamp()
 {   
   if (storage_.empty()) return ros::Time(); //empty list case
   return storage_.front().stamp_;

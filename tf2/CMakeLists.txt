@@ -119,6 +119,24 @@ target_link_libraries(shared_ptr_check
   )
 add_dependencies(shared_ptr_check ${catkin_EXPORTED_TARGETS})
 
+
+add_executable(deque_check
+  ${SRC}
+  ${INCLUDE}
+  measure/deque_check.cpp
+)
+target_link_libraries(deque_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  gflags
+  tbb
+)
+add_dependencies(deque_check
+  ${catkin_EXPORTED_TARGETS}
+)
+
+
 add_executable(wait_check
   measure/wait_check.cpp
   )
