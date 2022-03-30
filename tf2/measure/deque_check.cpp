@@ -84,6 +84,20 @@ struct ArrWrapper<tf2::TimeCache>{
   }
 };
 
+struct A{
+  std::deque<tf2::TransformStorage> storage_;
+};
+
+template <>
+struct ArrWrapper<A>{
+  A* arr;
+  explicit ArrWrapper(A *arr)
+    : arr(arr){}
+
+  auto read(size_t i) const{
+    return arr[i].storage_.front().stamp_;
+  }
+};
 
 template <typename T>
 struct CountAccum{
@@ -161,47 +175,56 @@ int main(int argc, char* argv[]){
   arr2 = new tf2::TransformStorage[1'000'000]();
 
   // one ref with deque wrap
-  std::deque<tf2::TransformStorage> *arr3;
-  arr3 = new std::deque<tf2::TransformStorage>[1'000'000]();
-  for(size_t i = 0; i < 1'000'000; i++){
-    arr3[i].emplace_back();
-  }
+//  std::deque<tf2::TransformStorage> *arr3;
+//  arr3 = new std::deque<tf2::TransformStorage>[1'000'000]();
+//  for(size_t i = 0; i < 1'000'000; i++){
+//    arr3[i].emplace_back();
+//  }
 
   // one ref with TimeCache wrap
-  tf2::TimeCache *arr4;
-  arr4 = new tf2::TimeCache[1'000'000]();
-  for(size_t i = 0; i < 1'000'000; i++){
-    arr4[i].insertData({});
-  }
+//  tf2::TimeCache *arr4;
+//  arr4 = new tf2::TimeCache[1'000'000]();
+//  for(size_t i = 0; i < 1'000'000; i++){
+//    arr4[i].insertData({});
+//  }
 
   // double ref, no dynamic dispatch
-  tf2::TimeCache **arr5;
-  arr5 = new tf2::TimeCache*[1'000'000]();
+//  tf2::TimeCache **arr5;
+//  arr5 = new tf2::TimeCache*[1'000'000]();
+//  for(size_t i = 0; i < 1'000'000; i++){
+//    arr5[i] = new tf2::TimeCache();
+//    arr5[i]->insertData({});
+//  }
+
+  // custom wrap
+  A *arr6;
+  arr6 = new A[1'000'000]();
   for(size_t i = 0; i < 1'000'000; i++){
-    arr5[i] = new tf2::TimeCache();
-    arr5[i]->insertData({});
+    arr6[i].storage_.emplace_back();
   }
 
-  cout << "double ref, dynamic dispatch" << endl;
-  auto time_t = a(ArrWrapper<old_tf2::TimeCacheInterface*>(arr));
+//  cout << "double ref, dynamic dispatch" << endl;
+//  auto time_t = a(ArrWrapper<old_tf2::TimeCacheInterface*>(arr));
   cout << "one ref" << endl;
   auto storage_t = a(ArrWrapper<tf2::TransformStorage>(arr2));
-  cout << "one ref with deque wrap" << endl;
-  auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
-  cout << "one ref with TimeCache wrap" << endl;
-  auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
-  cout << "double ref, no dynamic dispatch" << endl;
-  auto time_t2 = a(ArrWrapper<tf2::TimeCache*>(arr5));
+//  cout << "one ref with deque wrap" << endl;
+//  auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
+//  cout << "one ref with TimeCache wrap" << endl;
+//  auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
+//  cout << "double ref, no dynamic dispatch" << endl;
+//  auto time_t2 = a(ArrWrapper<tf2::TimeCache*>(arr5));
+  cout << "custom wrap" << endl;
+  auto a_t = a(ArrWrapper<A>(arr6));
 
 
-  ofstream output{};
-  output.open(FLAGS_output.c_str(), std::ios_base::app);
-  output << FLAGS_thread << " ";
-  output << time_t << " ";
-  output << storage_t << " ";
-  output << deque_t << " ";
-  output << endl;
-  output.close();
+//  ofstream output{};
+//  output.open(FLAGS_output.c_str(), std::ios_base::app);
+//  output << FLAGS_thread << " ";
+//  output << time_t << " ";
+//  output << storage_t << " ";
+//  output << deque_t << " ";
+//  output << endl;
+//  output.close();
 
   return 0;
 }
