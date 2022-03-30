@@ -40,6 +40,18 @@ struct ArrWrapper<old_tf2::TimeCacheInterface*>{
 };
 
 template <>
+struct ArrWrapper<tf2::TimeCache*>{
+  tf2::TimeCache** arr;
+  explicit ArrWrapper(tf2::TimeCache **arr)
+    : arr(arr){}
+
+  auto read(size_t i) const{
+    auto ptr = arr[i];
+    return ptr->getLatestTimestamp();
+  }
+};
+
+template <>
 struct ArrWrapper<tf2::TransformStorage>{
   tf2::TransformStorage* arr;
   explicit ArrWrapper(tf2::TransformStorage *arr)
@@ -162,6 +174,14 @@ int main(int argc, char* argv[]){
     arr4[i].insertData({});
   }
 
+  // double ref, no dynamic dispatch
+  tf2::TimeCache **arr5;
+  arr5 = new tf2::TimeCache*[1'000'000]();
+  for(size_t i = 0; i < 1'000'000; i++){
+    arr5[i] = new tf2::TimeCache();
+    arr5[i]->insertData({});
+  }
+
   cout << "double ref, dynamic dispatch" << endl;
   auto time_t = a(ArrWrapper<old_tf2::TimeCacheInterface*>(arr));
   cout << "one ref" << endl;
@@ -170,6 +190,8 @@ int main(int argc, char* argv[]){
   auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
   cout << "one ref with TimeCache wrap" << endl;
   auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
+  cout << "double ref, no dynamic dispatch" << endl;
+  auto time_t2 = a(ArrWrapper<tf2::TimeCache*>(arr5));
 
 
   ofstream output{};
