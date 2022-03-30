@@ -183,8 +183,7 @@ namespace tf2
       frame_vrw_lock_ = new VRWLock[max_node_size]();
     }
 
-    frameIDs_reverse = new std::string[max_node_size]();
-    frame_authority_ = new std::string[max_node_size]();
+    frameIDs_reverse.resize(max_node_size);
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
@@ -686,13 +685,6 @@ retry:
       // Early out... target frame is a direct parent of the source frame
       if (frame == target_id)
       {
-        if(!read_checker.check()){
-          stat->abortCount++;
-          read_checker.clear();
-          stat->timestamps.clear();
-          goto retry;
-        }
-
         f.finalize(TargetParentOfSource, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -755,13 +747,6 @@ retry:
       // Early out... source frame is a direct parent of the target frame
       if (frame == source_id)
       {
-        if(!read_checker.check()){
-          stat->abortCount++;
-          read_checker.clear();
-          stat->timestamps.clear();
-          goto retry;
-        }
-
         f.finalize(SourceParentOfTarget, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -826,10 +811,10 @@ retry:
 
     CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
     {
-      if (!cache->getData(time, st, error_string))
-      {
-        return 0;
-      }
+//      if (!cache->getData(time, st, error_string))
+//      {
+//        return 0;
+//      }
 
       return st.frame_id_;
     }
@@ -1329,7 +1314,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
   const std::string& BufferCore::lookupFrameString(CompactFrameID frame_id_num) const
   {
-    if (frame_id_num >= next_frame_id_)
+    if (frame_id_num >= frameIDs_reverse.size())
     {
       std::stringstream ss;
       ss << "Reverse lookup of frame id " << frame_id_num << " failed!";
@@ -1648,7 +1633,10 @@ retry:
       frame_id_num = temp.frame_id_;
 
       std::string authority = "no recorded authority";
-      authority = frame_authority_[cfid];
+      auto it = frame_authority_.find(cfid);
+      if (it != frame_authority_.end()) {
+        authority = it->second;
+      }
 
       double rate = cache->getListLength() / std::max((cache->getLatestTimestamp().toSec() -
                                                        cache->getOldestTimestamp().toSec() ), 0.0001);
@@ -1988,7 +1976,9 @@ retry:
         frame_id_num = temp.frame_id_;
       }
       std::string authority = "no recorded authority";
-      authority = frame_authority_[counter];
+      auto it = frame_authority_.find(counter);
+      if (it != frame_authority_.end())
+        authority = it->second;
 
       double rate = counter_frame->getListLength() / std::max((counter_frame->getLatestTimestamp().toSec() -
                                                                counter_frame->getOldestTimestamp().toSec()), 0.0001);

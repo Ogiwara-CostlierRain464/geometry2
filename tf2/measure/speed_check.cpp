@@ -160,6 +160,11 @@ struct BufferCoreWrapper<BufferCore>{
     }else{
       // which write direction is proper?
       vector<TransformStamped> vec{};
+//      for(size_t j = until; j > link; j--){
+//        vec.push_back(trans("link" + to_string(j-1),
+//                            "link" + to_string(j),
+//                            nano_time));
+//      }
       if(FLAGS_opposite_write_direction){
         for(size_t j = link; j < until; j++){
           vec.push_back(trans("link" + to_string(j),
