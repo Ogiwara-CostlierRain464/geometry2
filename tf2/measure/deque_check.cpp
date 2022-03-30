@@ -87,6 +87,7 @@ struct ArrWrapper<tf2::TimeCache>{
 struct A{
   std::deque<tf2::TransformStorage> storage_;
   ros::Duration max_storage_time_;
+  bool is_static;
   tf2::TransformStorage static_storage_{}; // for static
 };
 
