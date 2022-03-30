@@ -59,13 +59,12 @@
 
 namespace tf2
 {
+  class TimeCache;
+  typedef TimeCache* TimeCacheInterfacePtr;
 
   typedef std::pair<ros::Time, CompactFrameID> P_TimeAndFrameID;
   typedef uint32_t TransformableCallbackHandle;
   typedef uint64_t TransformableRequestHandle;
-
-  class TimeCacheInterface;
-  typedef TimeCacheInterface* TimeCacheInterfacePtr;
 
   enum TransformableResult
   {

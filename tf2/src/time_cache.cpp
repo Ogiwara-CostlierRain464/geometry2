@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2008, Willow Garage, Inc.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -13,7 +13,7 @@
  *     * Neither the name of the Willow Garage, Inc. nor the names of its
  *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -29,52 +29,53 @@
 
 /** \author Tully Foote */
 
-#include "time_cache.h"
+#include "../include/tf2/time_cache.h"
 #include "../include/tf2/exceptions.h"
+#include "../include/tf2/LinearMath/Vector3.h"
+#include "../include/tf2/LinearMath/Quaternion.h"
+#include "../include/tf2/LinearMath/Transform.h"
+#include "../include/tf2/transform_storage.h"
 
-#include <tf2/LinearMath/Vector3.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
-#include <assert.h>
+#include <cassert>
 
-namespace old_tf2{
+namespace tf2{
 
-TimeCache::TimeCache(ros::Duration max_storage_time)
-: max_storage_time_(max_storage_time)
+TimeCache::TimeCache(bool is_static, ros::Duration max_storage_time)
+  : max_storage_time_(max_storage_time), is_static(is_static)
 {}
 
-namespace cache { // Avoid ODR collisions https://github.com/ros/geometry2/issues/175 
+namespace cache { // Avoid ODR collisions https://github.com/ros/geometry2/issues/175
 // hoisting these into separate functions causes an ~8% speedup.  Removing calling them altogether adds another ~10%
-void createExtrapolationException1(ros::Time t0, ros::Time t1, std::string* error_str)
-{
-  if (error_str)
+  void createExtrapolationException1(ros::Time t0, ros::Time t1, std::string* error_str)
   {
-    std::stringstream ss;
-    ss << "Lookup would require extrapolation at time " << t0 << ", but only time " << t1 << " is in the buffer";
-    *error_str = ss.str();
+    if (error_str)
+    {
+      std::stringstream ss;
+      ss << "Lookup would require extrapolation at time " << t0 << ", but only time " << t1 << " is in the buffer";
+      *error_str = ss.str();
+    }
   }
-}
 
-void createExtrapolationException2(ros::Time t0, ros::Time t1, std::string* error_str)
-{
-  if (error_str)
+  void createExtrapolationException2(ros::Time t0, ros::Time t1, std::string* error_str)
   {
-    std::stringstream ss;
-    ss << "Lookup would require extrapolation into the future.  Requested time " << t0 << " but the latest data is at time " << t1;
-    *error_str = ss.str();
+    if (error_str)
+    {
+      std::stringstream ss;
+      ss << "Lookup would require extrapolation into the future.  Requested time " << t0 << " but the latest data is at time " << t1;
+      *error_str = ss.str();
+    }
   }
-}
 
-void createExtrapolationException3(ros::Time t0, ros::Time t1, std::string* error_str)
-{
-  if (error_str)
+  void createExtrapolationException3(ros::Time t0, ros::Time t1, std::string* error_str)
   {
-    std::stringstream ss;
-    ss << "Lookup would require extrapolation into the past.  Requested time " << t0 << " but the earliest data is at time " << t1;
-    *error_str = ss.str();
+    if (error_str)
+    {
+      std::stringstream ss;
+      ss << "Lookup would require extrapolation into the past.  Requested time " << t0 << " but the earliest data is at time " << t1;
+      *error_str = ss.str();
+    }
   }
-}
 } // namespace cache
 
 uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str)
@@ -121,7 +122,7 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
     one = &(*storage_.rbegin());
     return 1;
   }
-  // Catch cases that would require extrapolation
+    // Catch cases that would require extrapolation
   else if (target_time > latest_time)
   {
     cache::createExtrapolationException2(target_time, latest_time, error_str);
@@ -140,9 +141,9 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
   storage_target_time.stamp_ = target_time;
 
   storage_it = std::lower_bound(
-      storage_.begin(),
-      storage_.end(),
-      storage_target_time, std::greater<tf2::TransformStorage>());
+    storage_.begin(),
+    storage_.end(),
+    storage_target_time, std::greater<tf2::TransformStorage>());
 
   //Finally the case were somewhere in the middle  Guarenteed no extrapolation :-)
   one = &*(storage_it); //Older
@@ -176,6 +177,12 @@ void TimeCache::interpolate(const tf2::TransformStorage& one, const tf2::Transfo
 
 bool TimeCache::getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str) //returns false if data not available
 {
+  if(is_static){
+    data_out = static_storage_;
+    data_out.stamp_ = time;
+    return true;
+  }
+
   tf2::TransformStorage* p_temp_1;
   tf2::TransformStorage* p_temp_2;
 
@@ -209,6 +216,8 @@ bool TimeCache::getData(ros::Time time, tf2::TransformStorage & data_out, std::s
 
 tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
 {
+  if(is_static) return static_storage_.frame_id_;
+
   tf2::TransformStorage* p_temp_1;
   tf2::TransformStorage* p_temp_2;
 
@@ -223,7 +232,12 @@ tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
 
 bool TimeCache::insertData(const tf2::TransformStorage& new_data)
 {
-  L_TransformStorage::iterator storage_it = storage_.begin();
+  if(is_static){
+    static_storage_ = new_data;
+    return true;
+  }
+
+  auto storage_it = storage_.begin();
 
   if(storage_it != storage_.end())
   {
@@ -247,16 +261,21 @@ bool TimeCache::insertData(const tf2::TransformStorage& new_data)
 
 void TimeCache::clearList()
 {
+  if(is_static)return;
+
   storage_.clear();
 }
 
 unsigned int TimeCache::getListLength()
 {
+  if(is_static)return 1;
   return storage_.size();
 }
 
 P_TimeAndFrameID TimeCache::getLatestTimeAndParent()
 {
+  if(is_static) return std::make_pair(ros::Time(), static_storage_.frame_id_);
+
   if (storage_.empty())
   {
     return std::make_pair(ros::Time(), 0);
@@ -267,13 +286,15 @@ P_TimeAndFrameID TimeCache::getLatestTimeAndParent()
 }
 
 ros::Time TimeCache::getLatestTimestamp()
-{   
+{
+  if(is_static) return {};
   if (storage_.empty()) return ros::Time(); //empty list case
   return storage_.front().stamp_;
 }
 
-ros::Time TimeCache::getOldestTimestamp() 
-{   
+ros::Time TimeCache::getOldestTimestamp()
+{
+  if(is_static) return {};
   if (storage_.empty()) return ros::Time(); //empty list case
   return storage_.back().stamp_;
 }
@@ -281,11 +302,12 @@ ros::Time TimeCache::getOldestTimestamp()
 void TimeCache::pruneList()
 {
   ros::Time latest_time = storage_.begin()->stamp_;
-  
+
   while(!storage_.empty() && storage_.back().stamp_ + max_storage_time_ < latest_time)
   {
     storage_.pop_back();
   }
-  
-} // namespace tf2
+
+}
+
 }

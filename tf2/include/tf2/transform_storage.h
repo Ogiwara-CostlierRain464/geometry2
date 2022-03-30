@@ -73,6 +73,11 @@ public:
     return *this;
   }
 
+  bool operator>(const tf2::TransformStorage& rhs) const
+  {
+    return stamp_ > rhs.stamp_;
+  }
+
   tf2::Quaternion rotation_;
   tf2::Vector3 translation_;
   ros::Time stamp_;

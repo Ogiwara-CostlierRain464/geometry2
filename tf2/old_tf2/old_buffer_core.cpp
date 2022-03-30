@@ -257,9 +257,9 @@ namespace old_tf2
   {
     TimeCacheInterfacePtr frame_ptr = frames_[cfid];
     if (is_static) {
-      frames_[cfid] = TimeCacheInterfacePtr(new tf2::StaticCache());
+      frames_[cfid] = TimeCacheInterfacePtr(new StaticCache());
     } else {
-      frames_[cfid] = TimeCacheInterfacePtr(new tf2::TimeCache(cache_time_));
+      frames_[cfid] = TimeCacheInterfacePtr(new TimeCache(cache_time_));
     }
 
     return frames_[cfid];

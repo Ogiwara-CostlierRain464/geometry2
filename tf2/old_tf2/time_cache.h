@@ -129,8 +129,6 @@ private:
 
   void pruneList();
 
-
-
 };
 
 class StaticCache : public TimeCacheInterface

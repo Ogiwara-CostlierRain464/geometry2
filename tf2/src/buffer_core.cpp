@@ -191,7 +191,13 @@ namespace tf2
 
   BufferCore::~BufferCore()
   {
+    for(size_t i = 0; i < next_frame_id_; i++){
+      if(frames_[i] != nullptr){
+        delete frames_[i];
+      }
+    }
     delete[] frames_;
+
     if(cc == TwoPhaseLock){
       delete[] frame_rw_lock_;
     }else if(cc == Silo){
@@ -282,7 +288,7 @@ namespace tf2
     // before testTransformableRequests, you have to unlock.
     {
       std::vector<std::tuple<
-        TimeCacheInterfacePtr,
+        TimeCache*,
         geometry_msgs::TransformStamped,
         CompactFrameID>> write_set{};
 
@@ -375,13 +381,7 @@ namespace tf2
 
   TimeCacheInterfacePtr BufferCore::allocateFrame(CompactFrameID cfid, bool is_static)
   {
-    TimeCacheInterfacePtr frame_ptr = frames_[cfid];
-    if (is_static) {
-      frames_[cfid] = TimeCacheInterfacePtr(new StaticCache());
-    } else {
-      frames_[cfid] = TimeCacheInterfacePtr(new TimeCache(cache_time_));
-    }
-
+    frames_[cfid] = new TimeCache(is_static);
     return frames_[cfid];
   }
 
@@ -811,10 +811,10 @@ retry:
 
     CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
     {
-//      if (!cache->getData(time, st, error_string))
-//      {
-//        return 0;
-//      }
+      if (!cache->getData(time, st, error_string))
+      {
+        return 0;
+      }
 
       return st.frame_id_;
     }

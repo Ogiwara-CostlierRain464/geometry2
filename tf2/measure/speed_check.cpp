@@ -25,7 +25,7 @@ using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 10, "Joint size");
-DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
+DEFINE_double(read_ratio, 1, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 4, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 4, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
