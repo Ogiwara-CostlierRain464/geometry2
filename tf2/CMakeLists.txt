@@ -37,11 +37,14 @@ install(DIRECTORY include/${PROJECT_NAME}/
 file(GLOB_RECURSE SRC src/*.cpp)
 file(GLOB_RECURSE INCLUDE include/*.h)
 
+file(GLOB_RECURSE OLD_SRC old_tf2/*.cpp)
+file(GLOB_RECURSE OLD_INCLUDE old_tf2/*.h)
+
 add_executable(speed_check
   ${SRC}
   ${INCLUDE}
-  old_tf2/old_buffer_core.h
-  old_tf2/old_buffer_core.cpp
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
   measure/speed_check.cpp
   measure/xoroshiro128_plus.h
 )
@@ -58,8 +61,8 @@ add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
 add_executable(car_check
   ${SRC}
   ${INCLUDE}
-  old_tf2/old_buffer_core.h
-  old_tf2/old_buffer_core.cpp
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
   measure/car_check.cpp
   measure/xoroshiro128_plus.h
   )

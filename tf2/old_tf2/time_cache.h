@@ -32,8 +32,7 @@
 #ifndef TF2_TIME_CACHE_H
 #define TF2_TIME_CACHE_H
 
-#include "transform_storage.h"
-#include "stat.h"
+#include "../include/tf2/transform_storage.h"
 
 #include <deque>
 
@@ -49,25 +48,25 @@ namespace geometry_msgs
 ROS_DECLARE_MESSAGE(TransformStamped);
 }
 
-namespace tf2
+namespace old_tf2
 {
 
-typedef std::pair<ros::Time, CompactFrameID> P_TimeAndFrameID;
+typedef std::pair<ros::Time, tf2::CompactFrameID> P_TimeAndFrameID;
 
 class TimeCacheInterface
 {
 public:
   /** \brief Access data from the cache */
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr)=0; //returns false if data unavailable (should be thrown as lookup exception
+  virtual bool getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str = nullptr)=0; //returns false if data unavailable (should be thrown as lookup exception
 
   /** \brief Insert data into the cache */
-  virtual bool insertData(const TransformStorage& new_data)=0;
+  virtual bool insertData(const tf2::TransformStorage& new_data)=0;
 
   /** @brief Clear the list of stored values */
   virtual void clearList()=0;
 
   /** \brief Retrieve the parent at a specific time */
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str) = 0;
+  virtual tf2::CompactFrameID getParent(ros::Time time, std::string* error_str) = 0;
 
   /**
    * \brief Get the latest time stored in this cache, and the parent associated with it.  Returns parent = 0 if no data.
@@ -102,10 +101,10 @@ class TimeCache : public TimeCacheInterface
 
   /// Virtual methods
 
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr);
-  virtual bool insertData(const TransformStorage& new_data);
+  virtual bool getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str = nullptr);
+  virtual bool insertData(const tf2::TransformStorage& new_data);
   virtual void clearList();
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
+  virtual tf2::CompactFrameID getParent(ros::Time time, std::string* error_str);
   virtual P_TimeAndFrameID getLatestTimeAndParent();
 
   /// Debugging information methods
@@ -115,7 +114,7 @@ class TimeCache : public TimeCacheInterface
   
 
 private:
-  typedef std::deque<TransformStorage> L_TransformStorage;
+  typedef std::deque<tf2::TransformStorage> L_TransformStorage;
   L_TransformStorage storage_;
 
   ros::Duration max_storage_time_;
@@ -123,9 +122,9 @@ private:
 
   /// A helper function for getData
   //Assumes storage is already locked for it
-  inline uint8_t findClosest(TransformStorage*& one, TransformStorage*& two, ros::Time target_time, std::string* error_str);
+  inline uint8_t findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str);
 
-  inline void interpolate(const TransformStorage& one, const TransformStorage& two, ros::Time time, TransformStorage& output);
+  inline void interpolate(const tf2::TransformStorage& one, const tf2::TransformStorage& two, ros::Time time, tf2::TransformStorage& output);
 
 
   void pruneList();
@@ -139,10 +138,10 @@ class StaticCache : public TimeCacheInterface
  public:
   /// Virtual methods
 
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr); //returns false if data unavailable (should be thrown as lookup exception
-  virtual bool insertData(const TransformStorage& new_data);
+  virtual bool getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str = nullptr); //returns false if data unavailable (should be thrown as lookup exception
+  virtual bool insertData(const tf2::TransformStorage& new_data);
   virtual void clearList();
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
+  virtual tf2::CompactFrameID getParent(ros::Time time, std::string* error_str);
   virtual P_TimeAndFrameID getLatestTimeAndParent();
 
 
@@ -153,7 +152,7 @@ class StaticCache : public TimeCacheInterface
   
 
 private:
-  TransformStorage  storage_;
+  tf2::TransformStorage  storage_;
 };
 
 }

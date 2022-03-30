@@ -29,33 +29,16 @@
 
 /** \author Tully Foote */
 
-#include "tf2/time_cache.h"
-#include "tf2/exceptions.h"
+#include "time_cache.h"
+#include "../include/tf2/exceptions.h"
 
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <assert.h>
-#include "tf2/stat.h"
 
-namespace tf2 {
-
-TransformStorage::TransformStorage()
-{
-}
-
-TransformStorage::TransformStorage(const geometry_msgs::TransformStamped& data, CompactFrameID frame_id,
-                                   CompactFrameID child_frame_id)
-: stamp_(data.header.stamp)
-, frame_id_(frame_id)
-, child_frame_id_(child_frame_id)
-{
-  const geometry_msgs::Quaternion& o = data.transform.rotation;
-  rotation_ = tf2::Quaternion(o.x, o.y, o.z, o.w);
-  const geometry_msgs::Vector3& v = data.transform.translation;
-  translation_ = tf2::Vector3(v.x, v.y, v.z);
-}
+namespace old_tf2{
 
 TimeCache::TimeCache(ros::Duration max_storage_time)
 : max_storage_time_(max_storage_time)
@@ -94,12 +77,12 @@ void createExtrapolationException3(ros::Time t0, ros::Time t1, std::string* erro
 }
 } // namespace cache
 
-bool operator>(const TransformStorage& lhs, const TransformStorage& rhs)
+bool operator>(const tf2::TransformStorage& lhs, const tf2::TransformStorage& rhs)
 {
   return lhs.stamp_ > rhs.stamp_;
 }
 
-uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two, ros::Time target_time, std::string* error_str)
+uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str)
 {
   //No values stored
   if (storage_.empty())
@@ -117,7 +100,7 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two, r
   // One value stored
   if (++storage_.begin() == storage_.end())
   {
-    TransformStorage& ts = *storage_.begin();
+    tf2::TransformStorage& ts = *storage_.begin();
     if (ts.stamp_ == target_time)
     {
       one = &ts;
@@ -158,13 +141,13 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two, r
   //At least 2 values stored
   //Find the first value less than the target value
   L_TransformStorage::iterator storage_it;
-  TransformStorage storage_target_time;
+  tf2::TransformStorage storage_target_time;
   storage_target_time.stamp_ = target_time;
 
   storage_it = std::lower_bound(
       storage_.begin(),
       storage_.end(),
-      storage_target_time, std::greater<TransformStorage>());
+      storage_target_time, std::greater<tf2::TransformStorage>());
 
   //Finally the case were somewhere in the middle  Guarenteed no extrapolation :-)
   one = &*(storage_it); //Older
@@ -174,7 +157,7 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two, r
 
 }
 
-void TimeCache::interpolate(const TransformStorage& one, const TransformStorage& two, ros::Time time, TransformStorage& output)
+void TimeCache::interpolate(const tf2::TransformStorage& one, const tf2::TransformStorage& two, ros::Time time, tf2::TransformStorage& output)
 {
   // Check for zero distance case
   if( two.stamp_ == one.stamp_ )
@@ -196,14 +179,10 @@ void TimeCache::interpolate(const TransformStorage& one, const TransformStorage&
   output.child_frame_id_ = one.child_frame_id_;
 }
 
-bool TimeCache::getData(ros::Time time, TransformStorage & data_out, std::string* error_str, ReadStat *stat) //returns false if data not available
+bool TimeCache::getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str) //returns false if data not available
 {
-  TransformStorage* p_temp_1;
-  TransformStorage* p_temp_2;
-
-  if(stat){
-    stat->dequeSize = storage_.size();
-  }
+  tf2::TransformStorage* p_temp_1;
+  tf2::TransformStorage* p_temp_2;
 
   int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
   if (num_nodes == 0)
@@ -233,10 +212,10 @@ bool TimeCache::getData(ros::Time time, TransformStorage & data_out, std::string
   return true;
 }
 
-CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
+tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
 {
-  TransformStorage* p_temp_1;
-  TransformStorage* p_temp_2;
+  tf2::TransformStorage* p_temp_1;
+  tf2::TransformStorage* p_temp_2;
 
   int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
   if (num_nodes == 0)
@@ -247,7 +226,7 @@ CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
   return p_temp_1->frame_id_;
 }
 
-bool TimeCache::insertData(const TransformStorage& new_data)
+bool TimeCache::insertData(const tf2::TransformStorage& new_data)
 {
   L_TransformStorage::iterator storage_it = storage_.begin();
 
@@ -288,7 +267,7 @@ P_TimeAndFrameID TimeCache::getLatestTimeAndParent()
     return std::make_pair(ros::Time(), 0);
   }
 
-  const TransformStorage& ts = storage_.front();
+  const tf2::TransformStorage& ts = storage_.front();
   return std::make_pair(ts.stamp_, ts.frame_id_);
 }
 
