@@ -672,7 +672,13 @@ retry:
 //        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      CompactFrameID parent = f.gatherLatest(cache);
+//      CompactFrameID parent = f.gatherLatest(cache);
+      CompactFrameID parent;
+      if(cache->storage_.empty()){
+        parent = 0;
+      }
+      f.st = cache->storage_.front();
+      parent = f.st.frame_id_;
 
       if (parent == 0)
       {
@@ -685,6 +691,8 @@ retry:
       // Early out... target frame is a direct parent of the source frame
       if (frame == target_id)
       {
+        // TODO check Silo!
+
         f.finalize(TargetParentOfSource, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
