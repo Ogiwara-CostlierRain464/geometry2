@@ -61,7 +61,11 @@ public:
 
   /// Debugging information methods
   unsigned int getListLength();
-  ros::Time getLatestTimestamp();
+  inline ros::Time getLatestTimestamp(){
+    if(is_static) return {};
+    if (storage_.empty()) return ros::Time(); //empty list case
+    return storage_.front().stamp_;
+  }
   ros::Time getOldestTimestamp();
 
 
