@@ -680,10 +680,7 @@ retry:
       }
       // ??????????????????????////
       auto st = cache->storage_.front();
-
-      auto a = cache->storage_.front().frame_id_;
-      auto b = cache->storage_.front().child_frame_id_;
-      parent = cache->storage_.front().frame_id_;
+      parent = st.frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
