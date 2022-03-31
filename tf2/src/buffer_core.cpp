@@ -672,7 +672,16 @@ retry:
         //stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      CompactFrameID parent = f.gather(cache, ros::Time(0), &extrapolation_error_string);
+      auto id = cache->storage_.front().child_frame_id_;
+      CompactFrameID parent;
+      if(id == 2){
+        parent = 0;
+      } else if(id == 1){
+        parent = 2;
+      }else{
+        parent = id - 1;
+      }
+      //CompactFrameID parent = f.gather(cache, ros::Time(0), &extrapolation_error_string);
 
       if (parent == 0)
       {
@@ -730,7 +739,16 @@ retry:
        // stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      CompactFrameID parent = f.gather(cache, ros::Time(0), error_string);
+//      CompactFrameID parent = f.gather(cache, ros::Time(0), error_string);
+      auto id = cache->storage_.front().child_frame_id_;
+      CompactFrameID parent;
+      if(id == 2){
+        parent = 0;
+      } else if(id == 1){
+        parent = 2;
+      }else{
+        parent = id - 1;
+      }
 
       if (parent == 0)
       {
