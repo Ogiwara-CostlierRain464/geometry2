@@ -75,13 +75,18 @@ struct ArrWrapper<std::deque<tf2::TransformStorage>>{
 template <>
 struct ArrWrapper<tf2::TimeCache>{
   tf2::TimeCache* arr;
-  explicit ArrWrapper(tf2::TimeCache *arr)
-    : arr(arr){}
+  bool call_method;
+  explicit ArrWrapper(tf2::TimeCache *arr, bool call_method = false)
+    : arr(arr), call_method(call_method){}
 
   ros::Time read(size_t i) const{
-    if(arr[i].is_static) return {};
-    if (arr[i].storage_.empty()) return ros::Time(); //empty list case
-    return arr[i].storage_.front().stamp_;
+    if(call_method){
+      return arr[i].getLatestTimestamp();
+    }else{
+      if(arr[i].is_static) return {};
+      if (arr[i].storage_.empty()) return ros::Time(); //empty list case
+      return arr[i].storage_.front().stamp_;
+    }
   }
 };
 
@@ -223,8 +228,12 @@ int main(int argc, char* argv[]){
   auto storage_t = a(ArrWrapper<tf2::TransformStorage>(arr2));
 //  cout << "one ref with deque wrap" << endl;
 //  auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
-  cout << "one ref with TimeCache wrap" << endl;
+  cout << "one ref with TimeCache wrap: no method" << endl;
   auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
+
+  cout << "one ref with TimeCache wrap: call method" << endl;
+  auto time_cache_t2 = a(ArrWrapper<tf2::TimeCache>(arr4, true));
+
 //  cout << "double ref, no dynamic dispatch" << endl;
 //  auto time_t2 = a(ArrWrapper<tf2::TimeCache*>(arr5));
   cout << "custom wrap" << endl;
