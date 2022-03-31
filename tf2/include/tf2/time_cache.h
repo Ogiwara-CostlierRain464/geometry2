@@ -57,7 +57,51 @@ public:
   TimeCache(const TimeCache& other) = delete;
   TimeCache(TimeCache&& other) = delete;
 
-  bool getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str = nullptr);
+  inline bool getData(ros::Time time,
+                      tf2::TransformStorage & data_out,
+                      std::string* error_str = nullptr){
+    if(is_static){
+      data_out = static_storage_;
+      data_out.stamp_ = time;
+      return true;
+    }
+
+    if(time.isZero()){
+      data_out = storage_.front();
+      return true;
+    }
+
+    tf2::TransformStorage* p_temp_1;
+    tf2::TransformStorage* p_temp_2;
+
+    int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
+    if (num_nodes == 0)
+    {
+      return false;
+    }
+    else if (num_nodes == 1)
+    {
+      data_out = *p_temp_1;
+    }
+    else if (num_nodes == 2)
+    {
+      if( p_temp_1->frame_id_ == p_temp_2->frame_id_)
+      {
+        interpolate(*p_temp_1, *p_temp_2, time, data_out);
+      }
+      else
+      {
+        data_out = *p_temp_1;
+      }
+    }
+    else
+    {
+      assert(0);
+    }
+
+    return true;
+  }
+
   bool insertData(const tf2::TransformStorage& new_data);
   void clearList();
   tf2::CompactFrameID getParent(ros::Time time, std::string* error_str);
@@ -82,7 +126,28 @@ public:
   /// A helper function for getData
   //Assumes storage is already locked for it
   inline uint8_t findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str);
-  inline void interpolate(const tf2::TransformStorage& one, const tf2::TransformStorage& two, ros::Time time, tf2::TransformStorage& output);
+  inline void interpolate(const tf2::TransformStorage& one,
+                          const tf2::TransformStorage& two,
+                          ros::Time time, tf2::TransformStorage& output){
+    // Check for zero distance case
+    if( two.stamp_ == one.stamp_ )
+    {
+      output = two;
+      return;
+    }
+    //Calculate the ratio
+    tf2Scalar ratio = (time - one.stamp_).toSec() / (two.stamp_ - one.stamp_).toSec();
+
+    //Interpolate translation
+    output.translation_.setInterpolate3(one.translation_, two.translation_, ratio);
+
+    //Interpolate rotation
+    output.rotation_ = slerp( one.rotation_, two.rotation_, ratio);
+
+    output.stamp_ = time;
+    output.frame_id_ = one.frame_id_;
+    output.child_frame_id_ = one.child_frame_id_;
+  }
   void pruneList();
 };
 
