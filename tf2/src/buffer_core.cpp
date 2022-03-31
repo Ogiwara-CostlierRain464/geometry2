@@ -678,6 +678,7 @@ retry:
       if(cache->storage_.empty()){
         parent = 0;
       }
+      // ??????????????????????////
       f.st_rotation_ = cache->storage_.front().rotation_;
       f.st_translation_ = cache->storage_.front().translation_;
       parent = cache->storage_.front().frame_id_;
