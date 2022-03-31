@@ -681,6 +681,8 @@ retry:
       // ??????????????????????////
       auto st = cache->storage_.front();
       memcpy(f.st_rotation_.m_floats, st.rotation_.m_floats, sizeof(tf2Scalar[4]));
+      memcpy(f.st_translation_.m_floats, st.translation_.m_floats, sizeof(tf2Scalar[4]));
+
 //      f.st_rotation_.m_floats[0] = cache->storage_.front().rotation_.m_floats[0];
 //      f.st_rotation_.m_floats[1] = cache->storage_.front().rotation_.m_floats[1];
 //      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
