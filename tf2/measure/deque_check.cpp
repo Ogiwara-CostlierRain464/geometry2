@@ -89,6 +89,12 @@ struct A{
   ros::Duration max_storage_time_;
   bool is_static;
   tf2::TransformStorage static_storage_{}; // for static
+
+  ros::Time getLatestTimeStamp(){
+    if(is_static) return {};
+    if (storage_.empty()) return ros::Time(); //empty list case
+    return storage_.front().stamp_;
+  }
 };
 
 template <>
@@ -98,7 +104,7 @@ struct ArrWrapper<A>{
     : arr(arr){}
 
   auto read(size_t i) const{
-    return arr[i].storage_.front().stamp_;
+    return arr[i].getLatestTimeStamp();
   }
 };
 
