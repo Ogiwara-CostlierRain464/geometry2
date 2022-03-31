@@ -78,7 +78,9 @@ struct ArrWrapper<tf2::TimeCache>{
   explicit ArrWrapper(tf2::TimeCache *arr)
     : arr(arr){}
 
-  auto read(size_t i) const{
+  ros::Time read(size_t i) const{
+    if(arr[i].is_static) return {};
+    if (arr[i].storage_.empty()) return ros::Time(); //empty list case
     return arr[i].storage_.front().stamp_;
   }
 };
@@ -102,7 +104,9 @@ struct ArrWrapper<A>{
   explicit ArrWrapper(A *arr)
     : arr(arr){}
 
-  auto read(size_t i) const{
+  ros::Time read(size_t i) const{
+    if(arr[i].is_static) return {};
+    if (arr[i].storage_.empty()) return ros::Time(); //empty list case
     return arr[i].storage_.front().stamp_;
   }
 };
