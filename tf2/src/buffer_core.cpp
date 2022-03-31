@@ -678,7 +678,8 @@ retry:
       if(cache->storage_.empty()){
         parent = 0;
       }
-        f.st = cache->storage_.front();
+      f.st_rotation_ = cache->storage_.front().rotation_;
+      f.st_translation_ = cache->storage_.front().translation_;
       parent = cache->storage_.front().frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
@@ -748,7 +749,13 @@ retry:
        // stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      CompactFrameID parent = f.gatherLatest(cache);
+      CompactFrameID parent;
+      if(cache->storage_.empty()){
+        parent = 0;
+      }
+      f.st_rotation_ = cache->storage_.front().rotation_;
+      f.st_translation_ = cache->storage_.front().translation_;
+      parent = cache->storage_.front().frame_id_;
 
       if (parent == 0)
       {
@@ -837,25 +844,17 @@ retry:
       return st.frame_id_;
     }
 
-    inline CompactFrameID gatherLatest(TimeCacheInterfacePtr cache){
-      if(cache->storage_.empty()){
-        return 0;
-      }
-      st = cache->storage_.front();
-      return st.frame_id_;
-    }
-
     void accum(bool source)
     {
       if (source)
       {
-        source_to_top_vec = quatRotate(st.rotation_, source_to_top_vec) + st.translation_;
-        source_to_top_quat = st.rotation_ * source_to_top_quat;
+        source_to_top_vec = quatRotate(st.rotation_, source_to_top_vec) + st_translation_;
+        source_to_top_quat = st_rotation_ * source_to_top_quat;
       }
       else
       {
-        target_to_top_vec = quatRotate(st.rotation_, target_to_top_vec) + st.translation_;
-        target_to_top_quat = st.rotation_ * target_to_top_quat;
+        target_to_top_vec = quatRotate(st.rotation_, target_to_top_vec) + st_translation_;
+        target_to_top_quat = st_rotation_ * target_to_top_quat;
       }
     }
 
@@ -892,6 +891,8 @@ retry:
     }
 
     TransformStorage st;
+    tf2::Quaternion st_rotation_;
+    tf2::Vector3 st_translation_;
     ros::Time time;
     tf2::Quaternion source_to_top_quat;
     tf2::Vector3 source_to_top_vec;
