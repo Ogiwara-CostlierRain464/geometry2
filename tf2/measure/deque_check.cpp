@@ -46,8 +46,7 @@ struct ArrWrapper<tf2::TimeCache*>{
     : arr(arr){}
 
   auto read(size_t i) const{
-    auto ptr = arr[i];
-    return ptr->getLatestTimestamp();
+    return arr[i]->getLatestTimestamp();
   }
 };
 
@@ -80,7 +79,7 @@ struct ArrWrapper<tf2::TimeCache>{
     : arr(arr){}
 
   auto read(size_t i) const{
-    return arr[i].getLatestTimestamp();
+    return ros::Time();
   }
 };
 
@@ -211,6 +210,8 @@ int main(int argc, char* argv[]){
   for(size_t i = 0; i < 1'000'000; i++){
     arr6[i].storage_.emplace_back();
   }
+
+  static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
 
 //  cout << "double ref, dynamic dispatch" << endl;
 //  auto time_t = a(ArrWrapper<old_tf2::TimeCacheInterface*>(arr));
