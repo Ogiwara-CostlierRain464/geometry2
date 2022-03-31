@@ -250,11 +250,11 @@ int main(int argc, char* argv[]){
   }
 
   // custom wrap
-  A *arr6;
-  arr6 = new A[1'000'000]();
-  for(size_t i = 0; i < 1'000'000; i++){
-    arr6[i].storage_.emplace_back();
-  }
+//  A *arr6;
+//  arr6 = new A[1'000'000]();
+//  for(size_t i = 0; i < 1'000'000; i++){
+//    arr6[i].storage_.emplace_back();
+//  }
 
   static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
 
