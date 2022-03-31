@@ -80,12 +80,50 @@ struct ArrWrapper<tf2::TimeCache>{
     : arr(arr), call_method(call_method){}
 
   ros::Time read(size_t i) const{
+    tf2::TransformStorage st;
     if(call_method){
-      return arr[i].getLatestTimestamp();
+      arr[i].getData(ros::Time(), st);
+      return {};
     }else{
-      if(arr[i].is_static) return {};
-      if (arr[i].storage_.empty()) return ros::Time(); //empty list case
-      return arr[i].storage_.front().stamp_;
+      auto e = &arr[i];
+      if(e->is_static){
+        st = e->static_storage_;
+        st.stamp_ = {};
+        return {};
+      }
+
+      if(ros::Time().isZero()){
+        st = e->storage_.front();
+        return {};
+      }
+
+      tf2::TransformStorage* p_temp_1;
+      tf2::TransformStorage* p_temp_2;
+
+      int num_nodes = e->findClosest(p_temp_1, p_temp_2, ros::Time(), nullptr);
+      if (num_nodes == 0)
+      {
+        return {};
+      }
+      else if (num_nodes == 1)
+      {
+        st = *p_temp_1;
+      }
+      else if (num_nodes == 2)
+      {
+        if( p_temp_1->frame_id_ == p_temp_2->frame_id_)
+        {
+          e->interpolate(*p_temp_1, *p_temp_2, ros::Time(), st);
+        }
+        else
+        {
+          st = *p_temp_1;
+        }
+      }
+      else
+      {
+        assert(0);
+      }
     }
   }
 };
@@ -178,16 +216,16 @@ int main(int argc, char* argv[]){
   cout << "Loop sec: " << FLAGS_loop_sec << endl;
 
   // double ref, dynamic dispatch
-  old_tf2::TimeCacheInterface **arr;
-  arr = new old_tf2::TimeCacheInterface*[1'000'000]();
-  for(size_t i = 0; i < 1'000'000; i++){
-    arr[i] = new old_tf2::TimeCache();
-    arr[i]->insertData({});
-  }
+//  old_tf2::TimeCacheInterface **arr;
+//  arr = new old_tf2::TimeCacheInterface*[1'000'000]();
+//  for(size_t i = 0; i < 1'000'000; i++){
+//    arr[i] = new old_tf2::TimeCache();
+//    arr[i]->insertData({});
+//  }
 
   // one ref
-  tf2::TransformStorage *arr2;
-  arr2 = new tf2::TransformStorage[1'000'000]();
+//  tf2::TransformStorage *arr2;
+//  arr2 = new tf2::TransformStorage[1'000'000]();
 
   // one ref with deque wrap
 //  std::deque<tf2::TransformStorage> *arr3;
@@ -222,20 +260,19 @@ int main(int argc, char* argv[]){
 
 //  cout << "double ref, dynamic dispatch" << endl;
 //  auto time_t = a(ArrWrapper<old_tf2::TimeCacheInterface*>(arr));
-  cout << "one ref" << endl;
-  auto storage_t = a(ArrWrapper<tf2::TransformStorage>(arr2));
+//  cout << "one ref" << endl;
+//  auto storage_t = a(ArrWrapper<tf2::TransformStorage>(arr2));
 //  cout << "one ref with deque wrap" << endl;
 //  auto deque_t = a(ArrWrapper<std::deque<tf2::TransformStorage>>(arr3));
   cout << "one ref with TimeCache wrap: no method" << endl;
   auto time_cache_t = a(ArrWrapper<tf2::TimeCache>(arr4));
-
   cout << "one ref with TimeCache wrap: call method" << endl;
   auto time_cache_t2 = a(ArrWrapper<tf2::TimeCache>(arr4, true));
 
 //  cout << "double ref, no dynamic dispatch" << endl;
 //  auto time_t2 = a(ArrWrapper<tf2::TimeCache*>(arr5));
-  cout << "custom wrap" << endl;
-  auto a_t = a(ArrWrapper<A>(arr6));
+//  cout << "custom wrap" << endl;
+//  auto a_t = a(ArrWrapper<A>(arr6));
 
 
 //  ofstream output{};
