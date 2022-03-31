@@ -66,11 +66,6 @@ public:
       return true;
     }
 
-    if(time.isZero()){
-      data_out = storage_.front();
-      return true;
-    }
-
     tf2::TransformStorage* p_temp_1;
     tf2::TransformStorage* p_temp_2;
 

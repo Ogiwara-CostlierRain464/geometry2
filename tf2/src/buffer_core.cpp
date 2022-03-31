@@ -669,19 +669,10 @@ retry:
       }
 
       if(stat != nullptr){
-        //stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+//        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      auto id = cache->storage_.front().child_frame_id_;
-      CompactFrameID parent;
-      if(id == 2){
-        parent = 0;
-      } else if(id == 1){
-        parent = 2;
-      }else{
-        parent = id - 1;
-      }
-      //CompactFrameID parent = f.gather(cache, ros::Time(0), &extrapolation_error_string);
+      CompactFrameID parent = f.gatherLatest(cache);
 
       if (parent == 0)
       {
@@ -739,16 +730,7 @@ retry:
        // stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-//      CompactFrameID parent = f.gather(cache, ros::Time(0), error_string);
-      auto id = cache->storage_.front().child_frame_id_;
-      CompactFrameID parent;
-      if(id == 2){
-        parent = 0;
-      } else if(id == 1){
-        parent = 2;
-      }else{
-        parent = id - 1;
-      }
+      CompactFrameID parent = f.gatherLatest(cache);
 
       if (parent == 0)
       {
@@ -834,6 +816,14 @@ retry:
         return 0;
       }
 
+      return st.frame_id_;
+    }
+
+    inline CompactFrameID gatherLatest(TimeCacheInterfacePtr cache){
+      if(cache->storage_.empty()){
+        return 0;
+      }
+      st = cache->storage_.front();
       return st.frame_id_;
     }
 
