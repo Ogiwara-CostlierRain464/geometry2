@@ -679,8 +679,12 @@ retry:
         parent = 0;
       }
       // ??????????????????????////
-      f.st = cache->storage_.front();
-      parent = f.st.frame_id_;
+      f.st_rotation_.m_floats[0] = cache->storage_.front().rotation_.m_floats[0];
+      f.st_rotation_.m_floats[1] = cache->storage_.front().rotation_.m_floats[1];
+      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
+      f.st_rotation_.m_floats[3] = cache->storage_.front().rotation_.m_floats[3];
+//      f.st_translation_ = cache->storage_.front().translation_;
+      parent = cache->storage_.front().frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
@@ -846,7 +850,7 @@ retry:
       return st.frame_id_;
     }
 
-    void accum(bool source)
+    inline void accum(bool source)
     {
       if (source)
       {
@@ -860,7 +864,7 @@ retry:
       }
     }
 
-    void finalize(WalkEnding end, ros::Time _time)
+    inline void finalize(WalkEnding end, ros::Time _time)
     {
       switch (end)
       {

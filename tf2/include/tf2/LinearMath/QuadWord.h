@@ -35,7 +35,7 @@ ATTRIBUTE_ALIGNED16(class) QuadWord
 class QuadWord
 #endif
 {
-protected:
+public:
 
 #if defined (__SPU__) && defined (__CELLOS_LV2__)
 	union {
@@ -52,7 +52,6 @@ protected:
 	tf2Scalar	m_floats[4];
 #endif //__CELLOS_LV2__ __SPU__
 
-	public:
   
 
   /**@brief Return the x value */
