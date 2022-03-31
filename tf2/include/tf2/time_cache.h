@@ -33,6 +33,10 @@
 #define GEOMETRY2_TIME_CACHE_H
 
 #include "transform_storage.h"
+#include "exceptions.h"
+#include "LinearMath/Transform.h"
+
+#include <cassert>
 #include <deque>
 #include <sstream>
 #include <ros/message_forward.h>

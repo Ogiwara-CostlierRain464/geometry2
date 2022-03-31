@@ -36,7 +36,6 @@
 #include "../include/tf2/LinearMath/Transform.h"
 #include "../include/tf2/transform_storage.h"
 
-#include <geometry_msgs/TransformStamped.h>
 #include <cassert>
 
 namespace tf2{
@@ -180,6 +179,11 @@ bool TimeCache::getData(ros::Time time, tf2::TransformStorage & data_out, std::s
   if(is_static){
     data_out = static_storage_;
     data_out.stamp_ = time;
+    return true;
+  }
+
+  if(time.isZero()){
+    data_out = storage_.front();
     return true;
   }
 
