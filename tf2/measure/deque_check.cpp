@@ -110,9 +110,7 @@ struct ArrWrapper<A>{
     : arr(arr){}
 
   ros::Time read(size_t i) const{
-    if(arr[i].is_static) return {};
-    if (arr[i].storage_.empty()) return ros::Time(); //empty list case
-    return arr[i].storage_.front().stamp_;
+    return arr[i].getLatestTimeStamp();
   }
 };
 
