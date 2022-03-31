@@ -673,12 +673,23 @@ retry:
       }
 
 //      CompactFrameID parent = f.gatherLatest(cache);
+
+//      CompactFrameID parent;
+//      if(cache->storage_.empty()){
+//        parent = 0;
+//      }
+//      f.st = cache->storage_.front();
+//      parent = f.st.frame_id_;
+
+      auto id = cache->storage_.front().child_frame_id_;
       CompactFrameID parent;
-      if(cache->storage_.empty()){
+      if(id == 2){
         parent = 0;
+      } else if(id == 1){
+        parent = 2;
+      }else{
+        parent = id - 1;
       }
-      f.st = cache->storage_.front();
-      parent = f.st.frame_id_;
 
       if (parent == 0)
       {
