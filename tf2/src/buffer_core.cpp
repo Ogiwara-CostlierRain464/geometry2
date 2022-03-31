@@ -678,8 +678,8 @@ retry:
       if(cache->storage_.empty()){
         parent = 0;
       }
-      cache->storage_.front().rotation_;
-      cache->storage_.front().translation_;
+//      f.st_rotation_ = cache->storage_.front().rotation_;
+      f.st_translation_ = cache->storage_.front().translation_;
       parent = cache->storage_.front().frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
