@@ -32,6 +32,9 @@ public:
   /**@brief No initialization constructor */
 	Quaternion() {}
 
+	inline Quaternion(const Quaternion& other) = default;
+	inline Quaternion& operator=(const Quaternion& rhs) = default;
+
 	//		template <typename tf2Scalar>
 	//		explicit Quaternion(const tf2Scalar *v) : Tuple4<tf2Scalar>(v) {}
   /**@brief Constructor from scalars */
