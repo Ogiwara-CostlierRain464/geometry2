@@ -669,7 +669,7 @@ retry:
       }
 
       if(stat != nullptr){
-        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+        //stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
       CompactFrameID parent = f.gather(cache, ros::Time(0), &extrapolation_error_string);
@@ -727,7 +727,7 @@ retry:
       }
 
       if(stat != nullptr){
-        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+       // stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
       CompactFrameID parent = f.gather(cache, ros::Time(0), error_string);
@@ -809,7 +809,7 @@ retry:
     {
     }
 
-    CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
+    inline CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
     {
       if (!cache->getData(time, st, error_string))
       {
