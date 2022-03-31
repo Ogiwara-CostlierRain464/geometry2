@@ -679,7 +679,7 @@ retry:
         parent = 0;
       }
       // ??????????????????????////
-      memcpy(f.st_rotation_.m_floats, cache->storage_.front().rotation_.m_floats, sizeof(tf2Scalar[4]));
+//      memcpy(f.st_rotation_.m_floats, cache->storage_.front().rotation_.m_floats, sizeof(tf2Scalar[4]));
 //      f.st_rotation_.m_floats[0] = cache->storage_.front().rotation_.m_floats[0];
 //      f.st_rotation_.m_floats[1] = cache->storage_.front().rotation_.m_floats[1];
 //      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
