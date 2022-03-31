@@ -679,6 +679,8 @@ retry:
         parent = 0;
       }
       // ??????????????????????////
+      auto st = cache->storage_.front();
+
       auto a = cache->storage_.front().frame_id_;
       auto b = cache->storage_.front().child_frame_id_;
       parent = cache->storage_.front().frame_id_;
@@ -691,6 +693,8 @@ retry:
 //      }else{
 //        parent = id - 1;
 //      }
+
+      // you should check at here.
 
       if (parent == 0)
       {
