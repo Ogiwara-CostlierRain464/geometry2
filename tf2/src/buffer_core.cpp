@@ -675,11 +675,11 @@ retry:
 //      CompactFrameID parent = f.gatherLatest(cache);
 
       CompactFrameID parent;
-//      if(cache->storage_.empty()){
-//        parent = 0;
-//      }
+      if(cache->storage_.empty()){
+        parent = 0;
+      }
 //        f.st = cache->storage_.front();
-        parent = cache->storage_.front().frame_id_;
+      parent = cache->storage_.front().frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
