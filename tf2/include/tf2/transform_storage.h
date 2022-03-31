@@ -56,22 +56,8 @@ public:
   TransformStorage();
   TransformStorage(const geometry_msgs::TransformStamped& data, CompactFrameID frame_id, CompactFrameID child_frame_id);
 
-  TransformStorage(const TransformStorage& rhs)
-  {
-    *this = rhs;
-  }
-
-  TransformStorage& operator=(const TransformStorage& rhs)
-  {
-#if 01
-    rotation_ = rhs.rotation_;
-    translation_ = rhs.translation_;
-    stamp_ = rhs.stamp_;
-    frame_id_ = rhs.frame_id_;
-    child_frame_id_ = rhs.child_frame_id_;
-#endif
-    return *this;
-  }
+  inline TransformStorage(const TransformStorage& rhs) = default;
+  inline TransformStorage& operator=(const TransformStorage& rhs) = default;
 
   bool operator>(const tf2::TransformStorage& rhs) const
   {

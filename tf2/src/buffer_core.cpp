@@ -678,7 +678,7 @@ retry:
       if(cache->storage_.empty()){
         parent = 0;
       }
-//        f.st = cache->storage_.front();
+        f.st = cache->storage_.front();
       parent = cache->storage_.front().frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
