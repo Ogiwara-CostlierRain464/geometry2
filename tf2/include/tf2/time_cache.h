@@ -64,7 +64,7 @@ public:
   ros::Time getLatestTimestamp();
   ros::Time getOldestTimestamp();
 
-private:
+
   typedef std::deque<tf2::TransformStorage> L_TransformStorage;
   L_TransformStorage storage_;
   ros::Duration max_storage_time_;

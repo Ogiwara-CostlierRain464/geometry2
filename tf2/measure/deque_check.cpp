@@ -79,7 +79,7 @@ struct ArrWrapper<tf2::TimeCache>{
     : arr(arr){}
 
   auto read(size_t i) const{
-    return ros::Time();
+    return arr[i].storage_.front().stamp_;
   }
 };
 
@@ -103,7 +103,7 @@ struct ArrWrapper<A>{
     : arr(arr){}
 
   auto read(size_t i) const{
-    return arr[i].getLatestTimeStamp();
+    return arr[i].storage_.front().stamp_;
   }
 };
 
