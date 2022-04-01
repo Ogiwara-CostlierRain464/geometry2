@@ -692,7 +692,7 @@ retry:
         parent = 0;
       }
       // ??????????????????????////
-      auto st = cache->storage_.front();
+      f.st = cache->storage_.front();
 //      auto ** tmp = (tf2Scalar **) &f.st_rotation_.m_floats;
 //      *tmp = st.rotation_.m_floats;
    //   memcpy(f.st_rotation_.m_floats, st.rotation_.m_floats, sizeof(tf2Scalar[4]));
@@ -703,7 +703,7 @@ retry:
 //      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
 //      f.st_rotation_.m_floats[3] = cache->storage_.front().rotation_.m_floats[3];
 //      f.st_translation_ = cache->storage_.front().translation_;
-      parent = st.frame_id_;
+      parent = f.st.frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
