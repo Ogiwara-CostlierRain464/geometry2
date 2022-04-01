@@ -191,6 +191,8 @@ namespace tf2
 
     for(size_t i = 0; i < max_node_size; i++){ // warm up
       frames_[i].storage_.emplace_back();
+      frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
+      frames_[i].storage_.front().translation_.m_floats[0] = 0.5;
       frames_[i].storage_.pop_front();
       if(cc == TwoPhaseLock){
         frame_rw_lock_[i].w_lock();
