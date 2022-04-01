@@ -154,7 +154,13 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
 
 tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
 {
-  if(is_static) return static_storage_.frame_id_;
+  if(is_static){
+    if(storage_.empty()){
+      return 0;
+    }else{
+      return storage_.front().frame_id_;
+    }
+  }
 
   tf2::TransformStorage* p_temp_1;
   tf2::TransformStorage* p_temp_2;
@@ -171,7 +177,11 @@ tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
 bool TimeCache::insertData(const tf2::TransformStorage& new_data)
 {
   if(is_static){
-    static_storage_ = new_data;
+    if(storage_.empty()){
+      storage_.push_back(new_data);
+    }else{
+      storage_.front() = new_data;
+    }
     return true;
   }
 
@@ -212,7 +222,10 @@ unsigned int TimeCache::getListLength()
 
 P_TimeAndFrameID TimeCache::getLatestTimeAndParent()
 {
-  if(is_static) return std::make_pair(ros::Time(), static_storage_.frame_id_);
+  if(is_static){
+    CompactFrameID id = storage_.empty() ? 0 : storage_.front().frame_id_;
+    return std::make_pair(ros::Time(), id);
+  }
 
   if (storage_.empty())
   {

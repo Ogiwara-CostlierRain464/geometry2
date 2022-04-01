@@ -61,7 +61,11 @@ public:
                       tf2::TransformStorage & data_out,
                       std::string* error_str = nullptr){
     if(is_static){
-      data_out = static_storage_;
+      if(!storage_.empty()){
+        data_out = storage_.front();
+      }else{
+        data_out = TransformStorage{};
+      }
       data_out.stamp_ = time;
       return true;
     }
@@ -116,7 +120,6 @@ public:
   L_TransformStorage storage_;
   ros::Duration max_storage_time_;
   bool is_static;
-  tf2::TransformStorage static_storage_{}; // for static
 
   /// A helper function for getData
   //Assumes storage is already locked for it
