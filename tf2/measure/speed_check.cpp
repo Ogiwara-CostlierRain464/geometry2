@@ -131,8 +131,6 @@ struct BufferCoreWrapper<BufferCore>{
     for(size_t i = 0; i < FLAGS_joint; i++){ // warm up
       bfc.frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
       bfc.frames_[i].storage_.front().translation_.m_floats[0] = 0.5;
-      bfc.frames_[i].storage_.front().rotation_.m_floats[0] = 0;
-      bfc.frames_[i].storage_.front().translation_.m_floats[0] = 0;
       if(bfc.cc == tf2::TwoPhaseLock){
         bfc.frame_rw_lock_[i].w_lock();
         bfc.frame_rw_lock_[i].w_unlock();
