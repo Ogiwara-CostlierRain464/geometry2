@@ -692,14 +692,15 @@ retry:
         parent = 0;
       }
       // ??????????????????????////
-      f.st_rotation_.m_floats[0] = cache->storage_.front().rotation_.m_floats[0];
-      f.st_rotation_.m_floats[1] = cache->storage_.front().rotation_.m_floats[1];
-      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
-      f.st_rotation_.m_floats[3] = cache->storage_.front().rotation_.m_floats[3];
-      f.st_translation_.m_floats[0] = cache->storage_.front().vec[0];
-      f.st_translation_.m_floats[1] = cache->storage_.front().vec[1];
-      f.st_translation_.m_floats[2] = cache->storage_.front().vec[2];
-      parent = cache->storage_.front().frame_id_;
+      auto st = cache->storage_.front();
+      f.st_rotation_.m_floats[0] = st.rotation_.m_floats[0];
+      f.st_rotation_.m_floats[1] = st.rotation_.m_floats[1];
+      f.st_rotation_.m_floats[2] = st.rotation_.m_floats[2];
+      f.st_rotation_.m_floats[3] = st.rotation_.m_floats[3];
+      f.st_translation_.m_floats[0] = st.vec[0];
+      f.st_translation_.m_floats[1] = st.vec[1];
+      f.st_translation_.m_floats[2] = st.vec[2];
+      parent = st.frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
