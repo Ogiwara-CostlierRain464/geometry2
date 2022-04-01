@@ -261,7 +261,7 @@ int main(int argc, char* argv[]){
   static_assert(sizeof(double [3]) == 24, "");
 
   cout << sizeof(tf2::TransformStorage) << endl;
-  static_assert(sizeof(tf2::TransformStorage) == 80, "");
+  static_assert(sizeof(tf2::TransformStorage) == 72, "");
   // 176
   static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
 
