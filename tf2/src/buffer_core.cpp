@@ -188,6 +188,22 @@ namespace tf2
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
+
+    for(size_t i = 0; i < max_node_size; i++){ // warm up
+      frames_[i].storage_.emplace_back();
+      frames_[i].storage_.pop_front();
+      if(cc == TwoPhaseLock){
+        frame_rw_lock_[i].w_lock();
+        frame_rw_lock_[i].w_unlock();
+      }else if(cc == Silo){
+        frame_vrw_lock_[i].wLock();
+        frame_vrw_lock_[i].wUnLock();
+      }
+      frameIDs_reverse[i] = "w";
+      frameIDs_reverse[i] = "";
+      frame_authority_[i] = "w";
+      frame_authority_[i] = "";
+    }
   }
 
   BufferCore::~BufferCore()

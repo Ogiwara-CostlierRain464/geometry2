@@ -383,6 +383,9 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       exit(-1);
     }
   }
+
+
+
   asm volatile("" ::: "memory"); // force not to reorder.
   auto start = chrono::high_resolution_clock::now();
   wait = false;
