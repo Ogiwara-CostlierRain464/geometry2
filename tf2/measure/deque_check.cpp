@@ -255,6 +255,12 @@ int main(int argc, char* argv[]){
 //    arr6[i].storage_.emplace_back();
 //  }
 
+  static_assert(sizeof(tf2::Quaternion) == 32, "");
+  static_assert(sizeof(ros::Time) == 8, "");
+  static_assert(sizeof(tf2::CompactFrameID) == 4, "");
+  static_assert(sizeof(double [3]) == 24, "");
+
+  cout << sizeof(tf2::TransformStorage) << endl;
   static_assert(sizeof(tf2::TransformStorage) == 80, "");
   // 176
   static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");

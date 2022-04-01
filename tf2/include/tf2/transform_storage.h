@@ -64,11 +64,12 @@ public:
     return stamp_ > rhs.stamp_;
   }
 
-  ros::Time stamp_;
-  CompactFrameID frame_id_;
-  CompactFrameID child_frame_id_;
   tf2::Quaternion rotation_;
-  tf2::Vector3 translation_;
+  CompactFrameID frame_id_;
+  double vec[3];
+//  tf2::Vector3 translation_;
+  CompactFrameID child_frame_id_;
+  ros::Time stamp_;
 };
 
 }

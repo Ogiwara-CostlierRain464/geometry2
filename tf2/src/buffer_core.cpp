@@ -192,7 +192,7 @@ namespace tf2
     for(size_t i = 0; i < max_node_size; i++){ // warm up
       frames_[i].storage_.emplace_back();
       frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
-      frames_[i].storage_.front().translation_.m_floats[0] = 0.5;
+      frames_[i].storage_.front().vec[0] = 0.5;
       frames_[i].storage_.pop_front();
       if(cc == TwoPhaseLock){
         frame_rw_lock_[i].w_lock();
@@ -693,21 +693,12 @@ retry:
       }
       // ??????????????????????////
       auto st = cache->storage_.front();
-      f.st.stamp_ = st.stamp_;
-      f.st_rotation_.m_floats[0] = st.rotation_.m_floats[0];
-      std::cout << "storage " << &cache->storage_.front() << std::endl;
-      std::cout << "storage quat" << &cache->storage_.front().rotation_ << std::endl;
-      exit(-1);
-//      auto ** tmp = (tf2Scalar **) &f.st_rotation_.m_floats;
-//      *tmp = st.rotation_.m_floats;
-   //   memcpy(f.st_rotation_.m_floats, st.rotation_.m_floats, sizeof(tf2Scalar[4]));
-//      memcpy(f.st_translation_.m_floats, st.translation_.m_floats, sizeof(tf2Scalar[4]));
 
-//      f.st_rotation_.m_floats[0] = cache->storage_.front().rotation_.m_floats[0];
-//      f.st_rotation_.m_floats[1] = cache->storage_.front().rotation_.m_floats[1];
-//      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
-//      f.st_rotation_.m_floats[3] = cache->storage_.front().rotation_.m_floats[3];
-//      f.st_translation_ = cache->storage_.front().translation_;
+      f.st_rotation_.m_floats[0] = cache->storage_.front().rotation_.m_floats[0];
+      f.st_rotation_.m_floats[1] = cache->storage_.front().rotation_.m_floats[1];
+      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
+      f.st_rotation_.m_floats[3] = cache->storage_.front().rotation_.m_floats[3];
+      f.st_translation_.m_floats[0] = st.vec[0];
       parent = st.frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
@@ -783,8 +774,7 @@ retry:
       if(cache->storage_.empty()){
         parent = 0;
       }
-      f.st_rotation_ = cache->storage_.front().rotation_;
-      f.st_translation_ = cache->storage_.front().translation_;
+
       parent = cache->storage_.front().frame_id_;
 
       if (parent == 0)

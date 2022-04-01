@@ -163,8 +163,15 @@ void TimeCache::interpolate(const tf2::TransformStorage& one, const tf2::Transfo
   //Calculate the ratio
   tf2Scalar ratio = (time - one.stamp_).toSec() / (two.stamp_ - one.stamp_).toSec();
 
+  tf2::Vector3 tmp;
+  tf2::Vector3 one_vec(one.vec[0], one.vec[1], one.vec[2]);
+  tf2::Vector3 two_vec(two.vec[0], two.vec[1], two.vec[2]);
+
+  tmp.setInterpolate3(one_vec, two_vec, ratio);
   //Interpolate translation
-  output.translation_.setInterpolate3(one.translation_, two.translation_, ratio);
+  output.vec[0] = tmp[0];
+  output.vec[1] = tmp[1];
+  output.vec[2] = tmp[2];
 
   //Interpolate rotation
   output.rotation_ = slerp( one.rotation_, two.rotation_, ratio);

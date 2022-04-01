@@ -504,12 +504,12 @@ namespace old_tf2
     {
       if (source)
       {
-        source_to_top_vec = quatRotate(st.rotation_, source_to_top_vec) + st.translation_;
+        source_to_top_vec = quatRotate(st.rotation_, source_to_top_vec) + tf2::Vector3(st.vec[0], st.vec[1], st.vec[2]);
         source_to_top_quat = st.rotation_ * source_to_top_quat;
       }
       else
       {
-        target_to_top_vec = quatRotate(st.rotation_, target_to_top_vec) + st.translation_;
+        target_to_top_vec = quatRotate(st.rotation_, target_to_top_vec) + tf2::Vector3(st.vec[0], st.vec[1], st.vec[2]);
         target_to_top_quat = st.rotation_ * target_to_top_quat;
       }
     }

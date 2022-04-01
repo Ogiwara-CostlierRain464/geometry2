@@ -49,6 +49,8 @@ namespace tf2 {
     const geometry_msgs::Quaternion &o = data.transform.rotation;
     rotation_ = tf2::Quaternion(o.x, o.y, o.z, o.w);
     const geometry_msgs::Vector3 &v = data.transform.translation;
-    translation_ = tf2::Vector3(v.x, v.y, v.z);
+    vec[0] = v.x;
+    vec[1] = v.y;
+    vec[2] = v.z;
   }
 }
