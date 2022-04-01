@@ -126,6 +126,25 @@ struct BufferCoreWrapper<BufferCore>{
   void init(){
     bfc.clear();
     make_snake(bfc);
+
+    // warm up
+    for(size_t i = 0; i < FLAGS_joint; i++){ // warm up
+      bfc.frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
+      bfc.frames_[i].storage_.front().translation_.m_floats[0] = 0.5;
+      bfc.frames_[i].storage_.front().rotation_.m_floats[0] = 0;
+      bfc.frames_[i].storage_.front().translation_.m_floats[0] = 0;
+      if(bfc.cc == tf2::TwoPhaseLock){
+        bfc.frame_rw_lock_[i].w_lock();
+        bfc.frame_rw_lock_[i].w_unlock();
+      }else if(bfc.cc == tf2::Silo){
+        bfc.frame_vrw_lock_[i].wLock();
+        bfc.frame_vrw_lock_[i].wUnLock();
+      }
+      bfc.frameIDs_reverse[i] = "w";
+      bfc.frameIDs_reverse[i] = "";
+      bfc.frame_authority_[i] = "w";
+      bfc.frame_authority_[i] = "";
+    }
   }
   void read(size_t link, size_t until, ReadStat &out_stat) const{
     if(accessType == TF_Par){
@@ -372,6 +391,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   }
 
   bfc_w.init();
+
   for(size_t t = 0; t < threads.size(); t++){
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -383,8 +403,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       exit(-1);
     }
   }
-
-
 
   asm volatile("" ::: "memory"); // force not to reorder.
   auto start = chrono::high_resolution_clock::now();

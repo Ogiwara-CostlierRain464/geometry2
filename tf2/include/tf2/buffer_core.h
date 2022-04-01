@@ -42,6 +42,7 @@
 #include "ros/time.h"
 //#include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/TransformStamped.h"
+#include "time_cache.h"
 
 #include "stat.h"
 #include "rwlock.h"
@@ -59,7 +60,6 @@
 
 namespace tf2
 {
-  class TimeCache;
   typedef TimeCache* TimeCacheInterfacePtr;
 
   typedef std::pair<ros::Time, CompactFrameID> P_TimeAndFrameID;
@@ -339,7 +339,6 @@ namespace tf2
      */
     void _chainAsVector(const std::string & target_frame, ros::Time target_time, const std::string & source_frame, ros::Time source_time, const std::string & fixed_frame, std::vector<std::string>& output) const;
 
-  private:
 
     /** \brief A way to see what frames have been cached
      * Useful for debugging. Use this call internally.
