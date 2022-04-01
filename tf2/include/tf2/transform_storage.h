@@ -65,8 +65,8 @@ public:
   }
 
   tf2::Quaternion rotation_;
-  CompactFrameID frame_id_;
   double vec[3];
+  CompactFrameID frame_id_;
 //  tf2::Vector3 translation_;
   CompactFrameID child_frame_id_;
   ros::Time stamp_;

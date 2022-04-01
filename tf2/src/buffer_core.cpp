@@ -692,14 +692,14 @@ retry:
         parent = 0;
       }
       // ??????????????????????////
-      auto st = cache->storage_.front();
-
       f.st_rotation_.m_floats[0] = cache->storage_.front().rotation_.m_floats[0];
       f.st_rotation_.m_floats[1] = cache->storage_.front().rotation_.m_floats[1];
       f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
       f.st_rotation_.m_floats[3] = cache->storage_.front().rotation_.m_floats[3];
-      f.st_translation_.m_floats[0] = st.vec[0];
-      parent = st.frame_id_;
+      f.st_translation_.m_floats[0] = cache->storage_.front().vec[0];
+      f.st_translation_.m_floats[1] = cache->storage_.front().vec[1];
+      f.st_translation_.m_floats[2] = cache->storage_.front().vec[2];
+      parent = cache->storage_.front().frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
@@ -868,12 +868,12 @@ retry:
     {
       if (source)
       {
-        source_to_top_vec = quatRotate(st.rotation_, source_to_top_vec) + st_translation_;
+        source_to_top_vec = quatRotate(st_rotation_, source_to_top_vec) + st_translation_;
         source_to_top_quat = st_rotation_ * source_to_top_quat;
       }
       else
       {
-        target_to_top_vec = quatRotate(st.rotation_, target_to_top_vec) + st_translation_;
+        target_to_top_vec = quatRotate(st_rotation_, target_to_top_vec) + st_translation_;
         target_to_top_quat = st_rotation_ * target_to_top_quat;
       }
     }
