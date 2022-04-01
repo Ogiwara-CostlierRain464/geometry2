@@ -87,7 +87,7 @@ struct ArrWrapper<tf2::TimeCache>{
     }else{
       auto e = &arr[i];
       if(e->is_static){
-        st = e->static_storage_;
+        st = e->storage_.front();
         st.stamp_ = {};
         return {};
       }
@@ -132,7 +132,6 @@ struct A{
   std::deque<tf2::TransformStorage> storage_;
   ros::Duration max_storage_time_;
   bool is_static;
-  tf2::TransformStorage static_storage_{}; // for static
 
   ros::Time getLatestTimeStamp(){
     if(is_static) return {};

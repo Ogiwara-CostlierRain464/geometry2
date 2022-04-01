@@ -176,14 +176,15 @@ namespace tf2
     , using_dedicated_thread_(false)
     , cc(cc)
   {
-    frames_ = new TimeCacheInterfacePtr[max_node_size]();
+    frames_ = new TimeCache[max_node_size]();
     if(cc == TwoPhaseLock){
       frame_rw_lock_ = new RWLock[max_node_size]();
     }else if(cc == Silo){
       frame_vrw_lock_ = new VRWLock[max_node_size]();
     }
 
-    frameIDs_reverse.resize(max_node_size);
+    frameIDs_reverse = new std::string[max_node_size]();
+    frame_authority_ = new std::string[max_node_size]();
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
@@ -191,11 +192,6 @@ namespace tf2
 
   BufferCore::~BufferCore()
   {
-    for(size_t i = 0; i < next_frame_id_; i++){
-      if(frames_[i] != nullptr){
-        delete frames_[i];
-      }
-    }
     delete[] frames_;
 
     if(cc == TwoPhaseLock){
@@ -203,15 +199,14 @@ namespace tf2
     }else if(cc == Silo){
       delete[] frame_vrw_lock_;
     }
+    delete[] frameIDs_reverse;
+    delete[] frame_authority_;
   }
 
   void BufferCore::clear()
   {
     for(size_t i = 0; i < next_frame_id_; i++){
-      auto frame = frames_[i];
-      if(frame != nullptr){
-        frame->clearList();
-      }
+      frames_[i].clearList();
     }
   }
 
@@ -381,8 +376,8 @@ namespace tf2
 
   TimeCacheInterfacePtr BufferCore::allocateFrame(CompactFrameID cfid, bool is_static)
   {
-    frames_[cfid] = new TimeCache(is_static);
-    return frames_[cfid];
+    frames_[cfid].is_static = is_static;
+    return &frames_[cfid];
   }
 
   enum WalkEnding
@@ -1316,10 +1311,10 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
   tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const
   {
     if (frame_id >= next_frame_id_)
-      return TimeCacheInterfacePtr();
+      return nullptr;
     else
     {
-      return frames_[frame_id];
+      return &frames_[frame_id];
     }
   }
 
@@ -1353,7 +1348,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
   const std::string& BufferCore::lookupFrameString(CompactFrameID frame_id_num) const
   {
-    if (frame_id_num >= frameIDs_reverse.size())
+    if (frame_id_num >= next_frame_id_)
     {
       std::stringstream ss;
       ss << "Reverse lookup of frame id " << frame_id_num << " failed!";
@@ -1672,10 +1667,7 @@ retry:
       frame_id_num = temp.frame_id_;
 
       std::string authority = "no recorded authority";
-      auto it = frame_authority_.find(cfid);
-      if (it != frame_authority_.end()) {
-        authority = it->second;
-      }
+      authority = frame_authority_[cfid];
 
       double rate = cache->getListLength() / std::max((cache->getLatestTimestamp().toSec() -
                                                        cache->getOldestTimestamp().toSec() ), 0.0001);
@@ -2015,9 +2007,7 @@ retry:
         frame_id_num = temp.frame_id_;
       }
       std::string authority = "no recorded authority";
-      auto it = frame_authority_.find(counter);
-      if (it != frame_authority_.end())
-        authority = it->second;
+      authority = frame_authority_[counter];
 
       double rate = counter_frame->getListLength() / std::max((counter_frame->getLatestTimestamp().toSec() -
                                                                counter_frame->getOldestTimestamp().toSec()), 0.0001);

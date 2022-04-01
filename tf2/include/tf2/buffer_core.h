@@ -351,7 +351,7 @@ namespace tf2
 
     CCMethod cc;
     /** \brief The pointers to potential frames that the tree can be made of. */
-    TimeCacheInterfacePtr* frames_{};
+    TimeCache* frames_{};
 
     RWLock* frame_rw_lock_{}; // for 2PL
     VRWLock* frame_vrw_lock_{}; // for Silo
@@ -361,9 +361,9 @@ namespace tf2
     /** \brief A map from string frame ids to CompactFrameID */
     tbb::concurrent_unordered_map<std::string, CompactFrameID> frameIDs_;
     /** \brief A map from CompactFrameID frame_id_numbers to string for debugging and output */
-    tbb::concurrent_vector<std::string> frameIDs_reverse;
+    std::string *frameIDs_reverse;
     /** \brief A map to lookup the most recent authority for a given frame */
-    tbb::concurrent_unordered_map<CompactFrameID, std::string> frame_authority_;
+    std::string *frame_authority_;
 
     /// How long to cache transform history
     ros::Duration cache_time_;
