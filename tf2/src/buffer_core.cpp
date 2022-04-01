@@ -695,6 +695,9 @@ retry:
       auto st = cache->storage_.front();
       f.st.stamp_ = st.stamp_;
       f.st_rotation_.m_floats[0] = st.rotation_.m_floats[0];
+      std::cout << "storage " << &cache->storage_.front() << std::endl;
+      std::cout << "storage quat" << &cache->storage_.front().rotation_ << std::endl;
+      exit(-1);
 //      auto ** tmp = (tf2Scalar **) &f.st_rotation_.m_floats;
 //      *tmp = st.rotation_.m_floats;
    //   memcpy(f.st_rotation_.m_floats, st.rotation_.m_floats, sizeof(tf2Scalar[4]));
@@ -705,7 +708,7 @@ retry:
 //      f.st_rotation_.m_floats[2] = cache->storage_.front().rotation_.m_floats[2];
 //      f.st_rotation_.m_floats[3] = cache->storage_.front().rotation_.m_floats[3];
 //      f.st_translation_ = cache->storage_.front().translation_;
-      parent = f.st.frame_id_;
+      parent = st.frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
