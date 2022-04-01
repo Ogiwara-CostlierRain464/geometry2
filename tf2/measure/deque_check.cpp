@@ -255,6 +255,8 @@ int main(int argc, char* argv[]){
 //    arr6[i].storage_.emplace_back();
 //  }
 
+  static_assert(sizeof(tf2::TransformStorage) == 80, "");
+  // 176
   static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
 
 //  cout << "double ref, dynamic dispatch" << endl;

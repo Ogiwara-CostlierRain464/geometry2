@@ -22,6 +22,7 @@ subject to the following restrictions:
 #include "QuadWord.h"
 
 #include <ros/macros.h>
+#include <cstring>
 
 namespace tf2
 {

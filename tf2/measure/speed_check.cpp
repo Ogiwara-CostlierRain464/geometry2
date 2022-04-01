@@ -123,6 +123,7 @@ struct BufferCoreWrapper<BufferCore>{
   BufferCore bfc;
   AccessType accessType;
   tf2::TransformStorage st;
+  float acc;
 
   void init(){
     bfc.clear();
@@ -130,6 +131,7 @@ struct BufferCoreWrapper<BufferCore>{
 
     // warm up
     for(size_t i = 0; i < FLAGS_joint; i++){ // warm up
+      acc+= bfc.frames_[i].storage_.front().rotation_.m_floats[0];
       bfc.frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
       bfc.frames_[i].storage_.front().translation_.m_floats[0] = 0.5;
       st = bfc.frames_[i].storage_.front();
@@ -145,6 +147,8 @@ struct BufferCoreWrapper<BufferCore>{
       bfc.frame_authority_[i] = "w";
       bfc.frame_authority_[i] = "";
     }
+
+    cout << acc << endl;
   }
   void read(size_t link, size_t until, ReadStat &out_stat) const{
     if(accessType == TF_Par){
