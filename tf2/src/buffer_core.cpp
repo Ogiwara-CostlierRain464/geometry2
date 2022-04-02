@@ -188,24 +188,6 @@ namespace tf2
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
-
-    for(size_t i = 0; i < max_node_size; i++){ // warm up
-      frames_[i].storage_.emplace_back();
-      frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
-      frames_[i].storage_.front().vec[0] = 0.5;
-      frames_[i].storage_.pop_front();
-      if(cc == TwoPhaseLock){
-        frame_rw_lock_[i].w_lock();
-        frame_rw_lock_[i].w_unlock();
-      }else if(cc == Silo){
-        frame_vrw_lock_[i].wLock();
-        frame_vrw_lock_[i].wUnLock();
-      }
-      frameIDs_reverse[i] = "w";
-      frameIDs_reverse[i] = "";
-      frame_authority_[i] = "w";
-      frame_authority_[i] = "";
-    }
   }
 
   BufferCore::~BufferCore()
@@ -692,15 +674,9 @@ retry:
         parent = 0;
       }
       // ??????????????????????////
-      auto st = cache->storage_.front();
-      f.st_rotation_.m_floats[0] = st.rotation_.m_floats[0];
-      f.st_rotation_.m_floats[1] = st.rotation_.m_floats[1];
-      f.st_rotation_.m_floats[2] = st.rotation_.m_floats[2];
-      f.st_rotation_.m_floats[3] = st.rotation_.m_floats[3];
-      f.st_translation_.m_floats[0] = st.vec[0];
-      f.st_translation_.m_floats[1] = st.vec[1];
-      f.st_translation_.m_floats[2] = st.vec[2];
-      parent = st.frame_id_;
+      f.st_rotation_ = cache->storage_.front().rotation_;
+      memcpy(f.st_translation_.m_floats, cache->storage_.front().vec, sizeof(tf2Scalar[3]));
+      parent = cache->storage_.front().frame_id_;
 //      auto id = cache->storage_.front().child_frame_id_;
 //      CompactFrameID parent;
 //      if(id == 2){
