@@ -50,7 +50,7 @@ namespace tf2
 typedef uint32_t CompactFrameID;
 
 /** \brief Storage for transforms and their parent */
-class TransformStorage
+class alignas(128) TransformStorage
 {
 public:
   TransformStorage();
@@ -64,12 +64,13 @@ public:
     return stamp_ > rhs.stamp_;
   }
 
-  tf2::Quaternion rotation_;
-  double vec[3];
-  CompactFrameID frame_id_;
-//  tf2::Vector3 translation_;
-  CompactFrameID child_frame_id_;
-  ros::Time stamp_;
+
+  double vec[3]; // 24
+  tf2::Quaternion rotation_; // 32
+  CompactFrameID frame_id_; // 4 (+4)
+  CompactFrameID child_frame_id_; // 4 (+4)
+  ros::Time stamp_; // 8
+  uint64_t pad[6];
 };
 
 }

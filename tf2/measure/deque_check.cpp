@@ -210,6 +210,20 @@ int main(int argc, char* argv[]){
   gflags::SetUsageMessage("shared ptr check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  static_assert(sizeof(tf2::Quaternion) == 32, "");
+  static_assert(sizeof(ros::Time) == 8, "");
+  static_assert(sizeof(tf2::CompactFrameID) == 4, "");
+  static_assert(sizeof(double [3]) == 24, "");
+  cout << "vec: " << offsetof(tf2::TransformStorage, vec) << endl;
+  cout << "rotation_: " << offsetof(tf2::TransformStorage, rotation_) << endl;
+  cout << "frame_id_: " << offsetof(tf2::TransformStorage, frame_id_) << endl;
+//  cout << sizeof(tf2::TransformStorage) << endl;
+  static_assert(alignof(tf2::TransformStorage) == 128, "");
+  static_assert(sizeof (tf2::TransformStorage) == 128, "");
+  // 176
+  static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
+
+
   cout << "thread: " << FLAGS_thread << endl;
   cout << "Output: " << FLAGS_output << endl;
   cout << "Loop sec: " << FLAGS_loop_sec << endl;
@@ -255,15 +269,6 @@ int main(int argc, char* argv[]){
 //    arr6[i].storage_.emplace_back();
 //  }
 
-  static_assert(sizeof(tf2::Quaternion) == 32, "");
-  static_assert(sizeof(ros::Time) == 8, "");
-  static_assert(sizeof(tf2::CompactFrameID) == 4, "");
-  static_assert(sizeof(double [3]) == 24, "");
-
-  cout << sizeof(tf2::TransformStorage) << endl;
-  static_assert(sizeof(tf2::TransformStorage) == 72, "");
-  // 176
-  static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
 
 //  cout << "double ref, dynamic dispatch" << endl;
 //  auto time_t = a(ArrWrapper<old_tf2::TimeCacheInterface*>(arr));
