@@ -65,12 +65,12 @@ public:
   }
 
 
-  double vec[3]; // 24
-  tf2::Quaternion rotation_; // 32
-  CompactFrameID frame_id_; // 4 (+4)
-  CompactFrameID child_frame_id_; // 4 (+4)
-  ros::Time stamp_; // 8
-  uint64_t pad[6];
+  double vec[3]; // 24 byte
+  tf2::Quaternion rotation_; // 32 byte
+  CompactFrameID frame_id_; // 4 (+4) byte
+  CompactFrameID child_frame_id_; // 4 (+4) byte
+  ros::Time stamp_; // 8 byte
+  __attribute__((unused)) uint64_t _pad[6]; // 48byte, for padding.
 };
 
 }

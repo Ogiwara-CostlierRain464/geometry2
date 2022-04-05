@@ -364,7 +364,6 @@ namespace tf2
             // TODO: Impl rollback
           }
 
-          // TODO: Silo read may cause segmentation fault.
           frame_vrw_lock_[id].wUnLock();
         }
       }
@@ -664,30 +663,10 @@ retry:
       }
 
       if(stat != nullptr){
-//        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-//      CompactFrameID parent = f.gatherLatest(cache);
-
-      CompactFrameID parent;
-      if(cache->storage_.empty()){
-        parent = 0;
-      }
-      // ??????????????????????////
-      f.st_rotation_ = cache->storage_.front().rotation_;
-      memcpy(f.st_translation_.m_floats, cache->storage_.front().vec, sizeof(tf2Scalar[3]));
-      parent = cache->storage_.front().frame_id_;
-//      auto id = cache->storage_.front().child_frame_id_;
-//      CompactFrameID parent;
-//      if(id == 2){
-//        parent = 0;
-//      } else if(id == 1){
-//        parent = 2;
-//      }else{
-//        parent = id - 1;
-//      }
-
-      // you should check at here.
+      CompactFrameID parent = f.gatherLatest(cache);
 
       if (parent == 0)
       {
@@ -700,7 +679,12 @@ retry:
       // Early out... target frame is a direct parent of the source frame
       if (frame == target_id)
       {
-        // TODO check Silo!
+        if(!read_checker.check()){
+          stat->abortCount++;
+          read_checker.clear();
+          stat->timestamps.clear();
+          goto retry;
+        }
 
         f.finalize(TargetParentOfSource, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
@@ -744,15 +728,10 @@ retry:
       }
 
       if(stat != nullptr){
-       // stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
+        stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      CompactFrameID parent;
-      if(cache->storage_.empty()){
-        parent = 0;
-      }
-
-      parent = cache->storage_.front().frame_id_;
+      CompactFrameID parent = f.gatherLatest(cache);
 
       if (parent == 0)
       {
@@ -769,6 +748,13 @@ retry:
       // Early out... source frame is a direct parent of the target frame
       if (frame == source_id)
       {
+        if(!read_checker.check()){
+          stat->abortCount++;
+          read_checker.clear();
+          stat->timestamps.clear();
+          goto retry;
+        }
+
         f.finalize(SourceParentOfTarget, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -833,13 +819,44 @@ retry:
 
     inline CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
     {
+      TransformStorage st;
       if (!cache->getData(time, st, error_string))
       {
         return 0;
       }
 
+      // For performance reason, we avoid to copy whole TransformStorage struct, but only copy
+      // required fields.
+      st_rotation_.m_floats[0] = st.rotation_.m_floats[0];
+      st_rotation_.m_floats[1] = st.rotation_.m_floats[1];
+      st_rotation_.m_floats[2] = st.rotation_.m_floats[2];
+      st_rotation_.m_floats[3] = st.rotation_.m_floats[3];
+
+      st_translation_.m_floats[0] = st.vec[0];
+      st_translation_.m_floats[1] = st.vec[1];
+      st_translation_.m_floats[2] = st.vec[2];
+
       return st.frame_id_;
     }
+
+    inline CompactFrameID gatherLatest(TimeCacheInterfacePtr cache)
+    {
+      if(cache->storage_.empty()){
+        return 0;
+      }
+      // For performance reason, we avoid to copy whole TransformStorage struct, but only copy
+      // required fields.
+      auto st = cache->storage_.front();
+      st_rotation_.m_floats[0] = st.rotation_.m_floats[0];
+      st_rotation_.m_floats[1] = st.rotation_.m_floats[1];
+      st_rotation_.m_floats[2] = st.rotation_.m_floats[2];
+      st_rotation_.m_floats[3] = st.rotation_.m_floats[3];
+      st_translation_.m_floats[0] = st.vec[0];
+      st_translation_.m_floats[1] = st.vec[1];
+      st_translation_.m_floats[2] = st.vec[2];
+      return st.frame_id_;
+    }
+
 
     inline void accum(bool source)
     {
@@ -887,7 +904,6 @@ retry:
       time = _time;
     }
 
-    TransformStorage st;
     tf2::Quaternion st_rotation_;
     tf2::Vector3 st_translation_;
     ros::Time time;

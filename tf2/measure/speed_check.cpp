@@ -29,10 +29,11 @@ DEFINE_double(read_ratio, 1, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 4, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 4, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 6, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
+DEFINE_uint32(only, 1, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
+DEFINE_bool(make_read_stat, false, "When true, make statistics. To enhance performance, this should be turned off.");
 
 
 using std::chrono::operator""s;
@@ -66,7 +67,7 @@ void make_snake(T &bfc){
 template <typename T>
 struct BufferCoreWrapper{
   void init(){}
-  void read(size_t link, size_t until, ReadStat &out_stat)const{}
+  void read(size_t link, size_t until, ReadStat *out_stat)const{}
   // return abort count
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){}
 };
@@ -78,13 +79,15 @@ struct BufferCoreWrapper<OldBufferCore>{
     bfc.clear();
     make_snake(bfc);
   }
-  void read(size_t link, size_t until, ReadStat &out_stat) const{
+  void read(size_t link, size_t until, ReadStat *out_stat) const{
     // Read from low to high for performance.
     assert(until > link);
     auto trans = bfc.lookupTransform("link" + to_string(link),
                                      "link" + to_string(until),
                                      ros::Time(0));
-    out_stat.timestamps.push_back(trans.header.stamp.toNSec());
+    if(out_stat){
+      out_stat->timestamps.push_back(trans.header.stamp.toNSec());
+    }
   }
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
     // Write from low to high for performance.
@@ -123,7 +126,7 @@ struct BufferCoreWrapper<BufferCore>{
   BufferCore bfc;
   AccessType accessType;
   tf2::TransformStorage st;
-  double acc;
+  double acc{};
 
   void init(){
     bfc.clear();
@@ -149,16 +152,19 @@ struct BufferCoreWrapper<BufferCore>{
 
     cout << acc << endl;
   }
-  void read(size_t link, size_t until, ReadStat &out_stat) const{
+  void read(size_t link, size_t until, ReadStat *out_stat) const{
     if(accessType == TF_Par){
       assert(until > link);
       auto trans = bfc.lookupTransform("link" + to_string(link),
                                        "link" + to_string(until),
-                                       ros::Time(0), &out_stat);
-      out_stat.timestamps.push_back(trans.header.stamp.toNSec());
+                                       ros::Time(0), out_stat);
+
+      if(out_stat){
+        out_stat->timestamps.push_back(trans.header.stamp.toNSec());
+      }
     }else{
       bfc.lookupLatestTransformXact("link" + to_string(link),
-                                "link" + to_string(until), &out_stat);
+                                "link" + to_string(until), out_stat);
     }
   }
   void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
@@ -312,7 +318,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         auto until = link + FLAGS_read_len;
         if(until > FLAGS_joint) until = FLAGS_joint;
         auto before = chrono::steady_clock::now();
-        bfc_w.read(link, until, stat);
+        bfc_w.read(link, until, FLAGS_make_read_stat ? &stat : nullptr);
         auto after = chrono::steady_clock::now();
 
         auto access_ave = operator""ns(stat.getTimeStampsAve());
@@ -460,6 +466,7 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
   CONSOLE_BRIDGE_logInform("Opposite write direction: %s", FLAGS_opposite_write_direction ? "true" : "false");
   CONSOLE_BRIDGE_logInform("Loop sec: %d", FLAGS_loop_sec);
+  CONSOLE_BRIDGE_logInform("Make read stat: %s", FLAGS_make_read_stat ? "true" : "false");
 
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
@@ -528,6 +535,13 @@ int main(int argc, char* argv[]){
   if(FLAGS_frequency != 0){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
   }
+  if(!FLAGS_make_read_stat){
+    cout << "\033[31mWarn: make read stat turned off, so `delay` and `var` is meaningless.\033[0m" << endl;
+  }
+  // TODO:
+  // 1. check performace
+  // 2. add const and noexcept
+
 
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
