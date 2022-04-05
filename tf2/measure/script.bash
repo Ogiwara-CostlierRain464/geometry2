@@ -19,7 +19,7 @@ mkdir -p $OUTPUT_DIR
 
 # Thread, Joint, Iter, Read_Ratio, Read_Len, Write_len
 VAR=1
-for T in $(seq 14 14 224); do
+for T in $(seq 28 28 224); do
 #VAR=2
 #for J in 10 100 1000 10000; do
 #VAR=3

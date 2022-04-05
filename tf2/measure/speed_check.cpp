@@ -125,32 +125,11 @@ struct BufferCoreWrapper<BufferCore>{
 
   BufferCore bfc;
   AccessType accessType;
-  tf2::TransformStorage st;
-  double acc{};
 
   void init(){
     bfc.clear();
+    bfc.warmUpPages();
     make_snake(bfc);
-
-    // warm up
-    for(size_t i = 0; i < FLAGS_joint; i++){ // warm up
-      acc += bfc.frames_[i].storage_.front().rotation_.m_floats[3];
-      bfc.frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
-      st = bfc.frames_[i].storage_.front();
-      if(bfc.cc == tf2::TwoPhaseLock){
-        bfc.frame_rw_lock_[i].w_lock();
-        bfc.frame_rw_lock_[i].w_unlock();
-      }else if(bfc.cc == tf2::Silo){
-        bfc.frame_vrw_lock_[i].wLock();
-        bfc.frame_vrw_lock_[i].wUnLock();
-      }
-      bfc.frameIDs_reverse[i] = "w";
-      bfc.frameIDs_reverse[i] = "";
-      bfc.frame_authority_[i] = "w";
-      bfc.frame_authority_[i] = "";
-    }
-
-    cout << acc << endl;
   }
   void read(size_t link, size_t until, ReadStat *out_stat) const{
     if(accessType == TF_Par){

@@ -108,6 +108,9 @@ namespace tf2
      *
      */
     BufferCore(ros::Duration cache_time_ = ros::Duration(DEFAULT_CACHE_TIME), uint64_t max_node_size = 1000, CCMethod cc = Silo);
+
+    void warmUpPages();
+
     virtual ~BufferCore(void);
 
     /** \brief Clear all data */
@@ -339,7 +342,7 @@ namespace tf2
      */
     void _chainAsVector(const std::string & target_frame, ros::Time target_time, const std::string & source_frame, ros::Time source_time, const std::string & fixed_frame, std::vector<std::string>& output) const;
 
-
+private:
     /** \brief A way to see what frames have been cached
      * Useful for debugging. Use this call internally.
      */
@@ -356,6 +359,7 @@ namespace tf2
     VRWLock* frame_vrw_lock_{}; // for Silo
 
     std::atomic_uint64_t next_frame_id_{1};
+    uint64_t max_node_size_;
 
     /** \brief A map from string frame ids to CompactFrameID */
     tbb::concurrent_unordered_map<std::string, CompactFrameID> frameIDs_;
