@@ -109,7 +109,7 @@ namespace tf2
      */
     BufferCore(ros::Duration cache_time_ = ros::Duration(DEFAULT_CACHE_TIME), uint64_t max_node_size = 1000, CCMethod cc = Silo);
 
-    void warmUpPages();
+    void warmUpPages() noexcept;
 
     virtual ~BufferCore(void);
 
@@ -122,7 +122,7 @@ namespace tf2
      * \param is_static Record this transform as a static transform.  It will be good across all time.  (This cannot be changed after the first call.)
      * \return True unless an error occured
      */
-    bool setTransform(const geometry_msgs::TransformStamped& transform, const std::string & authority, bool is_static = false);
+    bool setTransform(const geometry_msgs::TransformStamped& transform, const std::string & authority, bool is_static = false) noexcept;
 
     /** \brief Add several transform information to the tf data structure, by using transactional method.
      * \param transforms Vector of transform to store
@@ -132,7 +132,7 @@ namespace tf2
      * \return True unless an error occured
      */
     bool setTransformsXact(const std::vector<geometry_msgs::TransformStamped> &transforms,
-                           const std::string & authority, bool is_static = false, WriteStat *stat = nullptr);
+                           const std::string & authority, bool is_static = false, WriteStat *stat = nullptr) noexcept;
 
     /*********** Accessors *************/
 
@@ -147,7 +147,7 @@ namespace tf2
      */
     geometry_msgs::TransformStamped
     lookupTransform(const std::string& target_frame, const std::string& source_frame,
-                    const ros::Time& time, ReadStat *stat = nullptr) const;
+                    const ros::Time& time, ReadStat *stat = nullptr) const noexcept(false);
 
     /** \brief Get the transform between two frames by frame ID, by using transactional method.
      * \param target_frame The frame to which data should be transformed
@@ -160,7 +160,7 @@ namespace tf2
      * tf2::ExtrapolationException, tf2::InvalidArgumentException
      */
     geometry_msgs::TransformStamped
-    lookupLatestTransformXact(const std::string& target_frame, const std::string& source_frame, ReadStat *stat = nullptr) const;
+    lookupLatestTransformXact(const std::string& target_frame, const std::string& source_frame, ReadStat *stat = nullptr) const noexcept(false);
 
     void justReadFrames(const std::vector<std::string> &frames, ReadStat *stat = nullptr) const;
 
@@ -179,7 +179,7 @@ namespace tf2
     geometry_msgs::TransformStamped
     lookupTransform(const std::string& target_frame, const ros::Time& target_time,
                     const std::string& source_frame, const ros::Time& source_time,
-                    const std::string& fixed_frame) const;
+                    const std::string& fixed_frame) const noexcept(false);
 
     /* \brief Lookup the twist of the tracking_frame with respect to the observation frame in the reference_frame using the reference point
      * \param tracking_frame The frame to track
@@ -232,7 +232,7 @@ namespace tf2
      * \return True if the transform is possible, false otherwise
      */
     bool canTransform(const std::string& target_frame, const std::string& source_frame,
-                      const ros::Time& time, std::string* error_msg = NULL) const;
+                      const ros::Time& time, std::string* error_msg = NULL) const noexcept(false);
 
     /** \brief Test if a transform is possible
      * \param target_frame The frame into which to transform
@@ -245,21 +245,21 @@ namespace tf2
      */
     bool canTransform(const std::string& target_frame, const ros::Time& target_time,
                       const std::string& source_frame, const ros::Time& source_time,
-                      const std::string& fixed_frame, std::string* error_msg = NULL) const;
+                      const std::string& fixed_frame, std::string* error_msg = NULL) const noexcept(false);
 
     /** \brief A way to see what frames have been cached in yaml format
      * Useful for debugging tools
      */
-    std::string allFramesAsYAML(double current_time) const;
+    std::string allFramesAsYAML(double current_time) const noexcept;
 
     /** Backwards compatibility for #84
     */
-    std::string allFramesAsYAML() const;
+    std::string allFramesAsYAML() const noexcept;
 
     /** \brief A way to see what frames have been cached
      * Useful for debugging
      */
-    std::string allFramesAsString() const;
+    std::string allFramesAsString() const noexcept;
 
     typedef boost::function<void(TransformableRequestHandle request_handle, const std::string& target_frame, const std::string& source_frame,
                                  ros::Time time, TransformableResult result)> TransformableCallback;
@@ -316,7 +316,7 @@ namespace tf2
     CompactFrameID _lookupFrameNumber(const std::string& frameid_str) const {
       return lookupFrameNumber(frameid_str);
     }
-    CompactFrameID _lookupOrInsertFrameNumber(const std::string& frameid_str) {
+    CompactFrameID _lookupOrInsertFrameNumber(const std::string& frameid_str) noexcept{
       return lookupOrInsertFrameNumber(frameid_str);
     }
 
@@ -346,7 +346,7 @@ private:
     /** \brief A way to see what frames have been cached
      * Useful for debugging. Use this call internally.
      */
-    std::string allFramesAsStringNoLock() const;
+    std::string allFramesAsStringNoLock() const noexcept;
 
 
     /******************** Internal Storage ****************/
@@ -408,45 +408,45 @@ private:
      * This is an internal function which will get the pointer to the frame associated with the frame id
      * Possible Exception: tf::LookupException
      */
-    TimeCacheInterfacePtr getFrame(CompactFrameID c_frame_id) const;
+    TimeCacheInterfacePtr getFrame(CompactFrameID c_frame_id) const noexcept;
 
-    TimeCacheInterfacePtr allocateFrame(CompactFrameID cfid, bool is_static);
+    TimeCacheInterfacePtr allocateFrame(CompactFrameID cfid, bool is_static) noexcept;
 
 
-    bool warnFrameId(const char* function_name_arg, const std::string& frame_id) const;
+    bool warnFrameId(const char* function_name_arg, const std::string& frame_id) const noexcept;
     CompactFrameID validateFrameId(const char* function_name_arg, const std::string& frame_id) const;
 
     /// String to number for frame lookup with dynamic allocation of new frames
-    CompactFrameID lookupFrameNumber(const std::string& frameid_str) const;
+    CompactFrameID lookupFrameNumber(const std::string& frameid_str) const noexcept;
 
     /// String to number for frame lookup with dynamic allocation of new frames
-    CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str);
+    CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str) noexcept;
 
     ///Number to string frame lookup may throw LookupException if number invalid
-    const std::string& lookupFrameString(CompactFrameID frame_id_num) const;
+    const std::string& lookupFrameString(CompactFrameID frame_id_num) const noexcept(false);
 
-    void createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const;
+    void createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const noexcept(false);
 
     /**@brief Return the latest rostime which is common across the spanning set
      * zero if fails to cross */
-    int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const;
+    int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const noexcept;
 
     template<typename F>
-    int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const;
+    int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const noexcept;
 
     /**@brief Traverse the transform tree. If frame_chain is not NULL, store the traversed frame tree in vector frame_chain.
      * */
     template<typename F>
-    int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain, ReadStat *stat = nullptr) const;
+    int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain, ReadStat *stat = nullptr) const noexcept;
 
     template<typename F>
-    int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ReadStat *stat = nullptr) const;
+    int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ReadStat *stat = nullptr) const noexcept;
 
     void testTransformableRequests();
     bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
-                              const ros::Time& time, std::string* error_msg) const;
+                              const ros::Time& time, std::string* error_msg) const noexcept(false);
     bool canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id,
-                            const ros::Time& time, std::string* error_msg) const;
+                            const ros::Time& time, std::string* error_msg) const noexcept(false);
 
 
     //Whether it is safe to use canTransform with a timeout. (If another thread is not provided it will always timeout.)

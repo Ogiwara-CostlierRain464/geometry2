@@ -121,7 +121,7 @@ namespace tf2
     return out;
   }
 
-  bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& frame_id) const
+  bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& frame_id) const noexcept
   {
     if (frame_id.empty())
     {
@@ -191,7 +191,7 @@ namespace tf2
     frameIDs_reverse[0] = "NO_PARENT";
   }
 
-  void BufferCore::warmUpPages(){
+  void BufferCore::warmUpPages() noexcept{
     for(size_t i = 0; i < max_node_size_; i++){
       frames_[i].storage_.emplace_back();
       frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
@@ -229,14 +229,14 @@ namespace tf2
     }
   }
 
-  bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static)
+  bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static) noexcept
   {
     std::vector<geometry_msgs::TransformStamped> vec{transform_in};
     setTransformsXact(vec, authority, is_static);
   }
 
   bool BufferCore::setTransformsXact(const std::vector<geometry_msgs::TransformStamped> &transforms,
-                                     const std::string& authority, bool is_static, WriteStat *stat)
+                                     const std::string& authority, bool is_static, WriteStat *stat) noexcept
   {
     std::vector<geometry_msgs::TransformStamped> stripped{};
     for(auto &e: transforms){
@@ -392,7 +392,7 @@ namespace tf2
     return true;
   }
 
-  TimeCacheInterfacePtr BufferCore::allocateFrame(CompactFrameID cfid, bool is_static)
+  TimeCacheInterfacePtr BufferCore::allocateFrame(CompactFrameID cfid, bool is_static) noexcept
   {
     frames_[cfid].is_static = is_static;
     return &frames_[cfid];
@@ -408,7 +408,7 @@ namespace tf2
 
 // TODO for Jade: Merge walkToTopParent functions; this is now a stub to preserve ABI
   template<typename F>
-  int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const
+  int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const noexcept
   {
     return walkToTopParent(f, time, target_id, source_id, error_string, NULL);
   }
@@ -416,7 +416,7 @@ namespace tf2
   template<typename F>
   int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
                                   CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID>
-                                  *frame_chain, ReadStat *stat) const
+                                  *frame_chain, ReadStat *stat) const noexcept
   {
     if (frame_chain)
       frame_chain->clear();
@@ -644,7 +644,7 @@ namespace tf2
   template<typename F>
   int BufferCore::walkToTopParentLatest(F& f, CompactFrameID target_id,
                                   CompactFrameID source_id, std::string* error_string,
-                                  ReadStat *stat) const
+                                  ReadStat *stat) const noexcept
   {
 retry:
     ScopedWriteSetUnLocker un_locker(frame_rw_lock_);
@@ -938,7 +938,7 @@ retry:
   geometry_msgs::TransformStamped BufferCore::lookupTransform(
     const std::string& target_frame,
     const std::string& source_frame,
-    const ros::Time& time, ReadStat *stat) const
+    const ros::Time& time, ReadStat *stat) const noexcept(false)
   {
     if (target_frame == source_frame) {
       geometry_msgs::TransformStamped identity;
@@ -1003,7 +1003,7 @@ retry:
   geometry_msgs::TransformStamped BufferCore::lookupLatestTransformXact(
     const std::string& target_frame,
     const std::string& source_frame,
-    ReadStat *stat) const
+    ReadStat *stat) const noexcept(false)
   {
     if (target_frame == source_frame) {
       geometry_msgs::TransformStamped identity;
@@ -1104,7 +1104,7 @@ retry:
                                                               const ros::Time& target_time,
                                                               const std::string& source_frame,
                                                               const ros::Time& source_time,
-                                                              const std::string& fixed_frame) const
+                                                              const std::string& fixed_frame) const noexcept(false)
   {
     validateFrameId("lookupTransform argument target_frame", target_frame);
     validateFrameId("lookupTransform argument source_frame", source_frame);
@@ -1209,7 +1209,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
   };
 
   bool BufferCore::canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id,
-                                      const ros::Time& time, std::string* error_msg) const
+                                      const ros::Time& time, std::string* error_msg) const noexcept(false)
   {
     if (target_id == 0 || source_id == 0)
     {
@@ -1246,13 +1246,13 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
   }
 
   bool BufferCore::canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,
-                                        const ros::Time& time, std::string* error_msg) const
+                                        const ros::Time& time, std::string* error_msg) const noexcept(false)
   {
     return canTransformNoLock(target_id, source_id, time, error_msg);
   }
 
   bool BufferCore::canTransform(const std::string& target_frame, const std::string& source_frame,
-                                const ros::Time& time, std::string* error_msg) const
+                                const ros::Time& time, std::string* error_msg) const noexcept(false)
   {
     // Short circuit if target_frame == source_frame
     if (target_frame == source_frame)
@@ -1290,7 +1290,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
   bool BufferCore::canTransform(const std::string& target_frame, const ros::Time& target_time,
                                 const std::string& source_frame, const ros::Time& source_time,
-                                const std::string& fixed_frame, std::string* error_msg) const
+                                const std::string& fixed_frame, std::string* error_msg) const noexcept(false)
   {
     if (warnFrameId("canTransform argument target_frame", target_frame))
       return false;
@@ -1333,7 +1333,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return canTransformNoLock(target_id, fixed_id, target_time, error_msg) && canTransformNoLock(fixed_id, source_id, source_time, error_msg);
   }
 
-  tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const
+  tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const noexcept
   {
     if (frame_id >= next_frame_id_)
       return nullptr;
@@ -1343,7 +1343,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     }
   }
 
-  CompactFrameID BufferCore::lookupFrameNumber(const std::string& frameid_str) const
+  CompactFrameID BufferCore::lookupFrameNumber(const std::string& frameid_str) const noexcept
   {
     CompactFrameID retval;
     auto map_it = frameIDs_.find(frameid_str);
@@ -1356,7 +1356,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return retval;
   }
 
-  CompactFrameID BufferCore::lookupOrInsertFrameNumber(const std::string& frameid_str)
+  CompactFrameID BufferCore::lookupOrInsertFrameNumber(const std::string& frameid_str) noexcept
   {
     CompactFrameID retval = 0;
     auto map_it = frameIDs_.find(frameid_str);
@@ -1371,7 +1371,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return retval;
   }
 
-  const std::string& BufferCore::lookupFrameString(CompactFrameID frame_id_num) const
+  const std::string& BufferCore::lookupFrameString(CompactFrameID frame_id_num) const noexcept(false)
   {
     if (frame_id_num >= next_frame_id_)
     {
@@ -1383,7 +1383,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       return frameIDs_reverse[frame_id_num];
   }
 
-  void BufferCore::createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const
+  void BufferCore::createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const noexcept(false)
   {
     if (!out)
     {
@@ -1394,12 +1394,12 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
                        "Tf has two or more unconnected trees.");
   }
 
-  std::string BufferCore::allFramesAsString() const
+  std::string BufferCore::allFramesAsString() const noexcept
   {
     return this->allFramesAsStringNoLock();
   }
 
-  std::string BufferCore::allFramesAsStringNoLock() const
+  std::string BufferCore::allFramesAsStringNoLock() const noexcept
   {
     std::stringstream mstream;
 
@@ -1452,7 +1452,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     CompactFrameID id;
   };
 
-  int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string) const
+  int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string) const noexcept
   {
     // Error if one of the frames don't exist.
     if (source_id == 0 || target_id == 0) return tf2_msgs::TF2Error::LOOKUP_ERROR;
@@ -1653,7 +1653,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     return tf2_msgs::TF2Error::NO_ERROR;
   }
 
-  std::string BufferCore::allFramesAsYAML(double current_time) const
+  std::string BufferCore::allFramesAsYAML(double current_time) const noexcept
   {
     std::stringstream mstream;
 
@@ -1724,7 +1724,7 @@ retry:
     return mstream.str();
   }
 
-  std::string BufferCore::allFramesAsYAML() const
+  std::string BufferCore::allFramesAsYAML() const noexcept
   {
     return this->allFramesAsYAML(0.0);
   }
