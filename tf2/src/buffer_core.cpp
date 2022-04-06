@@ -699,9 +699,11 @@ retry:
       if (frame == target_id)
       {
         if(!read_checker.check()){
-          stat->abortCount++;
+          if(stat){
+            stat->abortCount++;
+            stat->timestamps.clear();
+          }
           read_checker.clear();
-          stat->timestamps.clear();
           goto retry;
         }
 
@@ -768,9 +770,11 @@ retry:
       if (frame == source_id)
       {
         if(!read_checker.check()){
-          stat->abortCount++;
+          if(stat){
+            stat->abortCount++;
+            stat->timestamps.clear();
+          }
           read_checker.clear();
-          stat->timestamps.clear();
           goto retry;
         }
 
@@ -813,9 +817,11 @@ retry:
     }
 
     if(cc == Silo and !read_checker.check()){
-      stat->abortCount++;
+      if(stat){
+        stat->abortCount++;
+        stat->timestamps.clear();
+      }
       read_checker.clear();
-      stat->timestamps.clear();
       goto retry;
     }
 
@@ -1094,9 +1100,9 @@ retry:
     if(cc == Silo and !read_checker.check()){
       if(stat){
         stat->timestamps.clear();
-        read_checker.clear();
-        goto retry;
       }
+      read_checker.clear();
+      goto retry;
     }
   }
 
