@@ -7,7 +7,7 @@ project(tf2)
 find_package(console_bridge REQUIRED)
 find_package(catkin REQUIRED COMPONENTS geometry_msgs rostime tf2_msgs)
 find_package(Boost REQUIRED COMPONENTS system thread)
-#find_package(TBB REQUIRED)
+find_package(gflags REQUIRED)
 add_subdirectory(third_party/tbb)
 
 catkin_package(
@@ -160,20 +160,59 @@ add_dependencies(wait_check ${catkin_EXPORTED_TARGETS})
 # Tests
 if(CATKIN_ENABLE_TESTING)
 
-catkin_add_gtest(test_cache_unittest test/cache_unittest.cpp)
-target_link_libraries(test_cache_unittest tf2  ${console_bridge_LIBRARIES})
-add_dependencies(test_cache_unittest ${catkin_EXPORTED_TARGETS})
+catkin_add_gtest(test_cache_unittest
+  test/cache_unittest.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+target_link_libraries(test_cache_unittest
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
+add_dependencies(test_cache_unittest
+  ${catkin_EXPORTED_TARGETS}
+)
 
-catkin_add_gtest(test_static_cache_unittest test/static_cache_test.cpp)
-target_link_libraries(test_static_cache_unittest tf2  ${console_bridge_LIBRARIES})
+catkin_add_gtest(test_static_cache_unittest
+  test/static_cache_test.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+target_link_libraries(test_static_cache_unittest
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
 add_dependencies(test_static_cache_unittest ${catkin_EXPORTED_TARGETS})
 
-catkin_add_gtest(test_simple test/simple_tf2_core.cpp)
-target_link_libraries(test_simple tf2  ${console_bridge_LIBRARIES})
+catkin_add_gtest(test_simple
+  test/simple_tf2_core.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+target_link_libraries(test_simple
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
 add_dependencies(test_simple ${catkin_EXPORTED_TARGETS})
 
-add_executable(speed_test EXCLUDE_FROM_ALL test/speed_test.cpp)
-target_link_libraries(speed_test tf2  ${console_bridge_LIBRARIES})
+add_executable(speed_test
+  EXCLUDE_FROM_ALL test/speed_test.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+
+target_link_libraries(speed_test
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
 add_dependencies(tests speed_test)
 add_dependencies(tests ${catkin_EXPORTED_TARGETS})
 

@@ -40,7 +40,9 @@ using namespace tf2;
 
 void setIdentity(TransformStorage& stor)
 {
-  stor.translation_.setValue(0.0, 0.0, 0.0);
+  stor.vec[0] = 0.;
+  stor.vec[1] = 0.;
+  stor.vec[2] = 0.;
   stor.rotation_.setValue(0.0, 0.0, 0.0, 1.0);
 }
 
@@ -48,7 +50,7 @@ TEST(StaticCache, Repeatability)
 {
   unsigned int runs = 100;
   
-  tf2::StaticCache  cache;
+  tf2::TimeCache cache(true);
 
   TransformStorage stor;
   setIdentity(stor);
@@ -71,7 +73,7 @@ TEST(StaticCache, Repeatability)
 TEST(StaticCache, DuplicateEntries)
 {
 
-  tf2::StaticCache cache;
+  tf2::TimeCache cache(true);
 
   TransformStorage stor;
   setIdentity(stor);
@@ -86,9 +88,9 @@ TEST(StaticCache, DuplicateEntries)
   cache.getData(ros::Time().fromNSec(1), stor);
   
   //printf(" stor is %f\n", stor.transform.translation.x);
-  EXPECT_TRUE(!std::isnan(stor.translation_.x()));
-  EXPECT_TRUE(!std::isnan(stor.translation_.y()));
-  EXPECT_TRUE(!std::isnan(stor.translation_.z()));
+  EXPECT_TRUE(!std::isnan(stor.vec[0]));
+  EXPECT_TRUE(!std::isnan(stor.vec[1]));
+  EXPECT_TRUE(!std::isnan(stor.vec[2]));
   EXPECT_TRUE(!std::isnan(stor.rotation_.x()));
   EXPECT_TRUE(!std::isnan(stor.rotation_.y()));
   EXPECT_TRUE(!std::isnan(stor.rotation_.z()));

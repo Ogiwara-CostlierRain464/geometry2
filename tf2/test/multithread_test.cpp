@@ -122,7 +122,7 @@ TEST_F(MultithreadTest, w_w_conf){
 }
 
 TEST_F(MultithreadTest, insert_read_conf){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(100), 10'005);
   // map <--> base_link <--> lidar
   bfc.setTransform(trans("map", "base_link", 1), "me");
   bfc.setTransform(trans("map", "base_link", 2), "me");
@@ -171,7 +171,7 @@ TEST_F(MultithreadTest, egde_case_1){
 // where does transform requests comes from, actually?
 
 TEST_F(MultithreadTest, setTransform_addTransformableCallback){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(100), 10'005);
   // map <--> base_link <--> lidar
   bfc.setTransform(trans("map", "base_link", 1), "me");
   bfc.setTransform(trans("map", "base_link", 2), "me");
@@ -211,7 +211,7 @@ TEST_F(MultithreadTest, setTransform_addTransformableCallback){
 }
 
 TEST_F(MultithreadTest, canTransform_addTransformableCallback){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(100), 10'005);
   // map <--> base_link <--> lidar
   bfc.setTransform(trans("map", "base_link", 1), "me");
   bfc.setTransform(trans("map", "base_link", 2), "me");
@@ -250,7 +250,7 @@ TEST_F(MultithreadTest, canTransform_addTransformableCallback){
 }
 
 TEST_F(MultithreadTest, lookup_addTransformableCallback){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(100), 10'005);
   // map <--> base_link <--> lidar
   bfc.setTransform(trans("map", "base_link", 1), "me");
   bfc.setTransform(trans("map", "base_link", 2), "me");
@@ -289,7 +289,7 @@ TEST_F(MultithreadTest, lookup_addTransformableCallback){
 }
 
 TEST_F(MultithreadTest, addTransformableCallback_addTransformableCallback){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(100), 10'005);
   // map <--> base_link <--> lidar
   bfc.setTransform(trans("map", "base_link", 1), "me");
   bfc.setTransform(trans("map", "base_link", 2), "me");
@@ -328,7 +328,7 @@ TEST_F(MultithreadTest, addTransformableCallback_addTransformableCallback){
 }
 
 TEST_F(MultithreadTest, setTransform_addTransformableCallback_addTransformableCallback){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(100), 10'005);
   // map <--> base_link <--> lidar
   bfc.setTransform(trans("map", "base_link", 1), "me");
   bfc.setTransform(trans("map", "base_link", 2), "me");
@@ -375,7 +375,7 @@ TEST_F(MultithreadTest, setTransform_addTransformableCallback_addTransformableCa
 
 
 TEST_F(MultithreadTest, deadlock){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(100), 10'005);
   //   b
   //   |
   //   x
@@ -401,7 +401,7 @@ TEST_F(MultithreadTest, deadlock){
       std::vector<geometry_msgs::TransformStamped> vec{};
       vec.push_back(trans("x", "a", (double) i * 0.0001 ));
       vec.push_back(trans("b", "x", (double) i * 0.0001 ));
-      bfc.setTransforms(vec, "me");
+      bfc.setTransformsXact(vec, "me");
     }
   });
 

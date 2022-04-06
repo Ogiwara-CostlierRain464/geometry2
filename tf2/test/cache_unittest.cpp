@@ -66,7 +66,9 @@ using namespace tf2;
 
 void setIdentity(TransformStorage& stor)
 {
-  stor.translation_.setValue(0.0, 0.0, 0.0);
+  stor.vec[0] = 0;
+  stor.vec[1] = 0;
+  stor.vec[2] = 0;
   stor.rotation_.setValue(0.0, 0.0, 0.0, 1.0);
 }
 
@@ -230,8 +232,10 @@ TEST(TimeCache, CartesianInterpolation)
       xvalues[step] = 10.0 * get_rand();
       yvalues[step] = 10.0 * get_rand();
       zvalues[step] = 10.0 * get_rand();
-    
-      stor.translation_.setValue(xvalues[step], yvalues[step], zvalues[step]);
+
+      stor.vec[0] = xvalues[step];
+      stor.vec[1] = yvalues[step];
+      stor.vec[2] = zvalues[step];
       stor.frame_id_ = 2;
       stor.stamp_ = ros::Time().fromNSec(step * 100 + offset);
       cache.insertData(stor);
@@ -242,9 +246,9 @@ TEST(TimeCache, CartesianInterpolation)
       uint64_t time = offset + pos;
       cache.getData(ros::Time().fromNSec(time), stor);
       uint64_t time_out = stor.stamp_.toNSec();
-      double x_out = stor.translation_.x();
-      double y_out = stor.translation_.y();
-      double z_out = stor.translation_.z();
+      double x_out = stor.vec[0];
+      double y_out = stor.vec[1];
+      double z_out = stor.vec[2];
       //      printf("pose %d, %f %f %f, expected %f %f %f\n", pos, x_out, y_out, z_out, 
       //       xvalues[0] + (xvalues[1] - xvalues[0]) * (double)pos/100.,
       //       yvalues[0] + (yvalues[1] - yvalues[0]) * (double)pos/100.0,
@@ -284,7 +288,9 @@ TEST(TimeCache, ReparentingInterpolationProtection)
     yvalues[step] = 10.0 * get_rand();
     zvalues[step] = 10.0 * get_rand();
 
-    stor.translation_.setValue(xvalues[step], yvalues[step], zvalues[step]);
+    stor.vec[0] = xvalues[step];
+    stor.vec[1] = yvalues[step];
+    stor.vec[2] = zvalues[step];
     stor.frame_id_ = step + 4;
     stor.stamp_ = ros::Time().fromNSec(step * 100 + offset);
     cache.insertData(stor);
@@ -293,9 +299,9 @@ TEST(TimeCache, ReparentingInterpolationProtection)
   for (int pos = 0; pos < 100 ; pos ++)
   {
     EXPECT_TRUE(cache.getData(ros::Time().fromNSec(offset + pos), stor));
-    double x_out = stor.translation_.x();
-    double y_out = stor.translation_.y();
-    double z_out = stor.translation_.z();
+    double x_out = stor.vec[0];
+    double y_out = stor.vec[1];
+    double z_out = stor.vec[2];
     EXPECT_NEAR(xvalues[0], x_out, epsilon);
     EXPECT_NEAR(yvalues[0], y_out, epsilon);
     EXPECT_NEAR(zvalues[0], z_out, epsilon);
@@ -398,9 +404,9 @@ TEST(TimeCache, DuplicateEntries)
   cache.getData(ros::Time().fromNSec(1), stor);
   
   //printf(" stor is %f\n", stor.translation_.x());
-  EXPECT_TRUE(!std::isnan(stor.translation_.x()));
-  EXPECT_TRUE(!std::isnan(stor.translation_.y()));
-  EXPECT_TRUE(!std::isnan(stor.translation_.z()));
+  EXPECT_TRUE(!std::isnan(stor.vec[0]));
+  EXPECT_TRUE(!std::isnan(stor.vec[1]));
+  EXPECT_TRUE(!std::isnan(stor.vec[2]));
   EXPECT_TRUE(!std::isnan(stor.rotation_.x()));
   EXPECT_TRUE(!std::isnan(stor.rotation_.y()));
   EXPECT_TRUE(!std::isnan(stor.rotation_.z()));

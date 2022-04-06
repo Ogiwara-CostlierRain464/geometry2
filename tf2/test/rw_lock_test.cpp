@@ -8,65 +8,28 @@ struct RWLockTest: public ::testing::Test{};
 
 TEST_F(RWLockTest, read_unlocker){
   set<uint32_t> lock_set{};
-  vector<RWLockPtr> mutex_;
-
-  lock_set.insert(0); mutex_.emplace_back(std::move(make_unique<RWLock>()));
-  lock_set.insert(1); mutex_.emplace_back(std::move(make_unique<RWLock>()));
+  RWLock mutex_[2]{};
   {
-    ScopedReadSetUnLocker un_locker(lock_set, mutex_);
-    mutex_[0]->r_lock(); mutex_[1]->r_lock();
+    ScopedWriteSetUnLocker un_locker(mutex_);
+    un_locker.rLockIfNot(0);
+    un_locker.rLockIfNot(1);
   }
 
-  EXPECT_FALSE(mutex_[0]->isLocked());
-  EXPECT_FALSE(mutex_[1]->isLocked());
+  EXPECT_FALSE(mutex_[0].isLocked());
+  EXPECT_FALSE(mutex_[1].isLocked());
 }
 
 TEST_F(RWLockTest, write_unlocker){
   set<uint32_t> lock_set{};
-  tbb::concurrent_vector<RWLockPtr> mutex_{};
-
-  lock_set.insert(0); mutex_.emplace_back(std::move(make_unique<RWLock>()));
-  lock_set.insert(1); mutex_.emplace_back(std::move(make_unique<RWLock>()));
+  RWLock mutex_[2]{};
   {
     ScopedWriteSetUnLocker un_locker(mutex_);
     un_locker.wLockIfNot(0);
     un_locker.wLockIfNot(1);
   }
 
-  EXPECT_FALSE(mutex_[0]->isLocked());
-  EXPECT_FALSE(mutex_[1]->isLocked());
-}
-
-TEST_F(RWLockTest, upgrade){
-  RWLock lock{};
-  lock.r_lock();
-  bool upgraded = false;
-  {
-    UpdateUnLocker locker(lock, upgraded);
-    lock.upgrade();
-    upgraded = true;
-  }
-  EXPECT_FALSE(lock.isLocked());
-}
-
-TEST_F(RWLockTest, dummy){
-  {
-    DummySetUnLocker dummy{};
-    ScopedSetUnLocker *a = &dummy;
-    a->wLockIfNot(1);
-  }
-  tbb::concurrent_vector<RWLockPtr> mutexes{};
-  mutexes.emplace_back(std::make_unique<RWLock>());
-  mutexes.emplace_back(std::make_unique<RWLock>());
-  {
-    ScopedWriteSetUnLocker actual(mutexes);
-    ScopedSetUnLocker *b = &actual;
-    b->rLockIfNot(0);
-    b->wLockIfNot(1);
-  }
-
-  EXPECT_FALSE(mutexes[0]->isLocked());
-  EXPECT_FALSE(mutexes[1]->isLocked());
+  EXPECT_FALSE(mutex_[0].isLocked());
+  EXPECT_FALSE(mutex_[1].isLocked());
 }
 
 class LogPerNTimes{

@@ -41,6 +41,7 @@
 #include <sstream>
 #include <ros/message_forward.h>
 #include <ros/time.h>
+#include <ros/duration.h>
 #include <boost/shared_ptr.hpp>
 
 #include <malloc.h>
@@ -48,6 +49,11 @@
 #include <stdlib.h>
 #include <vector>
 #include <iostream>
+
+namespace geometry_msgs
+{
+  ROS_DECLARE_MESSAGE(TransformStamped);
+}
 
 namespace tf2{
 
