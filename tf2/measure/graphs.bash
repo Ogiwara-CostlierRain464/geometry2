@@ -4,6 +4,7 @@ gnuplot -e "data='./opposite.dat'; filename='./opposite-read-latency2-old.pdf'; 
 gnuplot -e "data='./opposite.dat'; filename='./opposite-delay-old.pdf'; var=1; out_offset=14; only=0" plot.plg
 gnuplot -e "data='./opposite.dat'; filename='./opposite-abort-old.pdf'; var=1; out_offset=10; only=0" plot.plg
 
+# For IROS paper, remove fonts
 gs -o opposite-throughput.pdf -dNoOutputFonts -sDEVICE=pdfwrite opposite-throughput-old.pdf
 gs -o opposite-read-latency.pdf -dNoOutputFonts -sDEVICE=pdfwrite opposite-read-latency-old.pdf
 gs -o opposite-read-latency2.pdf -dNoOutputFonts -sDEVICE=pdfwrite opposite-read-latency2-old.pdf

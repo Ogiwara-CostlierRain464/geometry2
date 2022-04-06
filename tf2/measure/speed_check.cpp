@@ -515,12 +515,8 @@ int main(int argc, char* argv[]){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
   }
   if(!FLAGS_make_read_stat){
-    cout << "\033[31mWarn: make read stat turned off, so `delay` and `var` is meaningless.\033[0m" << endl;
+    cout << "\033[31mWarn: make read stat turned off, so `delay` and `var` are meaningless.\033[0m" << endl;
   }
-  // TODO:
-  // 1. check performace
-  // 2. add const and noexcept
-
 
   output << FLAGS_thread << " "; // 1
   output << FLAGS_joint << " "; // 2
