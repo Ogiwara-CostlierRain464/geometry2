@@ -6,6 +6,10 @@ be sure to recompile dirty include files with -MMD -MP flag!!!
 # Reproduction step
 
 ```bash
+# setup ROS
+# Make sure you install ros-melodic to your computer.
+source /opt/ros/melodic/setup.bash
+
 # clone with intel tbb library.
 git clone --recursive git@github.com:Ogiwara-CostlierRain464/geometry2.git
 
