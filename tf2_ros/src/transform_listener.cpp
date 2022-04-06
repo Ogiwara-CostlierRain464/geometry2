@@ -111,9 +111,9 @@ void TransformListener::subscription_callback_impl(const ros::MessageEvent<tf2_m
 
 
   const tf2_msgs::TFMessage& msg_in = *(msg_evt.getConstMessage());
-  std::string authority = msg_evt.getPublisherName(); // lookup the authority
+  const std::string& authority = msg_evt.getPublisherName(); // lookup the authority
   try{
-    buffer_.setTransforms(msg_in.transforms, authority, is_static);
+    buffer_.setTransformsXact(msg_in.transforms, authority, is_static);
   }catch(tf2::TransformException &ex){
     std::string temp = ex.what();
     ROS_ERROR("Failed to setTransfroms");
