@@ -16,9 +16,9 @@ OUT_OFFSET=7
 
 mkdir -p $OUTPUT_DIR
 
-# Thread, Joint, Iter, Read_Ratio, Read_Len, Write_len
+
 for T in $(seq 28 28 224); do
-../cmake-build-release/devel/lib/tf2/speed_check --thread=$T --joint=$J --read_ratio=$READ_RATIO --read_len=$READ_LEN --write_len=$WRITE_LEN --output=$OUTPUT --only=$ONLY --frequency=$FREQUENCY --loop_sec=$LOOP_SEC --opposite_write_direction=$OPPOSITE_WRITE --make_read_stat=$MAKE_READ_STAT
+/root/ros_ws/devel/lib/tf2/speed_check --thread=$T --joint=$J --read_ratio=$READ_RATIO --read_len=$READ_LEN --write_len=$WRITE_LEN --output=$OUTPUT --only=$ONLY --frequency=$FREQUENCY --loop_sec=$LOOP_SEC --opposite_write_direction=$OPPOSITE_WRITE --make_read_stat=$MAKE_READ_STAT
 done
 
 gnuplot -e "data='$OUTPUT'; filename='$OUTPUT_DIR/opposite-throughput.pdf'; var=1; out_offset=7; only=$ONLY" plot.plg

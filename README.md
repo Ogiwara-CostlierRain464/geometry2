@@ -3,22 +3,14 @@ you have to reinstall tf2, tf2_py, tf2_ros, rviz, and tf
 be sure to recompile dirty include files with -MMD -MP flag!!!
 
 
-# Reproduction step
+### Reproduce work with Docker
 
 ```bash
-# setup ROS
-# Make sure you install ros-melodic to your computer.
-source /opt/ros/melodic/setup.bash
+git clone https://github.com/Ogiwara-CostlierRain464/geometry2; cd geometry2
+docker build -t geometry2 .  # to run with x86_64 architecture
+docker run -it  geometry2    # to run with x86_64 architecture
 
-# clone with intel tbb library.
-git clone --recursive git@github.com:Ogiwara-CostlierRain464/geometry2.git
-
-cd geometry2/tf2/measure
-
-mkdir ../cmake-build-release
-# build with cmake and make
-source build.bash
-
-source script.bash
+# inside of the container
+source devel/setup.bash  # source ROS workspace overlay
+source src/geometry2/tf2/measure/script.bash  # launch script for demo
 ```
-
