@@ -6,7 +6,7 @@ be sure to recompile dirty include files with -MMD -MP flag!!!
 ### Reproduce work with Docker
 
 ```bash
-git clone https://github.com/Ogiwara-CostlierRain464/geometry2; cd geometry2
+git clone --recursive https://github.com/Ogiwara-CostlierRain464/geometry2; cd geometry2
 docker build -t geometry2 .  # to run with x86_64 architecture
 docker run -it  geometry2    # to run with x86_64 architecture
 

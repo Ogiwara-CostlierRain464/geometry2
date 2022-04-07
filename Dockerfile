@@ -56,6 +56,7 @@ RUN . /opt/ros/melodic/setup.sh && \
 ################
 
 COPY ./entrypoint.sh /
+RUN ["chmod", "+x", "/entrypoint.sh"]
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bash"]
 
