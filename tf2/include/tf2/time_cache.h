@@ -29,133 +29,282 @@
 
 /** \author Tully Foote */
 
-#ifndef TF2_TIME_CACHE_H
-#define TF2_TIME_CACHE_H
+#ifndef GEOMETRY2_TIME_CACHE_H
+#define GEOMETRY2_TIME_CACHE_H
 
 #include "transform_storage.h"
-#include "read_stat.h"
+#include "exceptions.h"
+#include "LinearMath/Transform.h"
 
+#include <cassert>
 #include <deque>
-
 #include <sstream>
-
 #include <ros/message_forward.h>
 #include <ros/time.h>
-
+#include <ros/duration.h>
 #include <boost/shared_ptr.hpp>
+
+#include <malloc.h>
+#include <cstdint>
+#include <stdlib.h>
+#include <vector>
+#include <iostream>
 
 namespace geometry_msgs
 {
-ROS_DECLARE_MESSAGE(TransformStamped);
+  ROS_DECLARE_MESSAGE(TransformStamped);
 }
 
-namespace tf2
-{
+namespace tf2{
 
-typedef std::pair<ros::Time, CompactFrameID> P_TimeAndFrameID;
+typedef std::pair<ros::Time, tf2::CompactFrameID> P_TimeAndFrameID;
 
-class TimeCacheInterface
+// https://gist.github.com/donny-dont/1471329#file-aligned_allocator-cpp-L51
+template <typename T, std::size_t Alignment>
+class aligned_allocator
 {
 public:
-  /** \brief Access data from the cache */
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr)=0; //returns false if data unavailable (should be thrown as lookup exception
 
-  /** \brief Insert data into the cache */
-  virtual bool insertData(const TransformStorage& new_data)=0;
+  // The following will be the same for virtually all allocators.
+  typedef T * pointer;
+  typedef const T * const_pointer;
+  typedef T& reference;
+  typedef const T& const_reference;
+  typedef T value_type;
+  typedef std::size_t size_type;
+  typedef ptrdiff_t difference_type;
 
-  /** @brief Clear the list of stored values */
-  virtual void clearList()=0;
+  T * address(T& r) const
+  {
+    return &r;
+  }
 
-  /** \brief Retrieve the parent at a specific time */
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str) = 0;
+  const T * address(const T& s) const
+  {
+    return &s;
+  }
 
-  /**
-   * \brief Get the latest time stored in this cache, and the parent associated with it.  Returns parent = 0 if no data.
-   */
-  virtual P_TimeAndFrameID getLatestTimeAndParent() = 0;
+  std::size_t max_size() const
+  {
+    // The following has been carefully written to be independent of
+    // the definition of size_t and to avoid signed/unsigned warnings.
+    return (static_cast<std::size_t>(0) - static_cast<std::size_t>(1)) / sizeof(T);
+  }
 
 
-  /// Debugging information methods
-  /** @brief Get the length of the stored list */
-  virtual unsigned int getListLength()=0;
+  // The following must be the same for all allocators.
+  template <typename U>
+  struct rebind
+  {
+    typedef aligned_allocator<U, Alignment> other;
+  } ;
 
-  /** @brief Get the latest timestamp cached */
-  virtual ros::Time getLatestTimestamp()=0;
+  bool operator!=(const aligned_allocator& other) const
+  {
+    return !(*this == other);
+  }
 
-  /** @brief Get the oldest timestamp cached */
-  virtual ros::Time getOldestTimestamp()=0;
+  void construct(T * const p, const T& t) const
+  {
+    void * const pv = static_cast<void *>(p);
+
+    new (pv) T(t);
+  }
+
+  void destroy(T * const p) const
+  {
+    p->~T();
+  }
+
+  // Returns true if and only if storage allocated from *this
+  // can be deallocated from other, and vice versa.
+  // Always returns true for stateless allocators.
+  bool operator==(const aligned_allocator& other) const
+  {
+    return true;
+  }
+
+
+  // Default constructor, copy constructor, rebinding constructor, and destructor.
+  // Empty for stateless allocators.
+  aligned_allocator() { }
+
+  aligned_allocator(const aligned_allocator&) { }
+
+  template <typename U> aligned_allocator(const aligned_allocator<U, Alignment>&) { }
+
+  ~aligned_allocator() { }
+
+
+  // The following will be different for each allocator.
+  T * allocate(const std::size_t n) const
+  {
+    // The return value of allocate(0) is unspecified.
+    // Mallocator returns NULL in order to avoid depending
+    // on malloc(0)'s implementation-defined behavior
+    // (the implementation can define malloc(0) to return NULL,
+    // in which case the bad_alloc check below would fire).
+    // All allocators can return NULL in this case.
+    if (n == 0) {
+      return NULL;
+    }
+
+    // All allocators should contain an integer overflow check.
+    // The Standardization Committee recommends that std::length_error
+    // be thrown in the case of integer overflow.
+    if (n > max_size())
+    {
+      throw std::length_error("aligned_allocator<T>::allocate() - Integer overflow.");
+    }
+
+    // Mallocator wraps malloc().
+    void * const pv = aligned_alloc(Alignment, n * sizeof(T));
+
+    // Allocators should throw std::bad_alloc in the case of memory allocation failure.
+    if (pv == NULL)
+    {
+      throw std::bad_alloc();
+    }
+
+    return static_cast<T *>(pv);
+  }
+
+  void deallocate(T * const p, const std::size_t n) const
+  {
+    free(p);
+  }
+
+
+  // The following will be the same for all allocators that ignore hints.
+  template <typename U>
+  T * allocate(const std::size_t n, const U * /* const hint */) const
+  {
+    return allocate(n);
+  }
+
+
+  // Allocators are not required to be assignable, so
+  // all allocators should have a private unimplemented
+  // assignment operator. Note that this will trigger the
+  // off-by-default (enabled under /Wall) warning C4626
+  // "assignment operator could not be generated because a
+  // base class assignment operator is inaccessible" within
+  // the STL headers, but that warning is useless.
+private:
+  aligned_allocator& operator=(const aligned_allocator&);
 };
 
-/** \brief A class to keep a sorted linked list in time
- * This builds and maintains a list of timestamped
- * data.  And provides lookup functions to get
- * data out as a function of time. */
-class TimeCache : public TimeCacheInterface
-{
- public:
+class TimeCache{
+public:
   static const int MIN_INTERPOLATION_DISTANCE = 500; //!< Number of nano-seconds to not interpolate below.
   static const unsigned int MAX_LENGTH_LINKED_LIST = 100000000; //!< Maximum length of linked list, to make sure not to be able to use unlimited memory.
   static const int64_t DEFAULT_MAX_STORAGE_TIME = 100ULL * 1000000000LL; //!< default value of 10 seconds storage
 
-  TimeCache(ros::Duration  max_storage_time = ros::Duration().fromNSec(DEFAULT_MAX_STORAGE_TIME));
+  TimeCache(bool is_static = false, ros::Duration max_storage_time = ros::Duration().fromNSec(DEFAULT_MAX_STORAGE_TIME));
+  TimeCache(const TimeCache& other) = delete;
+  TimeCache(TimeCache&& other) = delete;
 
+  inline bool getData(ros::Time time,
+                      tf2::TransformStorage & data_out,
+                      std::string* error_str = nullptr){
+    if(is_static){
+      if(!storage_.empty()){
+        data_out = storage_.front();
+      }else{
+        data_out = TransformStorage{};
+      }
+      data_out.stamp_ = time;
+      return true;
+    }
 
-  /// Virtual methods
+    tf2::TransformStorage* p_temp_1;
+    tf2::TransformStorage* p_temp_2;
 
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr);
-  virtual bool insertData(const TransformStorage& new_data);
-  virtual void clearList();
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
-  virtual P_TimeAndFrameID getLatestTimeAndParent();
+    int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
+    if (num_nodes == 0)
+    {
+      return false;
+    }
+    else if (num_nodes == 1)
+    {
+      data_out = *p_temp_1;
+    }
+    else if (num_nodes == 2)
+    {
+      if( p_temp_1->frame_id_ == p_temp_2->frame_id_)
+      {
+        interpolate(*p_temp_1, *p_temp_2, time, data_out);
+      }
+      else
+      {
+        data_out = *p_temp_1;
+      }
+    }
+    else
+    {
+      assert(0);
+    }
+
+    return true;
+  }
+
+  bool insertData(const tf2::TransformStorage& new_data);
+  void clearList();
+  tf2::CompactFrameID getParent(ros::Time time, std::string* error_str);
+  P_TimeAndFrameID getLatestTimeAndParent();
 
   /// Debugging information methods
-  virtual unsigned int getListLength();
-  virtual ros::Time getLatestTimestamp();
-  virtual ros::Time getOldestTimestamp();
-  
+  unsigned int getListLength();
+  inline ros::Time getLatestTimestamp(){
+    if(is_static) return {};
+    if (storage_.empty()) return ros::Time(); //empty list case
+    return storage_.front().stamp_;
+  }
+  ros::Time getOldestTimestamp();
 
-private:
-  typedef std::deque<TransformStorage> L_TransformStorage;
+
+  typedef std::deque<tf2::TransformStorage,
+  aligned_allocator<tf2::TransformStorage, 128>> L_TransformStorage;
   L_TransformStorage storage_;
-
   ros::Duration max_storage_time_;
-
+  bool is_static;
 
   /// A helper function for getData
   //Assumes storage is already locked for it
-  inline uint8_t findClosest(TransformStorage*& one, TransformStorage*& two, ros::Time target_time, std::string* error_str);
+  inline uint8_t findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str);
+  inline void interpolate(const tf2::TransformStorage& one,
+                          const tf2::TransformStorage& two,
+                          ros::Time time, tf2::TransformStorage& output){
+    // Check for zero distance case
+    if( two.stamp_ == one.stamp_ )
+    {
+      output = two;
+      return;
+    }
+    //Calculate the ratio
+    tf2Scalar ratio = (time - one.stamp_).toSec() / (two.stamp_ - one.stamp_).toSec();
 
-  inline void interpolate(const TransformStorage& one, const TransformStorage& two, ros::Time time, TransformStorage& output);
+    Vector3 tmp;
+    Vector3 one_vec(one.vec[0], one.vec[1], one.vec[2]);
+    Vector3 two_vec(two.vec[0], two.vec[1], two.vec[2]);
+
+    tmp.setInterpolate3(one_vec, two_vec, ratio);
+    //Interpolate translation
+    output.vec[0] = tmp[0];
+    output.vec[1] = tmp[1];
+    output.vec[2] = tmp[2];
 
 
+    //Interpolate rotation
+    output.rotation_ = slerp( one.rotation_, two.rotation_, ratio);
+
+    output.stamp_ = time;
+    output.frame_id_ = one.frame_id_;
+    output.child_frame_id_ = one.child_frame_id_;
+  }
   void pruneList();
-
-
-
-};
-
-class StaticCache : public TimeCacheInterface
-{
- public:
-  /// Virtual methods
-
-  virtual bool getData(ros::Time time, TransformStorage & data_out, std::string* error_str = nullptr, ReadStat *stat = nullptr); //returns false if data unavailable (should be thrown as lookup exception
-  virtual bool insertData(const TransformStorage& new_data);
-  virtual void clearList();
-  virtual CompactFrameID getParent(ros::Time time, std::string* error_str);
-  virtual P_TimeAndFrameID getLatestTimeAndParent();
-
-
-  /// Debugging information methods
-  virtual unsigned int getListLength();
-  virtual ros::Time getLatestTimestamp();
-  virtual ros::Time getOldestTimestamp();
-  
-
-private:
-  TransformStorage  storage_;
 };
 
 }
 
-#endif // TF2_TIME_CACHE_H
+#endif //GEOMETRY2_TIME_CACHE_H

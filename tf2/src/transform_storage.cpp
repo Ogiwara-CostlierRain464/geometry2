@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2008, Willow Garage, Inc.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -13,7 +13,7 @@
  *     * Neither the name of the Willow Garage, Inc. nor the names of its
  *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -29,52 +29,28 @@
 
 /** \author Tully Foote */
 
-#include "tf2/time_cache.h"
-#include "tf2/exceptions.h"
+#include "../include/tf2/transform_storage.h"
+#include "../include/tf2/exceptions.h"
 
-#include "tf2/LinearMath/Transform.h"
+#include <tf2/LinearMath/Vector3.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Transform.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <assert.h>
 
+namespace tf2 {
 
-using namespace tf2;
+  TransformStorage::TransformStorage() {
+  }
 
-
-bool StaticCache::getData(ros::Time time, TransformStorage & data_out, std::string* error_str, ReadStat *stat) //returns false if data not available
-{
-  data_out = storage_;
-  data_out.stamp_ = time;
-  return true;
-};
-
-bool StaticCache::insertData(const TransformStorage& new_data)
-{
-  storage_ = new_data;
-  return true;
-};
-
-
-
-
-void StaticCache::clearList() { return; };
-
-unsigned int StaticCache::getListLength() {   return 1; };
-
-CompactFrameID StaticCache::getParent(ros::Time time, std::string* error_str)
-{
-  return storage_.frame_id_;
+  TransformStorage::TransformStorage(const geometry_msgs::TransformStamped &data, CompactFrameID frame_id,
+                                     CompactFrameID child_frame_id)
+    : stamp_(data.header.stamp), frame_id_(frame_id), child_frame_id_(child_frame_id) {
+    const geometry_msgs::Quaternion &o = data.transform.rotation;
+    rotation_ = tf2::Quaternion(o.x, o.y, o.z, o.w);
+    const geometry_msgs::Vector3 &v = data.transform.translation;
+    vec[0] = v.x;
+    vec[1] = v.y;
+    vec[2] = v.z;
+  }
 }
-
-P_TimeAndFrameID StaticCache::getLatestTimeAndParent()
-{
-  return std::make_pair(ros::Time(), storage_.frame_id_);
-}
-
-ros::Time StaticCache::getLatestTimestamp() 
-{   
-  return ros::Time();
-};
-
-ros::Time StaticCache::getOldestTimestamp() 
-{   
-  return ros::Time();
-};
-

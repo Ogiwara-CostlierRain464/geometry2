@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Willow Garage, Inc.
+ * Copyright (c) 2008, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,51 +29,51 @@
 
 /** \author Tully Foote */
 
-#ifndef TF2_TRANSFORM_STORAGE_H
-#define TF2_TRANSFORM_STORAGE_H
+#include "time_cache.h"
+#include "../include/tf2/exceptions.h"
+#include "../include/tf2/LinearMath/Transform.h"
 
-#include <tf2/LinearMath/Vector3.h>
-#include <tf2/LinearMath/Quaternion.h>
 
-#include <ros/message_forward.h>
-#include <ros/time.h>
-#include <ros/types.h>
+using namespace old_tf2;
 
-namespace geometry_msgs
+
+bool StaticCache::getData(ros::Time time, tf2::TransformStorage & data_out, std::string* error_str) //returns false if data not available
 {
-ROS_DECLARE_MESSAGE(TransformStamped)
-}
-
-namespace tf2
-{
-
-typedef uint32_t CompactFrameID;
-
-/** \brief Storage for transforms and their parent */
-class alignas(128) TransformStorage
-{
-public:
-  TransformStorage();
-  TransformStorage(const geometry_msgs::TransformStamped& data, CompactFrameID frame_id, CompactFrameID child_frame_id);
-
-  inline TransformStorage(const TransformStorage& rhs) = default;
-  inline TransformStorage& operator=(const TransformStorage& rhs) = default;
-
-  bool operator>(const tf2::TransformStorage& rhs) const
-  {
-    return stamp_ > rhs.stamp_;
-  }
-
-
-  double vec[3]; // 24 byte
-  tf2::Quaternion rotation_; // 32 byte
-  CompactFrameID frame_id_; // 4 (+4) byte
-  CompactFrameID child_frame_id_; // 4 (+4) byte
-  ros::Time stamp_; // 8 byte
-  __attribute__((unused)) uint64_t _pad[6]; // 48byte, for padding.
+  data_out = storage_;
+  data_out.stamp_ = time;
+  return true;
 };
 
+bool StaticCache::insertData(const tf2::TransformStorage& new_data)
+{
+  storage_ = new_data;
+  return true;
+};
+
+
+
+
+void StaticCache::clearList() { return; };
+
+unsigned int StaticCache::getListLength() {   return 1; };
+
+tf2::CompactFrameID StaticCache::getParent(ros::Time time, std::string* error_str)
+{
+  return storage_.frame_id_;
 }
 
-#endif // TF2_TRANSFORM_STORAGE_H
+P_TimeAndFrameID StaticCache::getLatestTimeAndParent()
+{
+  return std::make_pair(ros::Time(), storage_.frame_id_);
+}
+
+ros::Time StaticCache::getLatestTimestamp()
+{
+  return ros::Time();
+};
+
+ros::Time StaticCache::getOldestTimestamp()
+{
+  return ros::Time();
+};
 

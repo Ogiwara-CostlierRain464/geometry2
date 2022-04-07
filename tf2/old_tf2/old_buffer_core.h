@@ -20,18 +20,15 @@
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 
-namespace tf2{
-  class TimeCacheInterface;
-}
-
 namespace old_tf2
 {
+class TimeCacheInterface;
 
 typedef std::pair<ros::Time, tf2::CompactFrameID> P_TimeAndFrameID;
 typedef uint32_t TransformableCallbackHandle;
 typedef uint64_t TransformableRequestHandle;
 
-typedef boost::shared_ptr<tf2::TimeCacheInterface> TimeCacheInterfacePtr;
+typedef boost::shared_ptr<TimeCacheInterface> TimeCacheInterfacePtr;
 
 enum TransformableResult
 {

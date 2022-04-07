@@ -1,5 +1,5 @@
 #include "old_buffer_core.h"
-#include "../include/tf2/time_cache.h"
+#include "./time_cache.h"
 #include "../include/tf2/exceptions.h"
 #include "tf2_msgs/TF2Error.h"
 
@@ -257,9 +257,9 @@ namespace old_tf2
   {
     TimeCacheInterfacePtr frame_ptr = frames_[cfid];
     if (is_static) {
-      frames_[cfid] = TimeCacheInterfacePtr(new tf2::StaticCache());
+      frames_[cfid] = TimeCacheInterfacePtr(new StaticCache());
     } else {
-      frames_[cfid] = TimeCacheInterfacePtr(new tf2::TimeCache(cache_time_));
+      frames_[cfid] = TimeCacheInterfacePtr(new TimeCache(cache_time_));
     }
 
     return frames_[cfid];
@@ -504,12 +504,12 @@ namespace old_tf2
     {
       if (source)
       {
-        source_to_top_vec = quatRotate(st.rotation_, source_to_top_vec) + st.translation_;
+        source_to_top_vec = quatRotate(st.rotation_, source_to_top_vec) + tf2::Vector3(st.vec[0], st.vec[1], st.vec[2]);
         source_to_top_quat = st.rotation_ * source_to_top_quat;
       }
       else
       {
-        target_to_top_vec = quatRotate(st.rotation_, target_to_top_vec) + st.translation_;
+        target_to_top_vec = quatRotate(st.rotation_, target_to_top_vec) + tf2::Vector3(st.vec[0], st.vec[1], st.vec[2]);
         target_to_top_quat = st.rotation_ * target_to_top_quat;
       }
     }
@@ -569,7 +569,6 @@ namespace old_tf2
         frame->getData(ros::Time(0), st, nullptr);
       }
     }
-
     // just access and do nothing
   }
 

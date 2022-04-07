@@ -11,15 +11,15 @@
 #include <fstream>
 #include <limits>
 
-#include "tf2/read_stat.h"
+#include "tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
-#include "../silo_tf2/silo_buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
 using tf2::BufferCore;
-using silo_tf2::SiloBufferCore;
+using tf2::ReadStat;
+using tf2::WriteStat;
 using namespace geometry_msgs;
 using namespace std;
 
@@ -29,8 +29,8 @@ DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]")
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 5, "loop second");
-DEFINE_double(insert_span, 1, "new car arrive span in sec");
-DEFINE_double(only, 3, "0: All, 1: old, 2: 2PL, 3: Silo");
+DEFINE_double(insert_span, 1., "new car arrive span in sec");
+DEFINE_uint64(only, 0, "0: All, 1: Only old, 2: Only TF-2PL, 3: Only TF-Silo");
 DEFINE_uint64(read_thread, 1, "read thread count");
 DEFINE_uint64(write_thread, 1, "write thread count");
 
@@ -100,9 +100,20 @@ struct BufferCoreWrapper<OldBufferCore>{
   }
 };
 
+enum AccessType{
+  TF_2PL, TF_Silo
+};
+
 template <>
 struct BufferCoreWrapper<BufferCore>{
-  BufferCore bfc{};
+  BufferCore bfc;
+  AccessType accessType;
+
+  explicit BufferCoreWrapper(AccessType accessType_)
+    : accessType(accessType_)
+    , bfc(ros::Duration(100),
+          10,
+          accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
 
   void init(){
     bfc.clear();
@@ -121,39 +132,11 @@ struct BufferCoreWrapper<BufferCore>{
     vec.push_back(trans("map", "link" + to_string(id), nano_time));
 
     WriteStat stat{};
-    bfc.setTransforms(vec, "me", false, &stat);
+    bfc.setTransformsXact(vec, "me", false, &stat);
 
     iter_acc++;
   }
 };
-
-
-template <>
-struct BufferCoreWrapper<SiloBufferCore>{
-  SiloBufferCore bfc{};
-
-  void init(){
-    make_base_station(bfc);
-  }
-  void read(size_t start) const{
-    vector<string> frames{};
-    for(size_t i = start; i < start + FLAGS_read_len; i++){
-      frames.push_back("link" + to_string(i));
-    }
-    bfc.justReadFrames(frames);
-  }
-
-  void write(size_t id, double nano_time, size_t &iter_acc){
-    vector<TransformStamped> vec{};
-    vec.push_back(trans("map", "link" + to_string(id), nano_time));
-
-    WriteStat stat{};
-    bfc.setTransforms(vec, "me", false, &stat);
-
-    iter_acc++;
-  }
-};
-
 
 template <typename T>
 T make_ave(const std::vector<T> &vec){
@@ -372,6 +355,7 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
   CONSOLE_BRIDGE_logInform("loop sec: %d", FLAGS_loop_sec);
+  CONSOLE_BRIDGE_logInform("only: %d", FLAGS_only);
   CONSOLE_BRIDGE_logInform("read thread: %d", FLAGS_read_thread);
   CONSOLE_BRIDGE_logInform("write thread: %d", FLAGS_write_thread);
 
@@ -396,26 +380,26 @@ int main(int argc, char* argv[]){
   }
 
 
-  RunResult xact_result{};
+  RunResult _2pl_result{};
   if(FLAGS_only == 0 or FLAGS_only == 2){
-    BufferCoreWrapper<BufferCore> bfc_w_xact{};
-    xact_result = run(bfc_w_xact);
+    BufferCoreWrapper<BufferCore> bfc_w_xact(TF_2PL);
+    _2pl_result = run(bfc_w_xact);
 
-    cout << "xact: " << endl;
-    cout << "\t" << "time: " << chrono::duration<double, std::milli>(xact_result.time).count() << "ms" << endl;
-    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(xact_result.readLatency).count() << "ms" << endl;
-    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << "ms" << endl;
-    cout << "\t" << "throughput: " << xact_result.throughput << endl;
-    cout << "\t" << "read throughput: " << xact_result.readThroughput << endl;
-    cout << "\t" << "write throughput: " << xact_result.writeThroughput << endl;
+    cout << "TF-2PL: " << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(_2pl_result.time).count() << "ms" << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << _2pl_result.throughput << endl;
+    cout << "\t" << "read throughput: " << _2pl_result.readThroughput << endl;
+    cout << "\t" << "write throughput: " << _2pl_result.writeThroughput << endl;
   }
 
   RunResult silo_result{};
   if(FLAGS_only == 0 or FLAGS_only == 3){
-    BufferCoreWrapper<SiloBufferCore> bfc_w_silo{};
+    BufferCoreWrapper<BufferCore> bfc_w_silo(TF_Silo);
     silo_result = run(bfc_w_silo);
 
-    cout << "silo: " << endl;
+    cout << "TF-Silo: " << endl;
     cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_result.time).count() << "ms" << endl;
     cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_result.readLatency).count() << "ms" << endl;
     cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << "ms" << endl;
@@ -435,16 +419,15 @@ int main(int argc, char* argv[]){
   output << FLAGS_read_thread << " "; // 5
   output << FLAGS_write_thread << " "; // 6
   output << old_result.throughput << " "; // 7
-  output << xact_result.throughput << " "; // 8
+  output << _2pl_result.throughput << " "; // 8
   output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 9
-  output << chrono::duration<double, std::milli>(xact_result.readLatency).count() << " "; // 10
+  output << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << " "; // 10
   output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 11
   output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(xact_result.writeLatency).count() << " "; // 13
+  output << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << " "; // 13
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 14
-  output << chrono::duration<double, std::milli>(xact_result.delay).count() << " "; // 15
+  output << chrono::duration<double, std::milli>(_2pl_result.delay).count() << " "; // 15
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 16
-
 
   output << endl;
   output.close();

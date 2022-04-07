@@ -22,6 +22,7 @@ subject to the following restrictions:
 #include "QuadWord.h"
 
 #include <ros/macros.h>
+#include <cstring>
 
 namespace tf2
 {
@@ -31,6 +32,9 @@ class Quaternion : public QuadWord {
 public:
   /**@brief No initialization constructor */
 	Quaternion() {}
+
+	inline Quaternion(const Quaternion& other) = default;
+	inline Quaternion& operator=(const Quaternion& rhs) = default;
 
 	//		template <typename tf2Scalar>
 	//		explicit Quaternion(const tf2Scalar *v) : Tuple4<tf2Scalar>(v) {}

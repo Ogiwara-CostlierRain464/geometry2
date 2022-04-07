@@ -1,11 +1,6 @@
 #ifndef ALT_TF_RWLOCK_H
 #define ALT_TF_RWLOCK_H
 
-/**
- * Thanks to ccbench!
- */
-
-#include <xmmintrin.h>
 #include <atomic>
 #include <tbb/concurrent_vector.h>
 
@@ -22,7 +17,6 @@ public:
 
   void init() { counter.store(0, std::memory_order_release); }
 
-  // Read lock
   void r_lock() {
     int expected, desired;
     expected = counter.load(std::memory_order_acquire);
@@ -58,7 +52,6 @@ public:
   }
 
   void r_unlock() {
-//    assert(isLocked());
     counter--;
   }
 
@@ -125,30 +118,12 @@ public:
   }
 };
 
-typedef std::shared_ptr<RWLock> RWLockPtr;
-
-class ScopedSetUnLocker{
+class ScopedWriteSetUnLocker{
 public:
-  virtual void wLockIfNot(uint32_t id) = 0;
-  virtual void rLockIfNot(uint32_t id) = 0;
-  virtual ~ScopedSetUnLocker(){};
-};
-
-class DummySetUnLocker: public ScopedSetUnLocker{
-public:
-  void wLockIfNot(uint32_t id) override{};
-  void rLockIfNot(uint32_t id) override{};
-  ~DummySetUnLocker() override{};
-};
-
-constexpr size_t XACT_TF_MAX_NODE_SIZE = 300;
-
-class ScopedWriteSetUnLocker : public ScopedSetUnLocker{
-public:
-  explicit ScopedWriteSetUnLocker(std::array<RWLock, XACT_TF_MAX_NODE_SIZE> &mutexes_)
+  explicit ScopedWriteSetUnLocker(RWLock* mutexes_)
     : mutexes(mutexes_){}
 
-  void wLockIfNot(uint32_t id) override{
+  void wLockIfNot(uint32_t id){
     // if not write locked, then add to write lock set.
     // upgrade is not allowed!
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
@@ -177,7 +152,7 @@ public:
     return true;
   }
 
-  void rLockIfNot(uint32_t id) override{
+  void rLockIfNot(uint32_t id){
     // if not write locked, then add to read lock set.
     if(writeLockedIdSet.find(id) == writeLockedIdSet.end()){
       if(readLockedIdSet.find(id) == readLockedIdSet.end()){
@@ -202,19 +177,19 @@ public:
     return writeLockedIdSet.size();
   }
 
-  ~ScopedWriteSetUnLocker() override{
+  ~ScopedWriteSetUnLocker(){
     unlockAll();
   }
 private:
   std::set<uint32_t> writeLockedIdSet{};
   std::set<uint32_t> readLockedIdSet{};
-  std::array<RWLock, XACT_TF_MAX_NODE_SIZE> &mutexes;
+  RWLock* mutexes;
 };
 
 class ReadUnLocker{
 public:
   explicit ReadUnLocker(RWLock &lock_)
-  : lock(lock_){}
+    : lock(lock_){}
 
   inline void rLock(){
     lock.r_lock();
@@ -230,44 +205,6 @@ public:
 
 private:
   RWLock &lock;
-};
-
-class WriteUnLocker {
-public:
-  explicit WriteUnLocker(RWLock &lock_)
-    : lock(lock_) {}
-
-  void wLock() {
-    lock.w_lock();
-  }
-
-  ~WriteUnLocker() {
-    lock.w_unlock();
-  }
-
-private:
-  RWLock &lock;
-};
-
-class UpdateUnLocker{
-public:
-  explicit UpdateUnLocker(
-    RWLock &lock,
-    bool &lock_upgraded)
-    : lock(lock), lock_upgraded(lock_upgraded){}
-
-  ~UpdateUnLocker(){
-    assert(lock.isLocked());
-    if(lock_upgraded){
-      lock.w_unlock();
-    }else{
-      lock.r_unlock();
-    }
-  }
-
-private:
-  RWLock &lock;
-  bool &lock_upgraded;
 };
 
 #endif //ALT_TF_RWLOCK_H

@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native")
+
 project(tf2)
 
 find_package(console_bridge REQUIRED)
 find_package(catkin REQUIRED COMPONENTS geometry_msgs rostime tf2_msgs)
 find_package(Boost REQUIRED COMPONENTS system thread)
-#find_package(TBB REQUIRED)
+find_package(gflags REQUIRED)
 add_subdirectory(third_party/tbb)
 
 catkin_package(
@@ -37,13 +40,14 @@ install(DIRECTORY include/${PROJECT_NAME}/
 file(GLOB_RECURSE SRC src/*.cpp)
 file(GLOB_RECURSE INCLUDE include/*.h)
 
+file(GLOB_RECURSE OLD_SRC old_tf2/*.cpp)
+file(GLOB_RECURSE OLD_INCLUDE old_tf2/*.h)
+
 add_executable(speed_check
   ${SRC}
   ${INCLUDE}
-  old_tf2/old_buffer_core.h
-  old_tf2/old_buffer_core.cpp
-  silo_tf2/silo_buffer_core.h
-  silo_tf2/silo_buffer_core.cpp
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
   measure/speed_check.cpp
   measure/xoroshiro128_plus.h
 )
@@ -60,10 +64,8 @@ add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
 add_executable(car_check
   ${SRC}
   ${INCLUDE}
-  old_tf2/old_buffer_core.h
-  old_tf2/old_buffer_core.cpp
-  silo_tf2/silo_buffer_core.h
-  silo_tf2/silo_buffer_core.cpp
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
   measure/car_check.cpp
   measure/xoroshiro128_plus.h
   )
@@ -123,6 +125,26 @@ target_link_libraries(shared_ptr_check
   )
 add_dependencies(shared_ptr_check ${catkin_EXPORTED_TARGETS})
 
+
+add_executable(deque_check
+  ${SRC}
+  ${INCLUDE}
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
+  measure/deque_check.cpp
+)
+target_link_libraries(deque_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  gflags
+  tbb
+)
+add_dependencies(deque_check
+  ${catkin_EXPORTED_TARGETS}
+)
+
+
 add_executable(wait_check
   measure/wait_check.cpp
   )
@@ -138,20 +160,59 @@ add_dependencies(wait_check ${catkin_EXPORTED_TARGETS})
 # Tests
 if(CATKIN_ENABLE_TESTING)
 
-catkin_add_gtest(test_cache_unittest test/cache_unittest.cpp)
-target_link_libraries(test_cache_unittest tf2  ${console_bridge_LIBRARIES})
-add_dependencies(test_cache_unittest ${catkin_EXPORTED_TARGETS})
+catkin_add_gtest(test_cache_unittest
+  test/cache_unittest.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+target_link_libraries(test_cache_unittest
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
+add_dependencies(test_cache_unittest
+  ${catkin_EXPORTED_TARGETS}
+)
 
-catkin_add_gtest(test_static_cache_unittest test/static_cache_test.cpp)
-target_link_libraries(test_static_cache_unittest tf2  ${console_bridge_LIBRARIES})
+catkin_add_gtest(test_static_cache_unittest
+  test/static_cache_test.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+target_link_libraries(test_static_cache_unittest
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
 add_dependencies(test_static_cache_unittest ${catkin_EXPORTED_TARGETS})
 
-catkin_add_gtest(test_simple test/simple_tf2_core.cpp)
-target_link_libraries(test_simple tf2  ${console_bridge_LIBRARIES})
+catkin_add_gtest(test_simple
+  test/simple_tf2_core.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+target_link_libraries(test_simple
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
 add_dependencies(test_simple ${catkin_EXPORTED_TARGETS})
 
-add_executable(speed_test EXCLUDE_FROM_ALL test/speed_test.cpp)
-target_link_libraries(speed_test tf2  ${console_bridge_LIBRARIES})
+add_executable(speed_test
+  EXCLUDE_FROM_ALL test/speed_test.cpp
+  ${SRC}
+  ${INCLUDE}
+)
+
+target_link_libraries(speed_test
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  tbb
+)
 add_dependencies(tests speed_test)
 add_dependencies(tests ${catkin_EXPORTED_TARGETS})
 
