@@ -35,6 +35,7 @@
 #include "transform_storage.h"
 #include "exceptions.h"
 #include "LinearMath/Transform.h"
+#include "stat.h"
 
 #include <cassert>
 #include <deque>
@@ -198,7 +199,7 @@ class TimeCache{
 public:
   static const int MIN_INTERPOLATION_DISTANCE = 500; //!< Number of nano-seconds to not interpolate below.
   static const unsigned int MAX_LENGTH_LINKED_LIST = 100000000; //!< Maximum length of linked list, to make sure not to be able to use unlimited memory.
-  static const int64_t DEFAULT_MAX_STORAGE_TIME = 100ULL * 1000000000LL; //!< default value of 10 seconds storage
+  static const int64_t DEFAULT_MAX_STORAGE_TIME = 100ULL * 1'000'000'000LL;
 
   TimeCache(bool is_static = false, ros::Duration max_storage_time = ros::Duration().fromNSec(DEFAULT_MAX_STORAGE_TIME));
   TimeCache(const TimeCache& other) = delete;
@@ -206,7 +207,12 @@ public:
 
   inline bool getData(ros::Time time,
                       tf2::TransformStorage & data_out,
-                      std::string* error_str = nullptr){
+                      std::string* error_str = nullptr,
+                      ReadStat *stat = nullptr){
+    if(stat){
+      stat->dequeSize = storage_.size();
+    }
+
     if(is_static){
       if(!storage_.empty()){
         data_out = storage_.front();

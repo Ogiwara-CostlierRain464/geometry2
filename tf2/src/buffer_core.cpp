@@ -466,12 +466,12 @@ namespace tf2
             stat->tryReadLockCount++;
           }
         }
-        parent = f.gather(cache, time, &extrapolation_error_string);
+        parent = f.gather(cache, time, &extrapolation_error_string, stat);
         frame_rw_lock_[frame].r_unlock();
       }else if(cc == Silo) {
       retry:
         auto old_v = frame_vrw_lock_[frame].virtualRLock();
-        parent = f.gather(cache, time, &extrapolation_error_string);
+        parent = f.gather(cache, time, &extrapolation_error_string, stat);
         auto new_v = frame_vrw_lock_[frame].virtualRLock();
         if(old_v != new_v) goto retry;
       }
@@ -533,12 +533,12 @@ namespace tf2
             stat->tryReadLockCount++;
           }
         }
-        parent = f.gather(cache, time, &extrapolation_error_string);
+        parent = f.gather(cache, time, &extrapolation_error_string, stat);
         frame_rw_lock_[frame].r_unlock();
       }else if(cc == Silo) {
       retry2:
         auto old_v = frame_vrw_lock_[frame].virtualRLock();
-        parent = f.gather(cache, time, &extrapolation_error_string);
+        parent = f.gather(cache, time, &extrapolation_error_string, stat);
         auto new_v = frame_vrw_lock_[frame].virtualRLock();
         if(old_v != new_v) goto retry2;
       }
@@ -698,7 +698,7 @@ retry:
       // Early out... target frame is a direct parent of the source frame
       if (frame == target_id)
       {
-        if(!read_checker.check()){
+        if(cc == Silo and !read_checker.check()){
           if(stat){
             stat->abortCount++;
             stat->timestamps.clear();
@@ -769,7 +769,7 @@ retry:
       // Early out... source frame is a direct parent of the target frame
       if (frame == source_id)
       {
-        if(!read_checker.check()){
+        if(cc == Silo and !read_checker.check()){
           if(stat){
             stat->abortCount++;
             stat->timestamps.clear();
@@ -842,10 +842,10 @@ retry:
     {
     }
 
-    inline CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
+    inline CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string , ReadStat *stat)
     {
       TransformStorage st;
-      if (!cache->getData(time, st, error_string))
+      if (!cache->getData(time, st, error_string, stat))
       {
         return 0;
       }
@@ -1198,7 +1198,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
   struct CanTransformAccum
   {
-    CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string)
+    CompactFrameID gather(TimeCacheInterfacePtr cache, ros::Time time, std::string* error_string, ReadStat *stat = nullptr)
     {
       return cache->getParent(time, error_string);
     }

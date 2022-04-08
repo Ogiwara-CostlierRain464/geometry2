@@ -24,14 +24,14 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 10, "Joint size");
+DEFINE_uint64(joint, 1'000'000, "Joint size");
 DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
-DEFINE_uint64(read_len, 4, "Number of reading joint size ∈ [0, joint]");
-DEFINE_uint64(write_len, 4, "Number of writing joint size ∈ [0, joint]");
+DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
+DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 6, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
+DEFINE_uint32(only, 1, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 10, "Loop second");
+DEFINE_uint64(loop_sec, 60, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
 DEFINE_bool(make_read_stat, false, "When true, make statistics. To enhance performance, this should be turned off.");
 
