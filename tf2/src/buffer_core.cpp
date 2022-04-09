@@ -302,7 +302,7 @@ namespace tf2
 
 
     for(auto &e: stripped){
-      if(checkTransformValid(e, authority)){
+      if(!checkTransformValid(e, authority)){
         return false;
       }
     }
@@ -355,7 +355,7 @@ namespace tf2
           auto id = std::get<2>(w);
 
           std::string err_str;
-          if(frame->insertDataLatest(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
+          if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
             frame_authority_[id] = authority;
           }else{
             CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
@@ -384,7 +384,7 @@ namespace tf2
           auto id = std::get<2>(w);
 
           std::string err_str;
-          if(frame->insertDataLatest(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
+          if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
             frame_authority_[id] = authority;
           }else{
             CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());

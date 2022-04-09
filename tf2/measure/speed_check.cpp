@@ -24,8 +24,8 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 1'0'000, "Joint size");
-DEFINE_double(read_ratio, 1, "Read ratio, within [0,1]");
+DEFINE_uint64(joint, 1'000'000, "Joint size");
+DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
@@ -51,17 +51,22 @@ TransformStamped trans(
   return tr;
 }
 
+static double init_sec;
+
 template <typename T>
 void make_snake(T &bfc){
   // link0 -- link1 -- .. -- link100
   auto now = chrono::steady_clock::now();
-  double nano = chrono::duration<double>(now.time_since_epoch()).count();
+  double sec = chrono::duration<double>(now.time_since_epoch()).count();
+  init_sec = sec;
   for(size_t i = 0; i < FLAGS_joint; i++){
     auto i_iplus1 = trans("link" + to_string(i),
                           "link" + to_string(i+1),
-                          nano);
+                          sec);
     bfc.setTransform(i_iplus1, "me");
   }
+
+  cout << "Initial time is " << sec << endl;
 }
 
 template <typename T>
@@ -300,8 +305,32 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         auto after = chrono::steady_clock::now();
 
         auto access_ave = operator""ns(stat.getTimeStampsAve());
+        auto access_ave_sec =  chrono::duration<double>(access_ave).count();
+//        if(abs(access_ave_sec - init_sec) > 0.01 ){
+//          auto a = 1+1;
+//          assert(true);
+//
+//          for(auto &e : stat.timestamps){
+//            auto nano_s = operator""ns(e);
+//            auto sec_s = chrono::duration<double>(nano_s).count();
+//            cout << sec_s << " ";
+//          }
+//        }
+
 //          assert(now.time_since_epoch() > access_ave);
         delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
+//        if(chrono::duration<double>(before.time_since_epoch() - access_ave) > 10s){
+//          cout << "before :" << chrono::duration<double>(before.time_since_epoch()).count() << endl;
+//          cout << "ave: " << chrono::duration<double>(access_ave).count() << endl;
+//          cout << "start :" << chrono::duration<double>(start_iter.time_since_epoch()).count() << endl;
+//          cout << "end: " << chrono::duration<double>(end_iter.time_since_epoch()).count() << endl;
+//
+//
+//          cout << "daly is " << chrono::duration<double>(before.time_since_epoch() - access_ave).count() << endl;
+//          cout << "Elasped " << chrono::duration<double, std::milli>(end_iter - start_iter).count() << endl;
+//
+//          assert(false);
+//        }
         var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
         latency_iter_acc += after - before;
         read_wait_count_acc += stat.tryReadLockCount;
@@ -377,8 +406,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
     });
   }
 
-  bfc_w.init();
-
   for(size_t t = 0; t < threads.size(); t++){
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -391,6 +418,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
     }
   }
 
+  bfc_w.init();
   asm volatile("" ::: "memory"); // force not to reorder.
   auto start = chrono::high_resolution_clock::now();
   wait = false;
