@@ -55,7 +55,7 @@ static double init_sec;
 
 template <typename T>
 void make_snake(T &bfc){
-  // link0 -- link1 -- .. -- link100
+  // link0 -- link1 -- .. -- link 1'000'000
   auto now = chrono::steady_clock::now();
   double sec = chrono::duration<double>(now.time_since_epoch()).count();
   init_sec = sec;
@@ -306,31 +306,8 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
         auto access_ave = operator""ns(stat.getTimeStampsAve());
         auto access_ave_sec =  chrono::duration<double>(access_ave).count();
-//        if(abs(access_ave_sec - init_sec) > 0.01 ){
-//          auto a = 1+1;
-//          assert(true);
-//
-//          for(auto &e : stat.timestamps){
-//            auto nano_s = operator""ns(e);
-//            auto sec_s = chrono::duration<double>(nano_s).count();
-//            cout << sec_s << " ";
-//          }
-//        }
 
-//          assert(now.time_since_epoch() > access_ave);
         delay_iter_acc += before.time_since_epoch() - access_ave; // can be minus!
-//        if(chrono::duration<double>(before.time_since_epoch() - access_ave) > 10s){
-//          cout << "before :" << chrono::duration<double>(before.time_since_epoch()).count() << endl;
-//          cout << "ave: " << chrono::duration<double>(access_ave).count() << endl;
-//          cout << "start :" << chrono::duration<double>(start_iter.time_since_epoch()).count() << endl;
-//          cout << "end: " << chrono::duration<double>(end_iter.time_since_epoch()).count() << endl;
-//
-//
-//          cout << "daly is " << chrono::duration<double>(before.time_since_epoch() - access_ave).count() << endl;
-//          cout << "Elasped " << chrono::duration<double, std::milli>(end_iter - start_iter).count() << endl;
-//
-//          assert(false);
-//        }
         var_iter_acc += operator""ns(stat.getTimeStampsStandardDiv());
         latency_iter_acc += after - before;
         read_wait_count_acc += stat.tryReadLockCount;
