@@ -11,28 +11,26 @@
 #include <fstream>
 #include <limits>
 
-#include "tf2/stat.h"
+#include "../include/tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
 using tf2::BufferCore;
-using tf2::ReadStat;
-using tf2::WriteStat;
 using namespace geometry_msgs;
 using namespace std;
 
+DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(vehicle, 67, "Vehicle count per ");
+DEFINE_double(read_ratio, 0.5, "read ratio, within [0,1]");
 DEFINE_uint64(read_len, 67, "Number of reading vehicles size ∈ [0, vehicle]");
 DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_double(frequency, 0, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 5, "loop second");
-DEFINE_double(insert_span, 1., "new car arrive span in sec");
-DEFINE_uint64(only, 0, "0: All, 1: Only old, 2: Only TF-2PL, 3: Only TF-Silo");
-DEFINE_uint64(read_thread, 1, "read thread count");
-DEFINE_uint64(write_thread, 1, "write thread count");
+DEFINE_double(frequency, 100, "frequency, when 0 then disabled");
+DEFINE_uint64(loop_sec, 10, "loop second");
+DEFINE_double(insert_span, 1, "new car arrive span in sec");
+DEFINE_double(only, 0, "0: All, 1: Only old, 2: Only TF-2PL, 3: Only TF-Silo");
 
 
 using std::chrono::operator""s;
@@ -41,32 +39,24 @@ using std::chrono::duration_cast;
 TransformStamped trans(
   const string &parent,
   const string &child,
-  double time){
+  double sec){
   TransformStamped tr{};
   tr.header.frame_id = parent;
   tr.child_frame_id = child;
-  tr.header.stamp = ros::Time(time);
+  tr.header.stamp = ros::Time(sec);
   tr.transform.rotation.w = 1;
   return tr;
 }
 
 template <typename T>
 void make_base_station(T &bfc){
-// have to add new interface. read specified ids.
-// what was TPCC workload?
-// add one car per sec.
-// but no delete.
-// read all constantly.
-// what is write?
-// - new AuV arrived
-// - update it's position.
   auto now = chrono::steady_clock::now();
-  double nano = chrono::duration<double>(now.time_since_epoch()).count();
+  double sec = chrono::duration<double>(now.time_since_epoch()).count();
 
   for(size_t i = 0; i < FLAGS_vehicle; i++){
     auto map_i = trans("map",
-                          "link" + to_string(i),
-                          nano);
+                       "link" + to_string(i),
+                       sec);
     bfc.setTransform(map_i, "me");
   }
 }
@@ -75,7 +65,7 @@ template <typename T>
 struct BufferCoreWrapper{
   void init(){}
   void read(size_t start)const{}
-  void write(size_t id, double nano_time, size_t &iter_acc){}
+  void write(size_t id, double sec, size_t &iter_acc){}
 };
 
 template <>
@@ -94,8 +84,8 @@ struct BufferCoreWrapper<OldBufferCore>{
     bfc.justReadFrames(frames);
   }
 
-  void write(size_t id, double nano_time, size_t &iter_acc){
-    bfc.setTransform(trans("map", "link" + to_string(id), nano_time), "me");
+  void write(size_t id, double sec, size_t &iter_acc){
+    bfc.setTransform(trans("map", "link" + to_string(id), sec), "me");
     iter_acc++;
   }
 };
@@ -110,10 +100,10 @@ struct BufferCoreWrapper<BufferCore>{
   AccessType accessType;
 
   explicit BufferCoreWrapper(AccessType accessType_)
-    : accessType(accessType_)
-    , bfc(ros::Duration(100),
-          10,
-          accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
+  : accessType(accessType_)
+  , bfc(ros::Duration(100),
+        120,
+        accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
 
   void init(){
     bfc.clear();
@@ -127,11 +117,11 @@ struct BufferCoreWrapper<BufferCore>{
     bfc.justReadFrames(frames);
   }
 
-  void write(size_t id, double nano_time, size_t &iter_acc){
+  void write(size_t id, double sec, size_t &iter_acc){
     vector<TransformStamped> vec{};
-    vec.push_back(trans("map", "link" + to_string(id), nano_time));
+    vec.push_back(trans("map", "link" + to_string(id), sec));
 
-    WriteStat stat{};
+    tf2::WriteStat stat{};
     bfc.setTransformsXact(vec, "me", false, &stat);
 
     iter_acc++;
@@ -204,17 +194,18 @@ double throughput(chrono::duration<double> time, size_t iter){
 // time, delay, latency, aborts, var
 template <typename T>
 RunResult run(BufferCoreWrapper<T> &bfc_w){
+  auto read_threads = (size_t)std::round((double)FLAGS_thread * FLAGS_read_ratio);
+  size_t write_threads = FLAGS_thread - read_threads;
+
   atomic_bool wait{true};
   vector<thread> threads{};
 
-  CountAccum<double> throughput_acc_read_thread(FLAGS_read_thread);
-  CountAccum<chrono::duration<double>> latencies_acc_read_thread(FLAGS_read_thread);
+  CountAccum<double> throughput_acc_read_thread(read_threads);
+  CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
 
-  for(size_t t = 0; t < FLAGS_read_thread; t++){
+  for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([t,&wait, &bfc_w,  &latencies_acc_read_thread,
                            &throughput_acc_read_thread](){
-      std::random_device rnd;
-      Xoroshiro128Plus r(rnd());
       while (wait){;}
       chrono::duration<double> latency_iter_acc{};
       size_t iter_count = 0;
@@ -224,8 +215,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       size_t read_start = 0;
 
       for(;;){
-        //        size_t start = r.next() % FLAGS_vehicle;
-
         auto before = chrono::steady_clock::now();
         bfc_w.read(read_start);
         auto after = chrono::steady_clock::now();
@@ -254,13 +243,13 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
     });
   }
 
-  CountAccum<double> throughput_acc_write_thread(FLAGS_write_thread);
-  CountAccum<chrono::duration<double>> latencies_acc_write_thread(FLAGS_write_thread);
+  CountAccum<double> throughput_acc_write_thread(write_threads);
+  CountAccum<chrono::duration<double>> latencies_acc_write_thread(write_threads);
 
-  for(size_t t = 0; t < FLAGS_write_thread; t++){
+  for(size_t t = 0; t < write_threads; t++){
     threads.emplace_back([t, &bfc_w, &wait,
-                          &throughput_acc_write_thread,
-                          &latencies_acc_write_thread](){
+                           &throughput_acc_write_thread,
+                           &latencies_acc_write_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
@@ -341,7 +330,13 @@ int main(int argc, char* argv[]){
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
 
+  CONSOLE_BRIDGE_logInform("thread: %d", FLAGS_thread);
   CONSOLE_BRIDGE_logInform("vehicle: %d", FLAGS_vehicle);
+  CONSOLE_BRIDGE_logInform("read ratio: %lf", FLAGS_read_ratio);
+  if(!(0. <= FLAGS_read_ratio and FLAGS_read_ratio <= 1.)){
+    CONSOLE_BRIDGE_logError("wrong read ratio");
+    exit(-1);
+  }
   CONSOLE_BRIDGE_logInform("read len: %d", FLAGS_read_len);
   if(!(0 <= FLAGS_read_len and FLAGS_read_len <= FLAGS_vehicle)){
     CONSOLE_BRIDGE_logError("wrong read len");
@@ -355,9 +350,6 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
   CONSOLE_BRIDGE_logInform("loop sec: %d", FLAGS_loop_sec);
-  CONSOLE_BRIDGE_logInform("only: %d", FLAGS_only);
-  CONSOLE_BRIDGE_logInform("read thread: %d", FLAGS_read_thread);
-  CONSOLE_BRIDGE_logInform("write thread: %d", FLAGS_write_thread);
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
@@ -382,7 +374,7 @@ int main(int argc, char* argv[]){
 
   RunResult _2pl_result{};
   if(FLAGS_only == 0 or FLAGS_only == 2){
-    BufferCoreWrapper<BufferCore> bfc_w_xact(TF_2PL);
+    BufferCoreWrapper<BufferCore> bfc_w_xact(AccessType::TF_2PL);
     _2pl_result = run(bfc_w_xact);
 
     cout << "TF-2PL: " << endl;
@@ -396,7 +388,7 @@ int main(int argc, char* argv[]){
 
   RunResult silo_result{};
   if(FLAGS_only == 0 or FLAGS_only == 3){
-    BufferCoreWrapper<BufferCore> bfc_w_silo(TF_Silo);
+    BufferCoreWrapper<BufferCore> bfc_w_silo(AccessType::TF_Silo);
     silo_result = run(bfc_w_silo);
 
     cout << "TF-Silo: " << endl;
@@ -412,22 +404,19 @@ int main(int argc, char* argv[]){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
   }
 
-  output << FLAGS_vehicle << " "; // 1
-  output << FLAGS_read_len << " "; // 2
-  output << FLAGS_write_len << " "; // 3
-  output << FLAGS_frequency << " "; // 4
-  output << FLAGS_read_thread << " "; // 5
-  output << FLAGS_write_thread << " "; // 6
+  output << FLAGS_thread << " "; // 1
+  output << FLAGS_vehicle << " "; // 2
+  output << FLAGS_read_ratio << " "; // 3
+  output << FLAGS_read_len << " "; // 4
+  output << FLAGS_write_len << " "; // 5
+  output << FLAGS_frequency << " "; // 6
   output << old_result.throughput << " "; // 7
   output << _2pl_result.throughput << " "; // 8
   output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 9
   output << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << " "; // 10
-  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 11
-  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 12
-  output << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << " "; // 13
-  output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 14
-  output << chrono::duration<double, std::milli>(_2pl_result.delay).count() << " "; // 15
-  output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 16
+  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 11
+  output << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << " "; // 12
+  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 13
 
   output << endl;
   output.close();
