@@ -28,9 +28,9 @@ DEFINE_uint64(read_len, 67, "Number of reading vehicles size ∈ [0, vehicle]");
 DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 100, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 10, "loop second");
+DEFINE_uint64(loop_sec, 60, "loop second");
 DEFINE_double(insert_span, 1, "new car arrive span in sec");
-DEFINE_double(only, 0, "0: All, 1: Only old, 2: Only TF-2PL, 3: Only TF-Silo");
+DEFINE_double(only, 2, "0: All, 1: Only old, 2: Only TF-2PL, 3: Only TF-Silo");
 
 
 using std::chrono::operator""s;
@@ -102,7 +102,7 @@ struct BufferCoreWrapper<BufferCore>{
   explicit BufferCoreWrapper(AccessType accessType_)
   : accessType(accessType_)
   , bfc(ros::Duration(100),
-        120,
+        300,
         accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
 
   void init(){
