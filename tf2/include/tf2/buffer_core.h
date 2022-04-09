@@ -353,7 +353,7 @@ private:
 
     CCMethod cc;
     /** \brief The pointers to potential frames that the tree can be made of. */
-    TimeCache* frames_{};
+    TimeCache** frames_{};
 
     RWLock* frame_rw_lock_{}; // for 2PL
     VRWLock* frame_vrw_lock_{}; // for Silo

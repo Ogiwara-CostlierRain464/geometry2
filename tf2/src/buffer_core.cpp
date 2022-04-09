@@ -177,7 +177,7 @@ namespace tf2
     , cc(cc)
     , max_node_size_(max_node_size)
   {
-    frames_ = new TimeCache[max_node_size]();
+    frames_ = new TimeCache*[max_node_size]();
     if(cc == TwoPhaseLock){
       frame_rw_lock_ = new RWLock[max_node_size]();
     }else if(cc == Silo){
@@ -192,25 +192,30 @@ namespace tf2
   }
 
   void BufferCore::warmUpPages() noexcept{
-    for(size_t i = 0; i < max_node_size_; i++){
-      frames_[i].storage_.emplace_back();
-      frames_[i].storage_.front().rotation_.m_floats[0] = 0.5;
-      frames_[i].storage_.front().vec[0]= 0.5;
-      frames_[i].storage_.pop_front();
-      if(cc == TwoPhaseLock){
-        frame_rw_lock_[i].w_lock();
-        frame_rw_lock_[i].w_unlock();
-      }else if(cc == Silo){
-        frame_vrw_lock_[i].wLock();
-        frame_vrw_lock_[i].wUnLock();
-      }
-      frameIDs_reverse[i] = "";
-      frame_authority_[i] = "";
-    }
+//    for(size_t i = 0; i < max_node_size_; i++){
+//      frames_[i]->storage_.emplace_back();
+//      frames_[i]->storage_.front().rotation_.m_floats[0] = 0.5;
+//      frames_[i]->storage_.front().vec[0]= 0.5;
+//      frames_[i]->storage_.pop_front();
+//      if(cc == TwoPhaseLock){
+//        frame_rw_lock_[i].w_lock();
+//        frame_rw_lock_[i].w_unlock();
+//      }else if(cc == Silo){
+//        frame_vrw_lock_[i].wLock();
+//        frame_vrw_lock_[i].wUnLock();
+//      }
+//      frameIDs_reverse[i] = "";
+//      frame_authority_[i] = "";
+//    }
   }
 
   BufferCore::~BufferCore()
   {
+    for(size_t i = 0; i < max_node_size_; i++){
+      if(frames_[i]){
+        delete frames_[i];
+      }
+    }
     delete[] frames_;
 
     if(cc == TwoPhaseLock){
@@ -225,7 +230,9 @@ namespace tf2
   void BufferCore::clear()
   {
     for(size_t i = 0; i < next_frame_id_; i++){
-      frames_[i].clearList();
+      if(frames_[i]){
+        frames_[i]->clearList();
+      }
     }
   }
 
@@ -402,8 +409,8 @@ namespace tf2
 
   TimeCacheInterfacePtr BufferCore::allocateFrame(CompactFrameID cfid, bool is_static) noexcept
   {
-    frames_[cfid].is_static = is_static;
-    return &frames_[cfid];
+    frames_[cfid] = new TimeCache(is_static);
+    return frames_[cfid];
   }
 
   enum WalkEnding
@@ -1355,7 +1362,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
       return nullptr;
     else
     {
-      return &frames_[frame_id];
+      return frames_[frame_id];
     }
   }
 
