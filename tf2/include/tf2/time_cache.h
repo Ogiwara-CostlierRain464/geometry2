@@ -255,19 +255,6 @@ public:
   }
 
   bool insertData(const tf2::TransformStorage& new_data);
-  inline bool insertDataLatest(const tf2::TransformStorage &new_data){
-    if(is_static){
-      if(storage_.empty()){
-        storage_.push_back(new_data);
-      }else{
-        storage_.front() = new_data;
-      }
-      return true;
-    }
-
-    storage_.push_back(new_data);
-    return true;
-  }
   void clearList();
   tf2::CompactFrameID getParent(ros::Time time, std::string* error_str);
   inline P_TimeAndFrameID getLatestTimeAndParent()
