@@ -51,22 +51,17 @@ TransformStamped trans(
   return tr;
 }
 
-static double init_sec;
-
 template <typename T>
 void make_snake(T &bfc){
   // link0 -- link1 -- .. -- link 1'000'000
   auto now = chrono::steady_clock::now();
   double sec = chrono::duration<double>(now.time_since_epoch()).count();
-  init_sec = sec;
   for(size_t i = 0; i < FLAGS_joint; i++){
     auto i_iplus1 = trans("link" + to_string(i),
                           "link" + to_string(i+1),
                           sec);
     bfc.setTransform(i_iplus1, "me");
   }
-
-  cout << "Initial time is " << sec << endl;
 }
 
 template <typename T>
@@ -409,12 +404,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.throughput = throughput_acc_read_thread.sum() + throughput_acc_write_thread.sum();
   result.readLatency = latencies_acc_read_thread.average();
   result.writeLatency = latencies_acc_write_thread.average();
-
-  for(auto &e: delay_acc_thread.vec){
-    cout << chrono::duration<double, std::milli>(e).count() << " ";
-  }
-  cout << endl;
-
   result.delay = delay_acc_thread.average();
   result.var = vars_acc_thread.average();
   result.aborts = abort_acc_thread.average();
@@ -564,5 +553,6 @@ int main(int argc, char* argv[]){
   output << endl;
   output.close();
 
-  return 0;
+  // Fast exit, no need to wait de-alloc.
+  exit(0);
 }
