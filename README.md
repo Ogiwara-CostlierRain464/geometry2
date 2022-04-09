@@ -12,5 +12,9 @@ docker run -it  geometry2    # to run with x86_64 architecture
 
 # inside of the container
 source devel/setup.bash  # source ROS workspace overlay
-source src/geometry2/tf2/measure/script.bash  # launch script for demo
+source src/geometry2/tf2/measure/fig5-6-data.bash  # Make data for fig 5,6.
+
+# With your computer which has GUI and installed gnuplot
+source src/geometry2/tf2/measure/fig5-6-plot.bash # Make fig5.pdf and fig6.pdf
 ```
+
