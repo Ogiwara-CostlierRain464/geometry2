@@ -24,16 +24,16 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 1'000'000, "Joint size");
-DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
+DEFINE_uint64(joint, 1'0'000, "Joint size");
+DEFINE_double(read_ratio, 1, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 1, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
+DEFINE_uint32(only, 2, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 60, "Loop second");
+DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
-DEFINE_bool(make_read_stat, false, "When true, make statistics. To enhance performance, this should be turned off.");
+DEFINE_bool(make_read_stat, true, "When true, make statistics. To enhance performance, this should be turned off.");
 
 
 using std::chrono::operator""s;
@@ -42,11 +42,11 @@ using std::chrono::duration_cast;
 TransformStamped trans(
   const string &parent,
   const string &child,
-  double time){
+  double sec){
   TransformStamped tr{};
   tr.header.frame_id = parent;
   tr.child_frame_id = child;
-  tr.header.stamp = ros::Time(time);
+  tr.header.stamp = ros::Time(sec);
   tr.transform.rotation.w = 1;
   return tr;
 }
@@ -68,8 +68,7 @@ template <typename T>
 struct BufferCoreWrapper{
   void init(){}
   void read(size_t link, size_t until, ReadStat *out_stat)const{}
-  // return abort count
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){}
+  void write(size_t link, size_t until, double sec, WriteStat &out_stat, size_t &iter_acc){}
 };
 
 template <>
@@ -89,21 +88,21 @@ struct BufferCoreWrapper<OldBufferCore>{
       out_stat->timestamps.push_back(trans.header.stamp.toNSec());
     }
   }
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
+  void write(size_t link, size_t until, double sec, WriteStat &out_stat, size_t &iter_acc){
     // Write from low to high for performance.
     assert(until > link);
     if(FLAGS_opposite_write_direction){
       for(size_t j = link; j < until; j++){
         bfc.setTransform(trans("link" + to_string(j),
                                "link" + to_string(j+1),
-                               nano_time), "me");
+                               sec), "me");
         iter_acc++;
       }
     }else{
       for(size_t j = until; j > link; j--){
         bfc.setTransform(trans("link" + to_string(j-1),
                                "link" + to_string(j),
-                               nano_time), "me");
+                               sec), "me");
         iter_acc++;
       }
     }
@@ -146,21 +145,21 @@ struct BufferCoreWrapper<BufferCore>{
                                 "link" + to_string(until), out_stat);
     }
   }
-  void write(size_t link, size_t until, double nano_time, WriteStat &out_stat, size_t &iter_acc){
+  void write(size_t link, size_t until, double sec, WriteStat &out_stat, size_t &iter_acc){
     assert(until > link);
     if(accessType == TF_Par){
       if(FLAGS_opposite_write_direction){
         for(size_t j = link; j < until; j++){
           bfc.setTransform(trans("link" + to_string(j),
                                  "link" + to_string(j+1),
-                                 nano_time), "me");
+                                 sec), "me");
           iter_acc++;
         }
       }else{
         for(size_t j = until; j > link; j--){
           bfc.setTransform(trans("link" + to_string(j-1),
                                  "link" + to_string(j),
-                                 nano_time), "me");
+                                 sec), "me");
           iter_acc++;
         }
       }
@@ -176,13 +175,13 @@ struct BufferCoreWrapper<BufferCore>{
         for(size_t j = link; j < until; j++){
           vec.push_back(trans("link" + to_string(j),
                               "link" + to_string(j+1),
-                              nano_time));
+                              sec));
         }
       }else{
         for(size_t j = until; j > link; j--){
           vec.push_back(trans("link" + to_string(j-1),
                               "link" + to_string(j),
-                              nano_time));
+                              sec));
         }
       }
 
@@ -354,9 +353,9 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         if(until > FLAGS_joint) until = FLAGS_joint;
         vector<TransformStamped> vec{};
         auto before = chrono::steady_clock::now();
-        double nano = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
+        double sec = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         WriteStat stat{};
-        bfc_w.write(link, until, nano, stat, iter_count);
+        bfc_w.write(link, until, sec, stat, iter_count);
         auto after = chrono::steady_clock::now();
         abort_iter_acc += stat.getAbortCount();
         latency_iter_acc += after - before;
@@ -405,6 +404,12 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.throughput = throughput_acc_read_thread.sum() + throughput_acc_write_thread.sum();
   result.readLatency = latencies_acc_read_thread.average();
   result.writeLatency = latencies_acc_write_thread.average();
+
+  for(auto &e: delay_acc_thread.vec){
+    cout << chrono::duration<double, std::milli>(e).count() << " ";
+  }
+  cout << endl;
+
   result.delay = delay_acc_thread.average();
   result.var = vars_acc_thread.average();
   result.aborts = abort_acc_thread.average();

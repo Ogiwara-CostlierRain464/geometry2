@@ -220,22 +220,6 @@ unsigned int TimeCache::getListLength()
   return storage_.size();
 }
 
-P_TimeAndFrameID TimeCache::getLatestTimeAndParent()
-{
-  if(is_static){
-    CompactFrameID id = storage_.empty() ? 0 : storage_.front().frame_id_;
-    return std::make_pair(ros::Time(), id);
-  }
-
-  if (storage_.empty())
-  {
-    return std::make_pair(ros::Time(), 0);
-  }
-
-  const tf2::TransformStorage& ts = storage_.front();
-  return std::make_pair(ts.stamp_, ts.frame_id_);
-}
-
 ros::Time TimeCache::getOldestTimestamp()
 {
   if(is_static) return {};

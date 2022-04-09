@@ -235,68 +235,76 @@ namespace tf2
     setTransformsXact(vec, authority, is_static);
   }
 
+  inline geometry_msgs::TransformStamped stripTransform(const geometry_msgs::TransformStamped &tr){
+    geometry_msgs::TransformStamped tmp = tr;
+    tmp.header.frame_id = stripSlash(tmp.header.frame_id);
+    tmp.child_frame_id = stripSlash(tmp.child_frame_id);
+    return tmp;
+  }
+
+  inline bool checkTransformValid(const geometry_msgs::TransformStamped &tr, const std::string& authority){
+    if (tr.child_frame_id == tr.header.frame_id)
+    {
+      CONSOLE_BRIDGE_logError("TF_SELF_TRANSFORM: Ignoring transform from authority \"%s\" with frame_id and child_frame_id  \"%s\" because they are the same",  authority.c_str(), tr.child_frame_id.c_str());
+      return false;
+    }
+
+    if (tr.child_frame_id.empty())
+    {
+      CONSOLE_BRIDGE_logError("TF_NO_CHILD_FRAME_ID: Ignoring transform from authority \"%s\" because child_frame_id not set ", authority.c_str());
+      return false;
+    }
+
+    if (tr.header.frame_id.empty())
+    {
+      CONSOLE_BRIDGE_logError("TF_NO_FRAME_ID: Ignoring transform with child_frame_id \"%s\"  from authority \"%s\" because frame_id not set", tr.child_frame_id.c_str(), authority.c_str());
+      return false;
+    }
+
+    if (std::isnan(tr.transform.translation.x)
+        ||  std::isnan(tr.transform.translation.y)
+        ||  std::isnan(tr.transform.translation.z)
+        ||  std::isnan(tr.transform.rotation.x)
+        ||  std::isnan(tr.transform.rotation.y)
+        ||  std::isnan(tr.transform.rotation.z)
+        ||  std::isnan(tr.transform.rotation.w))
+    {
+      CONSOLE_BRIDGE_logError("TF_NAN_INPUT: Ignoring transform for child_frame_id \"%s\" from authority \"%s\" because of a nan value in the transform (%f %f %f) (%f %f %f %f)",
+                              tr.child_frame_id.c_str(), authority.c_str(),
+                              tr.transform.translation.x, tr.transform.translation.y, tr.transform.translation.z,
+                              tr.transform.rotation.x, tr.transform.rotation.y, tr.transform.rotation.z, tr.transform.rotation.w
+      );
+      return false;
+    }
+
+    bool valid = std::abs((tr.transform.rotation.w * tr.transform.rotation.w
+                           + tr.transform.rotation.x * tr.transform.rotation.x
+                           + tr.transform.rotation.y * tr.transform.rotation.y
+                           + tr.transform.rotation.z * tr.transform.rotation.z) - 1.0f) < QUATERNION_NORMALIZATION_TOLERANCE;
+
+    if (!valid){
+      CONSOLE_BRIDGE_logError("TF_DENORMALIZED_QUATERNION: Ignoring transform for child_frame_id \"%s\" from authority \"%s\" because of an invalid quaternion in the transform (%f %f %f %f)",
+                              tr.child_frame_id.c_str(), authority.c_str(),
+                              tr.transform.rotation.x, tr.transform.rotation.y, tr.transform.rotation.z, tr.transform.rotation.w);
+      return false;
+    }
+    return true;
+  }
+
   bool BufferCore::setTransformsXact(const std::vector<geometry_msgs::TransformStamped> &transforms,
                                      const std::string& authority, bool is_static, WriteStat *stat) noexcept
   {
     std::vector<geometry_msgs::TransformStamped> stripped{};
+    stripped.reserve(transforms.size());
     for(auto &e: transforms){
-      geometry_msgs::TransformStamped tmp = e;
-      tmp.header.frame_id = stripSlash(tmp.header.frame_id);
-      tmp.child_frame_id = stripSlash(tmp.child_frame_id);
-      stripped.push_back(e);
+      stripped.push_back(stripTransform(e));
     }
 
-    bool error_exists = false;
+
     for(auto &e: stripped){
-      if (e.child_frame_id == e.header.frame_id)
-      {
-        CONSOLE_BRIDGE_logError("TF_SELF_TRANSFORM: Ignoring transform from authority \"%s\" with frame_id and child_frame_id  \"%s\" because they are the same",  authority.c_str(), e.child_frame_id.c_str());
-        error_exists = true;
+      if(checkTransformValid(e, authority)){
+        return false;
       }
-
-      if (e.child_frame_id.empty())
-      {
-        CONSOLE_BRIDGE_logError("TF_NO_CHILD_FRAME_ID: Ignoring transform from authority \"%s\" because child_frame_id not set ", authority.c_str());
-        error_exists = true;
-      }
-
-      if (e.header.frame_id.empty())
-      {
-        CONSOLE_BRIDGE_logError("TF_NO_FRAME_ID: Ignoring transform with child_frame_id \"%s\"  from authority \"%s\" because frame_id not set", e.child_frame_id.c_str(), authority.c_str());
-        error_exists = true;
-      }
-
-      if (std::isnan(e.transform.translation.x)
-          ||  std::isnan(e.transform.translation.y)
-          ||  std::isnan(e.transform.translation.z)
-          ||  std::isnan(e.transform.rotation.x)
-          ||  std::isnan(e.transform.rotation.y)
-          ||  std::isnan(e.transform.rotation.z)
-          ||  std::isnan(e.transform.rotation.w))
-      {
-        CONSOLE_BRIDGE_logError("TF_NAN_INPUT: Ignoring transform for child_frame_id \"%s\" from authority \"%s\" because of a nan value in the transform (%f %f %f) (%f %f %f %f)",
-                                e.child_frame_id.c_str(), authority.c_str(),
-                                e.transform.translation.x, e.transform.translation.y, e.transform.translation.z,
-                                e.transform.rotation.x, e.transform.rotation.y, e.transform.rotation.z, e.transform.rotation.w
-        );
-        error_exists = true;
-      }
-
-      bool valid = std::abs((e.transform.rotation.w * e.transform.rotation.w
-                             + e.transform.rotation.x * e.transform.rotation.x
-                             + e.transform.rotation.y * e.transform.rotation.y
-                             + e.transform.rotation.z * e.transform.rotation.z) - 1.0f) < QUATERNION_NORMALIZATION_TOLERANCE;
-
-      if (!valid){
-        CONSOLE_BRIDGE_logError("TF_DENORMALIZED_QUATERNION: Ignoring transform for child_frame_id \"%s\" from authority \"%s\" because of an invalid quaternion in the transform (%f %f %f %f)",
-                                e.child_frame_id.c_str(), authority.c_str(),
-                                e.transform.rotation.x, e.transform.rotation.y, e.transform.rotation.z, e.transform.rotation.w);
-        error_exists = true;
-      }
-    }
-
-    if (error_exists){
-      return false;
     }
 
     // before testTransformableRequests, you have to unlock.
@@ -347,7 +355,7 @@ namespace tf2
           auto id = std::get<2>(w);
 
           std::string err_str;
-          if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
+          if(frame->insertDataLatest(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
             frame_authority_[id] = authority;
           }else{
             CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
@@ -376,7 +384,7 @@ namespace tf2
           auto id = std::get<2>(w);
 
           std::string err_str;
-          if(frame->insertData(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
+          if(frame->insertDataLatest(TransformStorage(e, lookupOrInsertFrameNumber(e.header.frame_id), id))){
             frame_authority_[id] = authority;
           }else{
             CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at https://wiki.ros.org/tf/Errors%%20explained", e.child_frame_id.c_str(), e.header.stamp.toSec(), authority.c_str());
@@ -839,6 +847,8 @@ retry:
       , target_to_top_vec(0.0, 0.0, 0.0)
       , result_quat(0.0, 0.0, 0.0, 1.0)
       , result_vec(0.0, 0.0, 0.0)
+      , st_rotation_(0.0, 0.0, 0.0, 1.0)
+      , st_translation_(0.0, 0.0, 0.0)
     {
     }
 
