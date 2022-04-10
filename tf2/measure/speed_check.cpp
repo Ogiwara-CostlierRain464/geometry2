@@ -33,7 +33,7 @@ DEFINE_uint32(only, 1, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,60, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
-DEFINE_bool(make_read_stat, true, "When true, make statistics. To enhance performance, this should be turned off.");
+DEFINE_bool(make_read_stat, true, "When true, make statistics. To enhance performance, turned off.");
 
 
 using std::chrono::operator""s;
