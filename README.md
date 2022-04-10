@@ -33,7 +33,7 @@ source src/geometry2/tf2/measure/fig12-14-plot.bash # Make fig12.pdf ~ fig14.pdf
 ### FAQ
 Q1. Docker says `Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock`
 
-A1. Run following command
+A1. Run following commands.
 ```bash
 sudo gpasswd -a $(whoami) docker
 sudo chgrp docker /var/run/docker.sock
