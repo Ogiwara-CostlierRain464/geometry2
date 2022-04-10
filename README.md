@@ -37,7 +37,7 @@ A1. Run following command
 ```bash
 sudo gpasswd -a $(whoami) docker
 sudo chgrp docker /var/run/docker.sock
-sudo chgrp docker /var/run/docker.sock
+sudo service docker restart
 exit # Logout, and try again.
 ```
 
@@ -51,4 +51,4 @@ A3. See `src/geometry2/tf2/measure/script.bash` and `src/geometry2/tf2/measure/c
 
 Q4. I want to use this package in read workload.
 
-A4. You have to recompile tf2_py, tf2_ros, rviz, and tf with `-MMD -MP` flag and reinstall them,
+A4. You have to recompile tf2_py, tf2_ros, rviz, and tf with `-MMD -MP` flag and reinstall them.
