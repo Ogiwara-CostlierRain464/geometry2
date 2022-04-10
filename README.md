@@ -43,12 +43,18 @@ exit # Logout, and try again.
 
 Q2. I want to evaluate separately `TF`, `TF-Par`, `TF-2PL`, and `TF-Silo`.
 
-A2. Change `ONLY` variable in each *-data.bash files.
+A2. Change `ONLY` variable in each `*-data.bash` files.
 
 Q3. I want to try more detailed workloads.
 
-A3. See `src/geometry2/tf2/measure/script.bash` and `src/geometry2/tf2/measure/car.bash` 
+A3. See `src/geometry2/tf2/measure/script.bash` and `src/geometry2/tf2/measure/car.bash`.
 
-Q4. I want to use this package in read workload.
+Q4. Got error `Error calling pthread_setaffinity_np: 22`, while running `*-data.bash` files.
 
-A4. You have to recompile tf2_py, tf2_ros, rviz, and tf with `-MMD -MP` flag and reinstall them.
+A4. We use `pthread_setaffinity_np` to fix which thread runs on which CPU. 
+To get full result with `*-data.bash` files, you need a computer which has at least 224 logical cores.
+To get at least one result with `*-data.bash` files, you need a computer which has at least 28 logical cores.
+
+Q5. I want to use this package in real workload.
+
+A5. You have to recompile tf2_py, tf2_ros, rviz, and tf with `-MMD -MP` flag, and reinstall them.
