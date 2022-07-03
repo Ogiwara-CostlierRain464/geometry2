@@ -239,7 +239,7 @@ namespace tf2
   bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static) noexcept
   {
     std::vector<geometry_msgs::TransformStamped> vec{transform_in};
-    setTransformsXact(vec, authority, is_static);
+    return setTransformsXact(vec, authority, is_static);
   }
 
   inline geometry_msgs::TransformStamped stripTransform(const geometry_msgs::TransformStamped &tr){
