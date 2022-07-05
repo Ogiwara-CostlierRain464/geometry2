@@ -60,6 +60,22 @@ target_link_libraries(speed_check
 )
 add_dependencies(speed_check ${catkin_EXPORTED_TARGETS})
 
+add_executable(many_snakes
+  ${SRC}
+  ${INCLUDE}
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
+  measure/many_snakes.cpp
+  measure/xoroshiro128_plus.h
+  )
+target_link_libraries(many_snakes
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  gflags
+  tbb
+  )
+add_dependencies(many_snakes ${catkin_EXPORTED_TARGETS})
 
 add_executable(car_check
   ${SRC}
