@@ -30,7 +30,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 100, "Read length in one snake, up to 100.");
 DEFINE_uint64(write_len, 16, "Write length in one snake, up to 100.");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 1, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
+DEFINE_uint32(only, 0, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -132,7 +132,7 @@ struct BufferCoreWrapper<BufferCore>{
   explicit BufferCoreWrapper(AccessType accessType_)
     : accessType(accessType_)
     , bfc(ros::Duration(100),
-          1'010'000,
+          1'020'000,
           accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
 
   BufferCore bfc;
