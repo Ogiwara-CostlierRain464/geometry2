@@ -178,6 +178,7 @@ namespace tf2
     , max_node_size_(max_node_size)
   {
     frames_ = new TimeCache*[max_node_size]();
+    std::fill(frames_, frames_ + max_node_size, nullptr);
     if(cc == TwoPhaseLock){
       frame_rw_lock_ = new RWLock[max_node_size]();
     }else if(cc == Silo){
