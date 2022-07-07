@@ -60,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}_buffer_server
 )
 set_target_properties(${PROJECT_NAME}_buffer_server
   PROPERTIES OUTPUT_NAME buffer_server
+             COMPILE_FLAGS "-g -MMD -MP"
 )
 
 # static_transform_publisher
@@ -73,11 +74,8 @@ target_link_libraries(${PROJECT_NAME}_static_transform_publisher
 )
 set_target_properties(${PROJECT_NAME}_static_transform_publisher
   PROPERTIES OUTPUT_NAME static_transform_publisher
+             COMPILE_FLAGS "-g -MMD -MP"
 )
-
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-g -MMD -MP")
-set_target_properties(${PROJECT_NAME}_static_transform_publisher PROPERTIES COMPILE_FLAGS "-g -MMD -MP")
-set_target_properties(${PROJECT_NAME}_buffer_server PROPERTIES COMPILE_FLAGS "-g -MMD -MP")
 
 # Install library
 install(TARGETS
