@@ -31,7 +31,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 100, "Read length in one snake, up to 100.");
 DEFINE_uint64(write_len, 16, "Write length in one snake, up to 100.");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "1111", "Represent which method is DISABLED. Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "1111", "Bit representation of enabled methods. Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -473,7 +473,7 @@ int main(int argc, char* argv[]){
   std::bitset<4> bs(FLAGS_only);
 
   RunResult old_result{};
-  if(bs[0] == 0){
+  if(bs[0]){
     BufferCoreWrapper<OldBufferCore> bfc_w{};
     old_result = run(bfc_w);
 
@@ -486,7 +486,7 @@ int main(int argc, char* argv[]){
   }
 
   RunResult par_result{};
-  if(bs[1] == 0){
+  if(bs[1]){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Par);
     par_result = run(bfc_w);
 
@@ -499,7 +499,7 @@ int main(int argc, char* argv[]){
   }
 
   RunResult _2pl_result{};
-  if(bs[2] == 0){
+  if(bs[2]){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_2PL);
     _2pl_result = run(bfc_w);
 
@@ -514,7 +514,7 @@ int main(int argc, char* argv[]){
   }
 
   RunResult silo_result{};
-  if(bs[3] == 0){
+  if(bs[3]){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo);
     silo_result = run(bfc_w);
 

@@ -8,6 +8,7 @@
 #include <tbb/concurrent_unordered_map.h>
 #include <unordered_map>
 #include <mutex>
+#include <bitset>
 
 #include "../include/tf2/buffer_core.h"
 #include "../measure/xoroshiro128_plus.h"
@@ -583,6 +584,13 @@ TEST_F(MultithreadTest, fetch_add){
   atomic_uint64_t a{0};
   auto ret =  a.fetch_add(1);
   EXPECT_EQ(ret, 0);
+}
+
+TEST_F(MultithreadTest, bit_set){
+  std::bitset<4> a("0");
+  EXPECT_EQ(a[3], 0);
+  std::bitset<4> b("0010");
+  EXPECT_EQ(b[1], 1);
 }
 
 
