@@ -10,6 +10,7 @@
 #include <bits/stdc++.h>
 #include <fstream>
 #include <limits>
+#include <bitset>
 
 #include "tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
@@ -30,12 +31,11 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 100, "Read length in one snake, up to 100.");
 DEFINE_uint64(write_len, 16, "Write length in one snake, up to 100.");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_uint32(only, 0, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
+DEFINE_string(only, "1111", "Represent which method is DISABLED. Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
 DEFINE_bool(make_read_stat, true, "When true, make statistics. To enhance performance, turned off.");
-
 
 using std::chrono::operator""s;
 using std::chrono::duration_cast;
@@ -457,7 +457,7 @@ int main(int argc, char* argv[]){
     exit(-1);
   }
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
-  CONSOLE_BRIDGE_logInform("Only: %d", FLAGS_only);
+  CONSOLE_BRIDGE_logInform("Only: %s", FLAGS_only.c_str());
   CONSOLE_BRIDGE_logInform("frequency: %lf", FLAGS_frequency);
   CONSOLE_BRIDGE_logInform("Opposite write direction: %s", FLAGS_opposite_write_direction ? "true" : "false");
   CONSOLE_BRIDGE_logInform("Loop sec: %d", FLAGS_loop_sec);
@@ -470,9 +470,10 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
+  std::bitset<4> bs(FLAGS_only);
 
   RunResult old_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 4 or FLAGS_only == 5){
+  if(bs[0] == 0){
     BufferCoreWrapper<OldBufferCore> bfc_w{};
     old_result = run(bfc_w);
 
@@ -485,7 +486,7 @@ int main(int argc, char* argv[]){
   }
 
   RunResult par_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 1 or FLAGS_only == 3){
+  if(bs[1] == 0){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Par);
     par_result = run(bfc_w);
 
@@ -498,7 +499,7 @@ int main(int argc, char* argv[]){
   }
 
   RunResult _2pl_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 2 or FLAGS_only == 3 or FLAGS_only == 5){
+  if(bs[2] == 0){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_2PL);
     _2pl_result = run(bfc_w);
 
@@ -513,7 +514,7 @@ int main(int argc, char* argv[]){
   }
 
   RunResult silo_result{};
-  if(FLAGS_only == 0 or FLAGS_only == 6){
+  if(bs[3] == 0){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo);
     silo_result = run(bfc_w);
 
