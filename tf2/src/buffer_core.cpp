@@ -401,6 +401,8 @@ namespace tf2
 
           frame_vrw_lock_[id].wUnLock();
         }
+      }else{
+        assert(false && "Invalid CC method\n");
       }
     }
     // set Transform and test req aren't handled serialized fashion!

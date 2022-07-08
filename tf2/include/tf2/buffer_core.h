@@ -73,8 +73,8 @@ namespace tf2
   };
 
   enum CCMethod{
-    TwoPhaseLock,
-    Silo
+    TwoPhaseLock = 0,
+    Silo = 1
   };
 
 /** \brief A Class which provides coordinate transforms between any two frames in a system.
@@ -107,7 +107,7 @@ namespace tf2
      * \param cache_time How long to keep a history of transforms in nanoseconds
      *
      */
-    BufferCore(ros::Duration cache_time_ = ros::Duration(DEFAULT_CACHE_TIME), uint64_t max_node_size = 1000, CCMethod cc = Silo);
+    explicit BufferCore(ros::Duration cache_time_ = ros::Duration(DEFAULT_CACHE_TIME), uint64_t max_node_size = 1000, CCMethod cc = Silo);
 
     void warmUpPages() noexcept;
 
