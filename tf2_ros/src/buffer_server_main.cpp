@@ -41,7 +41,9 @@
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "tf_buffer");
-  ros::NodeHandle nh;  
+  ros::NodeHandle nh;
+  ros::CallbackQueue queue;
+  nh.setCallbackQueue(&queue);
 
   double buffer_size;
   nh.param("buffer_size", buffer_size, 120.0);
@@ -66,6 +68,9 @@ int main(int argc, char** argv)
   tf2_ros::TransformListener listener(buffer_core);
   tf2_ros::BufferServer buffer_server(buffer_core, node_name , false);
   buffer_server.start();
+
+  ros::AsyncSpinner spinner_for_action(5, &queue);
+  spinner_for_action.start();
 
   ros::spin();
 }

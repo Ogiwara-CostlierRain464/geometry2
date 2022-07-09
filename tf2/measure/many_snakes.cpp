@@ -25,13 +25,13 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(snake_num, 10'000, "Number of snakes");
+DEFINE_uint64(snake_num, 100, "Number of snakes");
 DEFINE_uint64(snake_joints, 100, "Number of snake joints");
 DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 100, "Read length in one snake, up to 100.");
 DEFINE_uint64(write_len, 16, "Write length in one snake, up to 100.");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "1111", "Bit representation of enabled methods. Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "0010", "Bit representation of enabled methods. Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");

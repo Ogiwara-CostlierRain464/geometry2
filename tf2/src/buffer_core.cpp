@@ -338,6 +338,7 @@ namespace tf2
               if(stat){
                 stat->tryWriteCount++;
               }
+              std::this_thread::sleep_for(1ms);
             }
           }else{
             // wLockedSize() >= 1

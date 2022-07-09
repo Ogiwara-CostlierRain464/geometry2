@@ -82,7 +82,10 @@ void TransformListener::initWithThread()
   ros::SubscribeOptions ops_tf_static = ros::SubscribeOptions::create<tf2_msgs::TFMessage>("/tf_static", 100, boost::bind(&TransformListener::static_subscription_callback, this, _1), ros::VoidPtr(), &tf_message_callback_queue_); ///\todo magic number
   message_subscriber_tf_static_ = node_.subscribe(ops_tf_static);
 
-  dedicated_listener_thread_ = new boost::thread(boost::bind(&TransformListener::dedicatedListenerThread, this));
+  ros::AsyncSpinner spinner(3, &tf_message_callback_queue_);
+  spinner.start();
+
+  //dedicated_listener_thread_ = new boost::thread(boost::bind(&TransformListener::dedicatedListenerThread, this));
 
   //Tell the buffer we have a dedicated thread to enable timeouts
   buffer_.setUsingDedicatedThread(true);

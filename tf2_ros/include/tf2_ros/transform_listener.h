@@ -74,14 +74,6 @@ private:
   tf2::BufferCore& buffer_;
   bool using_dedicated_thread_;
   ros::Time last_update_;
- 
-  void dedicatedListenerThread()
-  {
-    while (using_dedicated_thread_)
-    {
-      tf_message_callback_queue_.callAvailable(ros::WallDuration(0.01));
-    }
-  };
 
 };
 }
