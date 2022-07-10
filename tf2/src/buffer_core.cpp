@@ -237,10 +237,10 @@ namespace tf2
     }
   }
 
-  bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static) noexcept
+  bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_in, const std::string& authority, bool is_static, WriteStat *stat) noexcept
   {
     std::vector<geometry_msgs::TransformStamped> vec{transform_in};
-    return setTransformsXact(vec, authority, is_static);
+    return setTransformsXact(vec, authority, is_static, stat);
   }
 
   inline geometry_msgs::TransformStamped stripTransform(const geometry_msgs::TransformStamped &tr){
@@ -338,7 +338,8 @@ namespace tf2
               if(stat){
                 stat->tryWriteCount++;
               }
-              std::this_thread::sleep_for(1ms);
+              // should I randomize this?
+              std::this_thread::sleep_for(0.05ms);
             }
           }else{
             // wLockedSize() >= 1

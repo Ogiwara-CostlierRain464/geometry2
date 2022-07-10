@@ -78,7 +78,7 @@ template <typename T>
 struct BufferCoreWrapper{
   void init(){}
   void read(size_t snake, size_t from, size_t to, ReadStat *out_stat)const{}
-  void write(size_t snake, size_t from, size_t to, double sec, WriteStat &out_stat, size_t &iter_acc){}
+  void write(size_t snake, size_t from, size_t to, double sec, WriteStat *out_stat, size_t &iter_acc){}
 };
 
 template <>
@@ -99,7 +99,7 @@ struct BufferCoreWrapper<OldBufferCore>{
       out_stat->timestamps.push_back(trans.header.stamp.toNSec());
     }
   }
-  void write(size_t snake, size_t from, size_t to, double sec, WriteStat &out_stat, size_t &iter_acc){
+  void write(size_t snake, size_t from, size_t to, double sec, WriteStat *out_stat, size_t &iter_acc){
     // Write from bottom to top of the tree for better performance.
     assert(to > from);
     if(FLAGS_opposite_write_direction){ // Write from top to bottom
@@ -160,7 +160,7 @@ struct BufferCoreWrapper<BufferCore>{
         out_stat);
     }
   }
-  void write(size_t snake, size_t from, size_t to, double sec, WriteStat &out_stat, size_t &iter_acc){
+  void write(size_t snake, size_t from, size_t to, double sec, WriteStat *out_stat, size_t &iter_acc){
     assert(to > from);
     if(accessType == TF_Par){
       if(FLAGS_opposite_write_direction){
@@ -168,7 +168,7 @@ struct BufferCoreWrapper<BufferCore>{
           bfc.setTransform(trans(
             "link" + to_string(snake) + "-" + to_string(j),
             "link" + to_string(snake) + "-" + to_string(j+1),
-            sec), "me");
+            sec), "me", false, out_stat);
           iter_acc++;
         }
       }else{
@@ -176,7 +176,7 @@ struct BufferCoreWrapper<BufferCore>{
           bfc.setTransform(trans(
             "link" + to_string(snake) + "-" + to_string(j-1),
             "link" + to_string(snake) + "-" + to_string(j),
-            sec), "me");
+            sec), "me", false, out_stat);
           iter_acc++;
         }
       }
@@ -199,7 +199,7 @@ struct BufferCoreWrapper<BufferCore>{
         }
       }
 
-      bfc.setTransformsXact(vec, "me", false, &out_stat);
+      bfc.setTransformsXact(vec, "me", false, out_stat);
       iter_acc++;
     }
   }
@@ -260,6 +260,7 @@ struct RunResult{
   chrono::duration<double> var; // should be zero except latest
   double aborts; // aborts in write, should be zero expect latest
   double readAborts;
+  double tryWrites; // for TF-Par
 
   double readThroughput;
   double writeThroughput;
@@ -350,14 +351,16 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<double> abort_acc_thread(write_threads);
   CountAccum<double> throughput_acc_write_thread(write_threads);
   CountAccum<chrono::duration<double>> latencies_acc_write_thread(write_threads);
+  CountAccum<double> try_write_acc_thread(write_threads);
 
   for(size_t t = 0; t < write_threads; t++){
     threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread,
-                           &throughput_acc_write_thread, &latencies_acc_write_thread, read_threads](){
+                           &throughput_acc_write_thread, &latencies_acc_write_thread, &try_write_acc_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
       uint64_t abort_iter_acc{};
+      uint64_t try_write_iter_acc{};
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
       size_t iter_count = 0;
@@ -372,9 +375,10 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         auto before = chrono::steady_clock::now();
         double sec = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         WriteStat stat{};
-        bfc_w.write(snake, from, to, sec, stat, iter_count);
+        bfc_w.write(snake, from, to, sec, &stat, iter_count);
         auto after = chrono::steady_clock::now();
         abort_iter_acc += stat.getAbortCount();
+        try_write_iter_acc += stat.tryWriteCount;
         latency_iter_acc += after - before;
 
         if(FLAGS_frequency != 0){
@@ -390,6 +394,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
       throughput_acc_write_thread.record(t, throughput(end_iter - start_iter, iter_count));
       abort_acc_thread.record(t, (double) abort_iter_acc / (double) iter_count);
+      try_write_acc_thread.record(t, (double) try_write_iter_acc / (double) iter_count);
       latencies_acc_write_thread.record(t, latency_iter_acc / (double) iter_count);
     });
   }
@@ -426,6 +431,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.readThroughput = throughput_acc_read_thread.sum();
   result.writeThroughput = throughput_acc_write_thread.sum();
   result.readAborts = abort_acc_read_thread.average();
+  result.tryWrites = try_write_acc_thread.average();
 
   cout << "read wait count: " << read_wait_count.average() << endl;
   cout << "deque size in snapshot: " << deque_count_thread.average() << endl;
@@ -567,6 +573,7 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 30
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
+  output << par_result.tryWrites << " ";
 
   output << endl;
   output.close();

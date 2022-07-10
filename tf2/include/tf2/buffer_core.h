@@ -122,7 +122,7 @@ namespace tf2
      * \param is_static Record this transform as a static transform.  It will be good across all time.  (This cannot be changed after the first call.)
      * \return True unless an error occured
      */
-    bool setTransform(const geometry_msgs::TransformStamped& transform, const std::string & authority, bool is_static = false) noexcept;
+    bool setTransform(const geometry_msgs::TransformStamped& transform, const std::string & authority, bool is_static = false, WriteStat *stat = nullptr) noexcept;
 
     /** \brief Add several transform information to the tf data structure, by using transactional method.
      * \param transforms Vector of transform to store
