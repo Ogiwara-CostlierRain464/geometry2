@@ -10,7 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-  CATKIN_DEPENDS tf2
+  CATKIN_DEPENDS
+  tf2
   tf2_msgs
   tf2_ros
   roscpp
@@ -20,6 +21,12 @@ include_directories(${catkin_INCLUDE_DIRS})
 
 add_executable(subscriber
   src/subscriber.cpp
+)
+add_dependencies(subscriber
+  ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(subscriber
+  ${catkin_LIBRARIES}
 )
 
 install(PROGRAMS scripts/publisher.py
