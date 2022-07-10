@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   rospy
   roscpp
+  actionlib
 )
 
 catkin_package(
@@ -15,6 +16,7 @@ catkin_package(
   tf2_msgs
   tf2_ros
   roscpp
+  actionlib
 )
 
 include_directories(${catkin_INCLUDE_DIRS})

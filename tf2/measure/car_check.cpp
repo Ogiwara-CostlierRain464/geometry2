@@ -14,7 +14,7 @@
 #include "../include/tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
 #include "tf2/buffer_core.h"
-#include "xoroshiro128_plus.h"
+#include "../include/tf2/xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
 using tf2::BufferCore;

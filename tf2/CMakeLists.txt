@@ -49,7 +49,6 @@ add_executable(speed_check
   ${OLD_SRC}
   ${OLD_INCLUDE}
   measure/speed_check.cpp
-  measure/xoroshiro128_plus.h
 )
 target_link_libraries(speed_check
   ${Boost_LIBRARIES}
@@ -66,7 +65,6 @@ add_executable(many_snakes
   ${OLD_SRC}
   ${OLD_INCLUDE}
   measure/many_snakes.cpp
-  measure/xoroshiro128_plus.h
   )
 target_link_libraries(many_snakes
   ${Boost_LIBRARIES}
@@ -83,7 +81,6 @@ add_executable(car_check
   ${OLD_SRC}
   ${OLD_INCLUDE}
   measure/car_check.cpp
-  measure/xoroshiro128_plus.h
   )
 target_link_libraries(car_check
   ${Boost_LIBRARIES}
@@ -246,7 +243,6 @@ catkin_add_gtest(test_multithread
   test/multithread_test.cpp
   ${SRC}
   ${INCLUDE}
-  measure/xoroshiro128_plus.h
 )
 target_link_libraries(test_multithread
   ${Boost_LIBRARIES}

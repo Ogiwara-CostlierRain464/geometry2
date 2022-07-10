@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <random>
+#include <limits>
 
 /**
  * This algorithm is originally developed
@@ -40,6 +41,13 @@ struct Xoroshiro128Plus {
     s[1] = rotl(s1, 37);                    // c
 
     return result;
+  }
+
+  double next_between(double min, double max){
+    uint64_t n = next();
+    double zero_one_range = ((double) n) * (1. / (double) std::numeric_limits<uint64_t>::max());
+    // min + (max - min) * (n/MAX)
+    return min + (max-min) * zero_one_range;
   }
 
   uint64_t operator()() { return next(); }
