@@ -24,14 +24,14 @@ using namespace geometry_msgs;
 using namespace std;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 1'000'000, "Joint size");
+DEFINE_uint64(joint, 1'000, "Joint size");
 DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_uint32(only, 1, "0: All, 1: Only TF-Par, 2: Only TF-2PL, 3: except old, 4: Only old, 5: except TF-Par, 6: Only TF-Silo");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec,60, "Loop second");
+DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
 DEFINE_bool(make_read_stat, true, "When true, make statistics. To enhance performance, turned off.");
 
@@ -68,7 +68,7 @@ template <typename T>
 struct BufferCoreWrapper{
   void init(){}
   void read(size_t link, size_t until, ReadStat *out_stat)const{}
-  void write(size_t link, size_t until, double sec, WriteStat &out_stat, size_t &iter_acc){}
+  void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){}
 };
 
 template <>
@@ -88,7 +88,7 @@ struct BufferCoreWrapper<OldBufferCore>{
       out_stat->timestamps.push_back(trans.header.stamp.toNSec());
     }
   }
-  void write(size_t link, size_t until, double sec, WriteStat &out_stat, size_t &iter_acc){
+  void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){
     // Write from low to high for performance.
     assert(until > link);
     if(FLAGS_opposite_write_direction){
@@ -145,21 +145,21 @@ struct BufferCoreWrapper<BufferCore>{
                                 "link" + to_string(until), out_stat);
     }
   }
-  void write(size_t link, size_t until, double sec, WriteStat &out_stat, size_t &iter_acc){
+  void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){
     assert(until > link);
     if(accessType == TF_Par){
       if(FLAGS_opposite_write_direction){
         for(size_t j = link; j < until; j++){
           bfc.setTransform(trans("link" + to_string(j),
                                  "link" + to_string(j+1),
-                                 sec), "me");
+                                 sec), "me", false, out_stat);
           iter_acc++;
         }
       }else{
         for(size_t j = until; j > link; j--){
           bfc.setTransform(trans("link" + to_string(j-1),
                                  "link" + to_string(j),
-                                 sec), "me");
+                                 sec), "me", false, out_stat);
           iter_acc++;
         }
       }
@@ -185,7 +185,7 @@ struct BufferCoreWrapper<BufferCore>{
         }
       }
 
-      bfc.setTransformsXact(vec, "me", false, &out_stat);
+      bfc.setTransformsXact(vec, "me", false, out_stat);
       iter_acc++;
     }
   }
@@ -246,6 +246,7 @@ struct RunResult{
   chrono::duration<double> var; // should be zero except latest
   double aborts; // aborts in write, should be zero expect latest
   double readAborts;
+  double tryWrites; // for TF-Par
 
   double readThroughput;
   double writeThroughput;
@@ -335,14 +336,16 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<double> abort_acc_thread(write_threads);
   CountAccum<double> throughput_acc_write_thread(write_threads);
   CountAccum<chrono::duration<double>> latencies_acc_write_thread(write_threads);
+  CountAccum<double> try_write_acc_thread(write_threads);
 
   for(size_t t = 0; t < write_threads; t++){
     threads.emplace_back([t, &bfc_w, &wait, &abort_acc_thread,
-                          &throughput_acc_write_thread, &latencies_acc_write_thread, read_threads](){
+                          &throughput_acc_write_thread, &latencies_acc_write_thread, read_threads, &try_write_acc_thread](){
       std::random_device rnd;
       Xoroshiro128Plus r(rnd());
       while (wait){;}
       uint64_t abort_iter_acc{};
+      uint64_t try_write_iter_acc{};
       auto start_iter = chrono::steady_clock::now();
       auto end_iter = start_iter;
       size_t iter_count = 0;
@@ -356,9 +359,10 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         auto before = chrono::steady_clock::now();
         double sec = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         WriteStat stat{};
-        bfc_w.write(link, until, sec, stat, iter_count);
+        bfc_w.write(link, until, sec, &stat, iter_count);
         auto after = chrono::steady_clock::now();
         abort_iter_acc += stat.getAbortCount();
+        try_write_iter_acc += stat.tryWriteCount;
         latency_iter_acc += after - before;
 
         if(FLAGS_frequency != 0){
@@ -374,6 +378,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
       throughput_acc_write_thread.record(t, throughput(end_iter - start_iter, iter_count));
       abort_acc_thread.record(t, (double) abort_iter_acc / (double) iter_count);
+      try_write_acc_thread.record(t,  (double) try_write_iter_acc / (double) iter_count);
       latencies_acc_write_thread.record(t, latency_iter_acc / (double) iter_count);
     });
   }
@@ -410,6 +415,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.readThroughput = throughput_acc_read_thread.sum();
   result.writeThroughput = throughput_acc_write_thread.sum();
   result.readAborts = abort_acc_read_thread.average();
+  result.tryWrites = try_write_acc_thread.average();
 
   cout << "read wait count: " << read_wait_count.average() << endl;
   cout << "deque size in snapshot: " << deque_count_thread.average() << endl;
@@ -549,6 +555,7 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 30
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
+  output << par_result.tryWrites << " ";
 
   output << endl;
   output.close();
