@@ -483,10 +483,13 @@ namespace tf2
 
       CompactFrameID parent;
       if(cc == TwoPhaseLock){
+        //size_t t_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
+        //FullJitter jitter(t_id);
         while (!frame_rw_lock_[frame].r_trylock()){
           if(stat){
             stat->tryReadLockCount++;
           }
+          //jitter.randomSleep();
         }
         parent = f.gather(cache, time, &extrapolation_error_string, stat);
         frame_rw_lock_[frame].r_unlock();

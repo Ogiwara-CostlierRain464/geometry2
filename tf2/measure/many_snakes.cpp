@@ -54,7 +54,7 @@ TransformStamped trans(
 
 template <typename T>
 void make_tree(T &bfc){
-  // map ----- link0-0 -- link0-2 -- ... link0-100
+  // map ----- link0-0 -- link0-1 -- ... link0-100
   //       |-- link1-0
   //       ...
   //       |-- link9999-0 -- link9999-100
@@ -261,6 +261,7 @@ struct RunResult{
   double aborts; // aborts in write, should be zero expect latest
   double readAborts;
   double tryWrites; // for TF-Par
+  double tryReads; // for TF-Par
 
   double readThroughput;
   double writeThroughput;
@@ -432,8 +433,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.writeThroughput = throughput_acc_write_thread.sum();
   result.readAborts = abort_acc_read_thread.average();
   result.tryWrites = try_write_acc_thread.average();
-
-  cout << "read wait count: " << read_wait_count.average() << endl;
+  result.tryReads =  read_wait_count.average();
   cout << "deque size in snapshot: " << deque_count_thread.average() << endl;
 
   return result;
@@ -574,6 +574,7 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
   output << par_result.tryWrites << " ";
+  output << par_result.tryReads << " ";
 
   output << endl;
   output.close();

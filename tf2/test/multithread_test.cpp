@@ -12,6 +12,7 @@
 
 #include "../include/tf2/buffer_core.h"
 #include "../include/tf2/xoroshiro128_plus.h"
+#include "../include/tf2/full_jitter.h"
 
 using namespace tf2;
 using namespace std;
@@ -596,6 +597,11 @@ TEST_F(MultithreadTest, bit_set){
 TEST_F(MultithreadTest, next_between){
   Xoroshiro128Plus x(0);
   EXPECT_TRUE(x.next_between(0,1000) <= 1000);
+}
+
+TEST_F(MultithreadTest, full_jitter){
+  FullJitter j(0);
+  for(;;){ j.randomSleep(); }
 }
 
 
