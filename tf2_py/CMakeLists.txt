@@ -98,8 +98,9 @@ if(WIN32)
   # use .pyd extension on Windows
   set_target_properties(tf2_py PROPERTIES OUTPUT_NAME "_tf2" SUFFIX ".pyd")
 else()
-  set_target_properties(tf2_py PROPERTIES COMPILE_FLAGS "-g -Wno-missing-field-initializers -MMD -MP")
-  set_target_properties(tf2_py PROPERTIES OUTPUT_NAME tf2 PREFIX "_" SUFFIX ".so")
+  set_target_properties(tf2_py
+    PROPERTIES OUTPUT_NAME tf2 PREFIX "_" SUFFIX ".so"
+               COMPILE_FLAGS "-Wno-missing-field-initializers -MMD -MP")
 endif()
 set_target_properties(tf2_py PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}

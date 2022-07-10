@@ -1,10 +1,9 @@
 <package>
   <name>tf2_car</name>
   <version>0.6.7</version>
-  <description>
-    tf2_car
-  </description>
+  <description> tf2_car </description>
   <author>Yushi Ogiwara</author>
+  <maintainer email="yushiogiwara@keio.jp">Yushi Ogiwara</maintainer>
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
