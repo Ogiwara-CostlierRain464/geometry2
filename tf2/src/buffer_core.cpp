@@ -33,6 +33,7 @@
 #include "tf2/time_cache.h"
 #include "tf2/exceptions.h"
 #include "tf2_msgs/TF2Error.h"
+#include "../include/tf2/full_jitter.h"
 
 #include <assert.h>
 #include <console_bridge/console.h>
@@ -334,12 +335,13 @@ namespace tf2
           }
 
           if(un_locker.wLockedSize() == 0){
+            size_t t_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
+            FullJitter jitter(t_id);
             while (!un_locker.tryWLockIfNot(id)){
               if(stat){
                 stat->tryWriteCount++;
               }
-              // should I randomize this?
-              std::this_thread::sleep_for(0.05ms);
+              jitter.randomSleep();
             }
           }else{
             // wLockedSize() >= 1

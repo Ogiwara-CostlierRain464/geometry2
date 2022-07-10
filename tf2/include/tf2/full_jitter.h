@@ -6,7 +6,7 @@
 #include <cmath>
 #include "xoroshiro128_plus.h"
 
-class FullJitter{
+struct FullJitter{
   double attempt = 0;
   Xoroshiro128Plus rand;
 
