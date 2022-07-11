@@ -483,13 +483,13 @@ namespace tf2
 
       CompactFrameID parent;
       if(cc == TwoPhaseLock){
-        //size_t t_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
-        //FullJitter jitter(t_id);
+        size_t t_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
+        FullJitter jitter(t_id);
         while (!frame_rw_lock_[frame].r_trylock()){
           if(stat){
             stat->tryReadLockCount++;
           }
-          //jitter.randomSleep();
+          jitter.randomSleep();
         }
         parent = f.gather(cache, time, &extrapolation_error_string, stat);
         frame_rw_lock_[frame].r_unlock();
@@ -1531,7 +1531,11 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
       P_TimeAndFrameID latest;
       if(cc == TwoPhaseLock){
-        frame_rw_lock_[frame].r_lock();
+        size_t t_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
+        FullJitter jitter(t_id);
+        while (!frame_rw_lock_[frame].r_trylock()){
+          jitter.randomSleep();
+        }
         latest = cache->getLatestTimeAndParent();
         frame_rw_lock_[frame].r_unlock();
       }else if(cc == Silo){
