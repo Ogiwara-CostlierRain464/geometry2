@@ -262,6 +262,7 @@ struct RunResult{
   double readAborts;
   double tryWrites; // for TF-Par
   double tryReads; // for TF-Par
+  double dequeSize; // for TF-Par
 
   double readThroughput;
   double writeThroughput;
@@ -434,7 +435,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   result.readAborts = abort_acc_read_thread.average();
   result.tryWrites = try_write_acc_thread.average();
   result.tryReads =  read_wait_count.average();
-  cout << "deque size in snapshot: " << deque_count_thread.average() << endl;
+  result.dequeSize = deque_count_thread.average();
 
   return result;
 }
@@ -575,6 +576,7 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
   output << par_result.tryWrites << " ";
   output << par_result.tryReads << " ";
+  output << par_result.dequeSize << " ";
 
   output << endl;
   output.close();

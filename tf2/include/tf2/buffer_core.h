@@ -429,7 +429,7 @@ private:
 
     /**@brief Return the latest rostime which is common across the spanning set
      * zero if fails to cross */
-    int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string) const noexcept;
+    int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ReadStat *stat = nullptr) const noexcept;
 
     template<typename F>
     int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const noexcept;

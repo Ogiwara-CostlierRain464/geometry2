@@ -453,7 +453,7 @@ namespace tf2
     //If getting the latest get the latest common time
     if (time == ros::Time())
     {
-      int retval = getLatestCommonTime(target_id, source_id, time, error_string);
+      int retval = getLatestCommonTime(target_id, source_id, time, error_string, stat);
       if (retval != tf2_msgs::TF2Error::NO_ERROR)
       {
         return retval;
@@ -1485,7 +1485,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     CompactFrameID id;
   };
 
-  int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string) const noexcept
+  int BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string, ReadStat *stat) const noexcept
   {
     // Error if one of the frames don't exist.
     if (source_id == 0 || target_id == 0) return tf2_msgs::TF2Error::LOOKUP_ERROR;
@@ -1534,6 +1534,9 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
         size_t t_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
         FullJitter jitter(t_id);
         while (!frame_rw_lock_[frame].r_trylock()){
+          if(stat){
+            stat->tryReadLockCount++;
+          }
           jitter.randomSleep();
         }
         latest = cache->getLatestTimeAndParent();
