@@ -13,10 +13,12 @@
 
 #include "tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
+#include "../silo_tf2/silo_buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "../include/tf2/xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
+using silo_tf2::SiloBufferCore;
 using tf2::BufferCore;
 using tf2::ReadStat;
 using tf2::WriteStat;
@@ -29,7 +31,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "0010", "Bit representation of enabled methods. Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "1000", "Bit representation of enabled methods. Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -110,7 +112,7 @@ struct BufferCoreWrapper<OldBufferCore>{
 };
 
 enum AccessType{
-  TF_Par, TF_2PL, TF_Silo
+  TF_Par, TF_2PL
 };
 
 template <>
@@ -119,8 +121,7 @@ struct BufferCoreWrapper<BufferCore>{
   explicit BufferCoreWrapper(AccessType accessType_)
   : accessType(accessType_)
   , bfc(ros::Duration(100),
-        1'000'005,
-        accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
+        1'000'005, tf2::TwoPhaseLock){}
 
   BufferCore bfc;
   AccessType accessType;
@@ -164,6 +165,53 @@ struct BufferCoreWrapper<BufferCore>{
         }
       }
     }else{
+      // which write direction is proper?
+      vector<TransformStamped> vec{};
+//      for(size_t j = until; j > link; j--){
+//        vec.push_back(trans("link" + to_string(j-1),
+//                            "link" + to_string(j),
+//                            nano_time));
+//      }
+      if(FLAGS_opposite_write_direction){
+        for(size_t j = link; j < until; j++){
+          vec.push_back(trans("link" + to_string(j),
+                              "link" + to_string(j+1),
+                              sec));
+        }
+      }else{
+        for(size_t j = until; j > link; j--){
+          vec.push_back(trans("link" + to_string(j-1),
+                              "link" + to_string(j),
+                              sec));
+        }
+      }
+
+      bfc.setTransformsXact(vec, "me", false, out_stat);
+      iter_acc++;
+    }
+  }
+};
+
+template <>
+struct BufferCoreWrapper<SiloBufferCore>{
+
+  explicit BufferCoreWrapper()
+    : bfc(ros::Duration(100),
+          1'000'005){}
+
+  SiloBufferCore bfc;
+
+  void init(){
+    make_snake(bfc);
+  }
+  void read(size_t link, size_t until, ReadStat *out_stat) const{
+    bfc.lookupLatestTransformXact("link" + to_string(link),
+                                    "link" + to_string(until), out_stat);
+
+  }
+  void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){
+    assert(until > link);
+    {
       // which write direction is proper?
       vector<TransformStamped> vec{};
 //      for(size_t j = until; j > link; j--){
@@ -504,7 +552,7 @@ int main(int argc, char* argv[]){
 
   RunResult silo_result{};
   if(bs[3]){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo);
+    BufferCoreWrapper<SiloBufferCore> bfc_w{};
     silo_result = run(bfc_w);
 
     cout << "TF-Silo:" << endl;

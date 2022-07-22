@@ -49,6 +49,8 @@ add_executable(speed_check
   ${OLD_SRC}
   ${OLD_INCLUDE}
   measure/speed_check.cpp
+  silo_tf2/silo_buffer_core.cpp
+  silo_tf2/silo_buffer_core.h
 )
 target_link_libraries(speed_check
   ${Boost_LIBRARIES}
@@ -218,8 +220,6 @@ add_executable(speed_test
   EXCLUDE_FROM_ALL test/speed_test.cpp
   ${SRC}
   ${INCLUDE}
-  silo_tf2/silo_buffer_core.cpp
-  silo_tf2/silo_buffer_core.h
 )
 
 target_link_libraries(speed_test

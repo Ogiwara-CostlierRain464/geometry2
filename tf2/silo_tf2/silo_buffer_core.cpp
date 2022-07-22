@@ -174,11 +174,11 @@ namespace silo_tf2
     const geometry_msgs::TransformStamped& transform,
     const std::string &authority, bool is_static) noexcept{
     std::vector<geometry_msgs::TransformStamped> vec{transform};
-    setTransforms(vec, authority, is_static);
+    setTransformsXact(vec, authority, is_static);
   }
 
 // thread safe
-  bool SiloBufferCore::setTransforms(
+  bool SiloBufferCore::setTransformsXact(
     const std::vector<geometry_msgs::TransformStamped>& transforms,
     const std::string& authority, bool is_static, tf2::WriteStat *result) noexcept{
     std::vector<geometry_msgs::TransformStamped> stripped{};
@@ -581,7 +581,7 @@ namespace silo_tf2
   }
 
 // thread safe, but throws.
-  geometry_msgs::TransformStamped SiloBufferCore::lookupLatestTransform(
+  geometry_msgs::TransformStamped SiloBufferCore::lookupLatestTransformXact(
     const std::string& target_frame,
     const std::string& source_frame,
     tf2::ReadStat *stat) const noexcept(false)

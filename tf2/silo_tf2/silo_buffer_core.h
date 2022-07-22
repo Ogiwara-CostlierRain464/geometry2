@@ -77,7 +77,7 @@ namespace silo_tf2
      * \param cache_time How long to keep a history of transforms in nanoseconds
      *
      */
-    SiloBufferCore(ros::Duration cache_time_ = ros::Duration(DEFAULT_CACHE_TIME), uint64_t max_node_size = 1000);
+    explicit SiloBufferCore(ros::Duration cache_time_ = ros::Duration(DEFAULT_CACHE_TIME), uint64_t max_node_size = 1000);
     virtual ~SiloBufferCore(void);
 
     /** \brief Add transform information to the tf data structure
@@ -94,10 +94,10 @@ namespace silo_tf2
      * \param is_static Record this transform as a static transform.  It will be good across all time.  (This cannot be changed after the first call.)
      * \return True unless an error occured
      */
-    bool setTransforms(const std::vector<geometry_msgs::TransformStamped> &transforms, const std::string & authority, bool is_static = false, tf2::WriteStat *result = nullptr) noexcept;
+    bool setTransformsXact(const std::vector<geometry_msgs::TransformStamped> &transforms, const std::string & authority, bool is_static = false, tf2::WriteStat *result = nullptr) noexcept;
 
     geometry_msgs::TransformStamped
-    lookupLatestTransform(const std::string& target_frame, const std::string& source_frame, tf2::ReadStat *stat = nullptr) const noexcept(false);
+    lookupLatestTransformXact(const std::string& target_frame, const std::string& source_frame, tf2::ReadStat *stat = nullptr) const noexcept(false);
 
     void justReadFrames(const std::vector<std::string> &frames) const;
 
