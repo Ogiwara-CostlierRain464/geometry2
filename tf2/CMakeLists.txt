@@ -218,6 +218,8 @@ add_executable(speed_test
   EXCLUDE_FROM_ALL test/speed_test.cpp
   ${SRC}
   ${INCLUDE}
+  silo_tf2/silo_buffer_core.cpp
+  silo_tf2/silo_buffer_core.h
 )
 
 target_link_libraries(speed_test
