@@ -35,7 +35,7 @@ DEFINE_string(only, "1000", "Bit representation of enabled methods. Silo, 2PL, P
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
-DEFINE_bool(make_read_stat, true, "When true, make statistics. To enhance performance, turned off.");
+DEFINE_bool(make_read_stat, false, "When true, make statistics. To enhance performance, turned off.");
 
 
 using std::chrono::operator""s;
