@@ -61,7 +61,7 @@ TEST_F(MultithreadTest, r_r_conf){
 }
 
 TEST_F(MultithreadTest, r_w_conf){
-  BufferCore bfc;
+  BufferCore bfc(ros::Duration(10), 10005);
   // map <--> base_link <--> lidar
   bfc.setTransform(trans("map", "base_link", 1), "me");
   bfc.setTransform(trans("map", "base_link", 2), "me");
@@ -601,7 +601,7 @@ TEST_F(MultithreadTest, next_between){
 
 TEST_F(MultithreadTest, full_jitter){
   FullJitter j(0);
-  for(;;){ j.randomSleep(); }
+  //for(;;){ j.randomSleep(); }
 }
 
 
