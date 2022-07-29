@@ -193,18 +193,18 @@ public:
 
   inline void rLock(){
     lock.r_lock();
-  }
-
-  inline bool tryRLock(){
-    return lock.r_trylock();
+    locked = true;
   }
 
   ~ReadUnLocker(){
-    lock.r_unlock();
+    if(locked){
+      lock.r_unlock();
+    }
   }
 
 private:
   RWLock &lock;
+  bool locked = false;
 };
 
 #endif //ALT_TF_RWLOCK_H
