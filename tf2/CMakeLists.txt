@@ -83,6 +83,8 @@ add_executable(car_check
   ${OLD_SRC}
   ${OLD_INCLUDE}
   measure/car_check.cpp
+  silo_tf2/silo_buffer_core.cpp
+  silo_tf2/silo_buffer_core.h
   )
 target_link_libraries(car_check
   ${Boost_LIBRARIES}

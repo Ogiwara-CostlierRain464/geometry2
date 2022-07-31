@@ -13,10 +13,12 @@
 
 #include "../include/tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
+#include "../silo_tf2/silo_buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "../include/tf2/xoroshiro128_plus.h"
 
 using old_tf2::OldBufferCore;
+using silo_tf2::SiloBufferCore;
 using tf2::BufferCore;
 using namespace geometry_msgs;
 using namespace std;
@@ -28,7 +30,7 @@ DEFINE_uint64(read_len, 67, "Number of reading vehicles size ∈ [0, vehicle]");
 DEFINE_uint64(write_len, 1, "Number of writing vehicles size ∈ [0, vehicles]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
 DEFINE_double(frequency, 100, "frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec, 60, "loop second");
+DEFINE_uint64(loop_sec, 10, "loop second");
 DEFINE_double(insert_span, 1, "new car arrive span in sec");
 DEFINE_double(only, 0, "0: All, 1: Only old, 2: Only TF-2PL, 3: Only TF-Silo");
 
@@ -94,20 +96,13 @@ struct BufferCoreWrapper<OldBufferCore>{
   }
 };
 
-enum AccessType{
-  TF_2PL, TF_Silo
-};
-
 template <>
 struct BufferCoreWrapper<BufferCore>{
   BufferCore bfc;
-  AccessType accessType;
 
-  explicit BufferCoreWrapper(AccessType accessType_)
-  : accessType(accessType_)
-  , bfc(ros::Duration(100),
-        300,
-        accessType_ == TF_Silo ? tf2::Silo : tf2::TwoPhaseLock){}
+  explicit BufferCoreWrapper()
+  : bfc(ros::Duration(100),
+        300, tf2::TwoPhaseLock){}
 
   void init(){
     bfc.clear();
@@ -131,6 +126,36 @@ struct BufferCoreWrapper<BufferCore>{
     iter_acc++;
   }
 };
+
+template <>
+struct BufferCoreWrapper<SiloBufferCore>{
+  SiloBufferCore bfc;
+
+  explicit BufferCoreWrapper()
+    : bfc(ros::Duration(100), 300){}
+
+  void init(){
+    make_base_station(bfc);
+  }
+  void read(size_t start) const{
+    vector<string> frames{};
+    for(size_t i = start; i < start + FLAGS_read_len; i++){
+      frames.push_back("link" + to_string(i));
+    }
+    bfc.justReadFrames(frames);
+  }
+
+  void write(size_t id, double sec, size_t &iter_acc){
+    vector<TransformStamped> vec{};
+    vec.push_back(trans("map", "link" + to_string(id), sec));
+
+    tf2::WriteStat stat{};
+    bfc.setTransformsXact(vec, "me", false, &stat);
+
+    iter_acc++;
+  }
+};
+
 
 template <typename T>
 T make_ave(const std::vector<T> &vec){
@@ -378,7 +403,7 @@ int main(int argc, char* argv[]){
 
   RunResult _2pl_result{};
   if(FLAGS_only == 0 or FLAGS_only == 2){
-    BufferCoreWrapper<BufferCore> bfc_w_xact(AccessType::TF_2PL);
+    BufferCoreWrapper<BufferCore> bfc_w_xact{};
     _2pl_result = run(bfc_w_xact);
 
     cout << "TF-2PL: " << endl;
@@ -392,7 +417,7 @@ int main(int argc, char* argv[]){
 
   RunResult silo_result{};
   if(FLAGS_only == 0 or FLAGS_only == 3){
-    BufferCoreWrapper<BufferCore> bfc_w_silo(AccessType::TF_Silo);
+    BufferCoreWrapper<BufferCore> bfc_w_silo{};
     silo_result = run(bfc_w_silo);
 
     cout << "TF-Silo: " << endl;
