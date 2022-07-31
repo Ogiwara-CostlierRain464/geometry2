@@ -1529,11 +1529,18 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
         break;
       }
 
-      ReadUnLocker locker(frame_rw_lock_[frame]);
       P_TimeAndFrameID latest;
       if(cc == TwoPhaseLock){
-        locker.rLock();
+        size_t t_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
+        //FullJitter jitter(t_id);
+        while (!frame_rw_lock_[frame].r_trylock()){
+          if(stat){
+            stat->tryReadLockCount++;
+          }
+          //jitter.randomSleep();
+        }
         latest = cache->getLatestTimeAndParent();
+        frame_rw_lock_[frame].r_unlock();
       }else if(cc == Silo){
       retry2:
         auto old_v = frame_vrw_lock_[frame].virtualRLock();
