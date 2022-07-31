@@ -1,5 +1,5 @@
 ## About
-Implementation of `Transactional Transform Library on ROS`
+Implementation of `Transactional Transform Library for ROS`
 
 ## For IROS paper reviewer
 
