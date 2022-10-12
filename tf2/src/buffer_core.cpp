@@ -348,7 +348,7 @@ namespace tf2
             bool locked_suc = un_locker.tryWLockIfNot(id);
             if(!locked_suc){ // No-wait 2PL.
               if(stat != nullptr){
-                stat->incAbort();
+                stat->localAbortCount++;
               }
               un_locker.unlockAll();
               write_set.clear();

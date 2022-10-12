@@ -99,6 +99,8 @@ namespace new_tf2{
   }
 
 
+
+
   inline geometry_msgs::TransformStamped stripTransform(const geometry_msgs::TransformStamped &tr){
     geometry_msgs::TransformStamped tmp = tr;
     tmp.header.frame_id = stripSlash(tmp.header.frame_id);
@@ -202,10 +204,18 @@ namespace new_tf2{
 
   BufferCore::BufferCore() {}
 
+
+  bool BufferCore::setTransform(const geometry_msgs::TransformStamped &transform,
+                    const std::string &auth) noexcept{
+    std::vector<geometry_msgs::TransformStamped> vec{transform};
+    return setTransformsXact(vec, auth);
+  }
+
+
   bool BufferCore::setTransformsXact(
     const std::vector<geometry_msgs::TransformStamped> &transforms,
     const std::string &authority,
-    WriteStat *stat) {
+    tf2::WriteStat *stat) {
     std::vector<geometry_msgs::TransformStamped> stripped{};
     stripped.reserve(transforms.size());
     for(auto &e: transforms){
@@ -230,7 +240,7 @@ namespace new_tf2{
       TimeCache* parent = getOrInsertTimeCache(e.header.frame_id, stat);
 
       if(un_locker.wLockedSize() == 0){
-        while (un_locker.tryWLockIfNot(&child->lock)){
+        while (!un_locker.tryWLockIfNot(&child->lock)){
           if(stat){
             stat->tryWriteCount++;
           }
@@ -264,7 +274,7 @@ namespace new_tf2{
     return true;
   }
 
-  TimeCache* BufferCore::getOrInsertTimeCache(const std::string& frame, WriteStat *stat){
+  TimeCache* BufferCore::getOrInsertTimeCache(const std::string& frame, tf2::WriteStat *stat){
     auto cache_itr = frames.find(frame);
     if(cache_itr != frames.end()){
       return cache_itr->second;
@@ -295,7 +305,7 @@ namespace new_tf2{
   BufferCore::lookupLatestTransformXact(
     const std::string& target_frame,
     const std::string& source_frame,
-    ReadStat *stat) const noexcept(false){
+    tf2::ReadStat *stat) const noexcept(false){
     if(target_frame == source_frame){
       assert(false && "Skip impl");
     }
@@ -356,7 +366,7 @@ namespace new_tf2{
     TransformAccum &f,
     TimeCache* target,
     TimeCache* source,
-    ReadStat *stat
+    tf2::ReadStat *stat
   ) const noexcept{
     assert(target != nullptr);
     assert(source != nullptr);

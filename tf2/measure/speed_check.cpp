@@ -14,6 +14,7 @@
 #include "tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
 #include "../silo_tf2/silo_buffer_core.h"
+#include "../new_tf2/buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "../include/tf2/xoroshiro128_plus.h"
 
@@ -24,6 +25,7 @@ using tf2::ReadStat;
 using tf2::WriteStat;
 using namespace geometry_msgs;
 using namespace std;
+using NewBuffer = new_tf2::BufferCore;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(joint, 1'000, "Joint size");
@@ -31,7 +33,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "1000", "Bit representation of enabled methods. Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "10000", "Bit representation of enabled methods. New, Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -239,6 +241,53 @@ struct BufferCoreWrapper<SiloBufferCore>{
   }
 };
 
+template <>
+struct BufferCoreWrapper<NewBuffer>{
+
+  explicit BufferCoreWrapper()= default;
+
+  NewBuffer bfc{};
+
+  void init(){
+    make_snake(bfc);
+  }
+  void read(size_t link, size_t until, ReadStat *out_stat) const{
+    bfc.lookupLatestTransformXact("link" + to_string(link),
+                                  "link" + to_string(until), out_stat);
+
+  }
+  void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){
+    assert(until > link);
+    {
+      // which write direction is proper?
+      vector<TransformStamped> vec{};
+//      for(size_t j = until; j > link; j--){
+//        vec.push_back(trans("link" + to_string(j-1),
+//                            "link" + to_string(j),
+//                            nano_time));
+//      }
+      if(FLAGS_opposite_write_direction){
+        for(size_t j = link; j < until; j++){
+          vec.push_back(trans("link" + to_string(j),
+                              "link" + to_string(j+1),
+                              sec));
+        }
+      }else{
+        for(size_t j = until; j > link; j--){
+          vec.push_back(trans("link" + to_string(j-1),
+                              "link" + to_string(j),
+                              sec));
+        }
+      }
+
+      bfc.setTransformsXact(vec, "me", out_stat);
+      iter_acc++;
+    }
+  }
+};
+
+
+
 template <typename T>
 T make_ave(const std::vector<T> &vec){
   // don't call this!
@@ -409,7 +458,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         WriteStat stat{};
         bfc_w.write(link, until, sec, &stat, iter_count);
         auto after = chrono::steady_clock::now();
-        abort_iter_acc += stat.getAbortCount();
+        abort_iter_acc += stat.localAbortCount;
         try_write_iter_acc += stat.tryWriteCount;
         latency_iter_acc += after - before;
 
@@ -507,7 +556,7 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
-  std::bitset<4> bs(FLAGS_only);
+  std::bitset<5> bs(FLAGS_only);
 
   RunResult old_result{};
   if(bs[0]){
@@ -565,6 +614,23 @@ int main(int argc, char* argv[]){
     cout << "\t" << "read aborts: " << silo_result.readAborts << " times" << endl;
   }
 
+  RunResult new_result{};
+  if(bs[4]){
+    BufferCoreWrapper<NewBuffer> bfc_w{};
+    new_result = run(bfc_w);
+
+    cout << "New:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(new_result.time).count() << "ms" << endl;
+    cout << "\t" << "r-throughput: " << new_result.readThroughput << endl;
+    cout << "\t" << "w-throughput: " << new_result.writeThroughput << endl;
+    cout << "\t" << "throughput: " << new_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(new_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(new_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(new_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(new_result.var).count() << "ms" << endl;
+//    cout << "\t" << "insert failes: " << new_result. << " times" << endl;
+  }
+
   if(FLAGS_frequency != 0){
     cout << "\033[31mWarn: frequency defined, so throughput is not making any sense!\033[0m" << endl;
   }
@@ -604,7 +670,10 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 30
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
-  output << par_result.tryWrites << " ";
+  output << par_result.tryWrites << " "; // 33
+  output << new_result.readThroughput << " ";
+  output << new_result.writeThroughput <<  " ";
+  output << new_result.throughput << " ";
 
   output << endl;
   output.close();

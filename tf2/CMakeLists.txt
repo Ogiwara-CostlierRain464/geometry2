@@ -43,7 +43,7 @@ file(GLOB_RECURSE INCLUDE include/*.h)
 file(GLOB_RECURSE OLD_SRC old_tf2/*.cpp)
 file(GLOB_RECURSE OLD_INCLUDE old_tf2/*.h)
 
-file(GLOB_RECURSE NEW_SRC new_tf2/*.h)
+file(GLOB_RECURSE NEW_SRC new_tf2/*.cpp)
 file(GLOB_RECURSE NEW_INCLUDE new_tf2/*.h)
 
 add_executable(speed_check

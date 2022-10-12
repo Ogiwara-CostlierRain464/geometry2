@@ -40,18 +40,10 @@ namespace tf2{
     }
   };
 
-  class WriteStat{
-  public:
-    void incAbort(){
-      localAbortCounts++;
-    }
-
-    uint64_t getAbortCount() const{
-      return localAbortCounts;
-    }
-
-    alignas(64) uint64_t localAbortCounts{0};
+  struct WriteStat{
+    alignas(64) uint64_t localAbortCount{0};
     alignas(64) uint64_t tryWriteCount{0};
+    alignas(64) uint64_t insertFailCount{0};
   };
 }
 
