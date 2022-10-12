@@ -379,7 +379,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         WriteStat stat{};
         bfc_w.write(snake, from, to, sec, &stat, iter_count);
         auto after = chrono::steady_clock::now();
-        abort_iter_acc += stat.getAbortCount();
+        abort_iter_acc += stat.localAbortCount;
         try_write_iter_acc += stat.tryWriteCount;
         latency_iter_acc += after - before;
 
