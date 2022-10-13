@@ -33,7 +33,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "10000", "Bit representation of enabled methods. New, Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "110000", "Bit representation of enabled methods. New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -241,12 +241,19 @@ struct BufferCoreWrapper<SiloBufferCore>{
   }
 };
 
+enum NewAccessType{
+  TwoPL, Silo
+};
+
 template <>
 struct BufferCoreWrapper<NewBuffer>{
 
-  explicit BufferCoreWrapper()= default;
+  explicit BufferCoreWrapper(NewAccessType type)
+  : bfc(type == TwoPL
+  ? new_tf2::CCMethod::TwoPhaseLock
+  : new_tf2::CCMethod::Silo){}
 
-  NewBuffer bfc{};
+  NewBuffer bfc;
 
   void init(){
     make_snake(bfc);
@@ -556,7 +563,7 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
-  std::bitset<5> bs(FLAGS_only);
+  std::bitset<6> bs(FLAGS_only);
 
   RunResult old_result{};
   if(bs[0]){
@@ -614,20 +621,37 @@ int main(int argc, char* argv[]){
     cout << "\t" << "read aborts: " << silo_result.readAborts << " times" << endl;
   }
 
-  RunResult new_result{};
+  RunResult new_2pl_result{};
   if(bs[4]){
-    BufferCoreWrapper<NewBuffer> bfc_w{};
-    new_result = run(bfc_w);
+    BufferCoreWrapper<NewBuffer> bfc_w(NewAccessType::TwoPL);
+    new_2pl_result = run(bfc_w);
 
-    cout << "New:" << endl;
-    cout << "\t" << "time: " << chrono::duration<double, std::milli>(new_result.time).count() << "ms" << endl;
-    cout << "\t" << "r-throughput: " << new_result.readThroughput << endl;
-    cout << "\t" << "w-throughput: " << new_result.writeThroughput << endl;
-    cout << "\t" << "throughput: " << new_result.throughput << endl;
-    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(new_result.readLatency).count() << "ms" << endl;
-    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(new_result.writeLatency).count() << "ms" << endl;
-    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(new_result.delay).count() << "ms" << endl;
-    cout << "\t" << "var: " << chrono::duration<double, std::milli>(new_result.var).count() << "ms" << endl;
+    cout << "New 2PL:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(new_2pl_result.time).count() << "ms" << endl;
+    cout << "\t" << "r-throughput: " << new_2pl_result.readThroughput << endl;
+    cout << "\t" << "w-throughput: " << new_2pl_result.writeThroughput << endl;
+    cout << "\t" << "throughput: " << new_2pl_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(new_2pl_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(new_2pl_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(new_2pl_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(new_2pl_result.var).count() << "ms" << endl;
+//    cout << "\t" << "insert failes: " << new_result. << " times" << endl;
+  }
+
+  RunResult new_silo_result{};
+  if(bs[5]){
+    BufferCoreWrapper<NewBuffer> bfc_w(NewAccessType::Silo);
+    new_silo_result = run(bfc_w);
+
+    cout << "New Silo:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(new_silo_result.time).count() << "ms" << endl;
+    cout << "\t" << "r-throughput: " << new_silo_result.readThroughput << endl;
+    cout << "\t" << "w-throughput: " << new_silo_result.writeThroughput << endl;
+    cout << "\t" << "throughput: " << new_silo_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(new_silo_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(new_silo_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(new_silo_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(new_silo_result.var).count() << "ms" << endl;
 //    cout << "\t" << "insert failes: " << new_result. << " times" << endl;
   }
 
@@ -671,9 +695,12 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
   output << par_result.tryWrites << " "; // 33
-  output << new_result.readThroughput << " ";
-  output << new_result.writeThroughput <<  " ";
-  output << new_result.throughput << " ";
+  output << new_2pl_result.readThroughput << " ";
+  output << new_2pl_result.writeThroughput <<  " ";
+  output << new_2pl_result.throughput << " ";
+  output << new_silo_result.readThroughput << " ";
+  output << new_silo_result.writeThroughput <<  " ";
+  output << new_silo_result.throughput << " ";
 
   output << endl;
   output.close();
