@@ -6,6 +6,7 @@
 #include <deque>
 #include "transform_storage.h"
 #include "rwlock.h"
+#include "virtual_rwlock.h"
 
 namespace new_tf2{
 
@@ -151,6 +152,7 @@ namespace new_tf2{
     static const int64_t DEFAULT_MAX_STORAGE_TIME = 60ULL * 1'000'000'000LL;
 
     RWLock lock{};
+    VRWLock v_lock{};
     // for simplicity, at first we don't use deque.
     TransformStorage storage{};
     std::string authority;

@@ -202,8 +202,7 @@ namespace new_tf2{
     tf2::Vector3 result_vec;
   };
 
-  BufferCore::BufferCore() {}
-
+  BufferCore::BufferCore(CCMethod cc_): cc(cc_) {}
 
   bool BufferCore::setTransform(const geometry_msgs::TransformStamped &transform,
                     const std::string &auth) noexcept{
@@ -233,42 +232,67 @@ namespace new_tf2{
       TimeCache*, // parent
       geometry_msgs::TransformStamped>> write_set{};
 
-    ScopedUnLocker un_locker{};
-    try_lock:
-    for(auto &e: stripped){
-      TimeCache* child = getOrInsertTimeCache(e.child_frame_id, stat);
-      TimeCache* parent = getOrInsertTimeCache(e.header.frame_id, stat);
 
-      if(un_locker.wLockedSize() == 0){
-        while (!un_locker.tryWLockIfNot(&child->lock)){
-          if(stat){
-            stat->tryWriteCount++;
+    if(cc == TwoPhaseLock){
+      ScopedUnLocker un_locker{};
+      try_lock:
+      for(auto &e: stripped){
+        TimeCache* child = getOrInsertTimeCache(e.child_frame_id, stat);
+        TimeCache* parent = getOrInsertTimeCache(e.header.frame_id, stat);
+
+        if(un_locker.wLockedSize() == 0){
+          while (!un_locker.tryWLockIfNot(&child->lock)){
+            if(stat){
+              stat->tryWriteCount++;
+            }
+          }
+        }else{
+          bool lock_suc = un_locker.tryWLockIfNot(&child->lock);
+          if(!lock_suc){
+            if(stat){
+              stat->localAbortCount++;
+            }
+            un_locker.unlockAll();
+            write_set.clear();
+            std::this_thread::sleep_for(1ms);
+            goto try_lock;
           }
         }
-      }else{
-        bool lock_suc = un_locker.tryWLockIfNot(&child->lock);
-        if(!lock_suc){
-          if(stat){
-            stat->localAbortCount++;
-          }
-          un_locker.unlockAll();
-          write_set.clear();
-          std::this_thread::sleep_for(1ms);
-          goto try_lock;
-        }
+
+        write_set.emplace_back(child, parent, e);
       }
 
-      write_set.emplace_back(child, parent, e);
-    }
+      // all lock acquired, so write
+      for(auto &e: write_set){
+        auto child = std::get<0>(e);
+        auto parent = std::get<1>(e);
+        auto cti = std::get<2>(e);
 
-    // all lock acquired, so write
-    for(auto &e: write_set){
-      auto child = std::get<0>(e);
-      auto parent = std::get<1>(e);
-      auto cti = std::get<2>(e);
+        child->storage = TransformStorage(cti, parent);
+        child->authority = authority;
+      }
+    }else if(cc == Silo){
+      phase_1:
+      for(auto &e: stripped){
+        TimeCache* child = getOrInsertTimeCache(e.child_frame_id, stat);
+        TimeCache* parent = getOrInsertTimeCache(e.header.frame_id, stat);
 
-      child->storage = TransformStorage(cti, parent);
-      child->authority = authority;
+        child->v_lock.wLock();
+        write_set.emplace_back(child, parent, e);
+      }
+      phase_2:
+      ; // no read lock
+      phase_3:
+      for(auto &e: write_set){
+        auto child = std::get<0>(e);
+        auto parent = std::get<1>(e);
+        auto cti = std::get<2>(e);
+
+        child->storage = TransformStorage(cti, parent);
+        child->authority = authority;
+
+        child->v_lock.wUnLock();
+      }
     }
 
     return true;
@@ -371,7 +395,10 @@ namespace new_tf2{
     assert(target != nullptr);
     assert(source != nullptr);
 
+    retry:
     ScopedUnLocker un_locker{};
+    ReadChecker read_checker{};
+
     if(target == source){
       f.finalize(Identity, ros::Time(0));
       return tf2_msgs::TF2Error::NO_ERROR;
@@ -382,7 +409,11 @@ namespace new_tf2{
     uint64_t depth = 0;
 
     for (;;){
-      un_locker.rLockIfNot(&frame->lock);
+      if(cc == TwoPhaseLock){
+        un_locker.rLockIfNot(&frame->lock);
+      }else if(cc == Silo){
+        read_checker.addRLock(&frame->v_lock);
+      }
 
       if(stat){
         stat->timestamps.push_back(frame->storage.stamp.toNSec());
@@ -398,6 +429,15 @@ namespace new_tf2{
       f.accum(true);
 
       if(parent == target){
+        if(cc == Silo and !read_checker.check()){
+          if(stat){
+            stat->abortCount++;
+            stat->timestamps.clear();
+          }
+          read_checker.clear();
+          goto retry;
+        }
+
         f.finalize(TargetParentOfSource, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -415,7 +455,11 @@ namespace new_tf2{
     depth = 0;
 
     for(;;){
-      un_locker.rLockIfNot(&frame->lock);
+      if(cc == TwoPhaseLock){
+        un_locker.rLockIfNot(&frame->lock);
+      }else if(cc == Silo){
+        read_checker.addRLock(&frame->v_lock);
+      }
 
       if(stat)
         stat->timestamps.push_back(frame->storage.stamp.toNSec());
@@ -429,6 +473,15 @@ namespace new_tf2{
       f.accum(false);
 
       if(parent == source){
+        if(cc == Silo and !read_checker.check()){
+          if(stat){
+            stat->abortCount++;
+            stat->timestamps.clear();
+          }
+          read_checker.clear();
+          goto retry;
+        }
+
         f.finalize(SourceParentOfTarget, ros::Time(0));
         return tf2_msgs::TF2Error::NO_ERROR;
       }
@@ -445,6 +498,15 @@ namespace new_tf2{
 
     if(frame != top_parent){
       return tf2_msgs::TF2Error::CONNECTIVITY_ERROR;
+    }
+
+    if(cc == Silo and !read_checker.check()){
+      if(stat){
+        stat->abortCount++;
+        stat->timestamps.clear();
+      }
+      read_checker.clear();
+      goto retry;
     }
 
     f.finalize(FullPath, ros::Time(0));

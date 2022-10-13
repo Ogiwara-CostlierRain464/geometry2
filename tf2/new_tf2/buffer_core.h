@@ -14,11 +14,17 @@
 
 namespace new_tf2{
   struct TransformAccum;
+
+  enum CCMethod{
+    TwoPhaseLock = 0,
+    Silo = 1
+  };
+
   class BufferCore{
   public:
     static const uint64_t MAX_GRAPH_DEPTH = 1'000'000;
 
-    explicit BufferCore();
+    explicit BufferCore(CCMethod cc = Silo);
 
     bool setTransform(const geometry_msgs::TransformStamped &transform,
                       const std::string &auth) noexcept;
@@ -35,6 +41,7 @@ namespace new_tf2{
 
   private:
     tbb::concurrent_unordered_map<std::string, TimeCache*> frames;
+    CCMethod cc;
 
     TimeCache* getOrInsertTimeCache(const std::string& frame, tf2::WriteStat *stat = nullptr);
     TimeCache* validateFrame(const char* function_name_arg, const std::string& frame_id) const;
