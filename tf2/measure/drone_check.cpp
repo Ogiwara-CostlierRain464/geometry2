@@ -254,6 +254,8 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
           bfc_w.insert(obstacle_acc, id, ins_sec);
         }
 
+        asm volatile("" ::: "memory"); // force not to reorder.
+
         auto before = chrono::steady_clock::now();
         double sec = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
         bfc_w.update(id, sec); // fix
@@ -262,10 +264,18 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
 
         asm volatile("" ::: "memory"); // force not to reorder.
 
+        // before here, we need to set
+        //      map
+        //    :1,3    :1
+        //  d1      d2
+        //  :2
+        //  o1
+        // d2->map is obsolete
+
         if(t == 0){
-//          for(size_t i = 0; i < FLAGS_drone; i++){
-//            obstacle_arr[i] = obstacle_acc;
-//          }
+          for(size_t i = 0; i < FLAGS_drone; i++){
+            obstacle_arr[i] = obstacle_acc;
+          }
         }
 
         this_thread::sleep_for(operator""ms(WAIT_MILL_SEC));
