@@ -178,6 +178,24 @@ target_link_libraries(wait_check
   )
 add_dependencies(wait_check ${catkin_EXPORTED_TARGETS})
 
+add_executable(drone_check
+  ${SRC}
+  ${INCLUDE}
+  ${OLD_SRC}
+  ${OLD_INCLUDE}
+  ${NEW_SRC}
+  ${NEW_INCLUDE}
+  measure/drone_check.cpp
+)
+target_link_libraries(drone_check
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${console_bridge_LIBRARIES}
+  gflags
+  tbb
+)
+add_dependencies(drone_check ${catkin_EXPORTED_TARGETS})
+
 
 # Tests
 if(CATKIN_ENABLE_TESTING)

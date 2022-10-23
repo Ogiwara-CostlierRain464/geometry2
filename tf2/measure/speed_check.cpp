@@ -695,12 +695,12 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
   output << par_result.tryWrites << " "; // 33
-  output << new_2pl_result.readThroughput << " ";
-  output << new_2pl_result.writeThroughput <<  " ";
-  output << new_2pl_result.throughput << " ";
-  output << new_silo_result.readThroughput << " ";
-  output << new_silo_result.writeThroughput <<  " ";
-  output << new_silo_result.throughput << " ";
+  output << new_2pl_result.readThroughput << " "; // 34
+  output << new_2pl_result.writeThroughput <<  " "; // 35
+  output << new_2pl_result.throughput << " "; // 36
+  output << new_silo_result.readThroughput << " "; // 37
+  output << new_silo_result.writeThroughput <<  " "; // 38
+  output << new_silo_result.throughput << " "; // 39
 
   output << endl;
   output.close();

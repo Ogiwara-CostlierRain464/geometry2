@@ -305,6 +305,11 @@ namespace old_tf2
       }
     }
 
+    if(source_id == 1003){
+      printf("a");
+      assert(true);
+    }
+
     // Walk the tree to its root from the source frame, accumulating the transform
     tf2::CompactFrameID frame = source_id;
     tf2::CompactFrameID top_parent = frame;
