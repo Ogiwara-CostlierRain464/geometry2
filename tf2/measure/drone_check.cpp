@@ -191,10 +191,12 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   atomic_bool wait{true};
   vector<thread> threads{};
 
-  CountAccum<chrono::duration<double>> latencies_acc_read_thread(read_threads);
+  CountAccum<chrono::duration<double>> latencies_acc_read(FLAGS_thread);
 
-  for(size_t t = 0; t < read_threads; t++){ // read
-    threads.emplace_back([t,&wait, &bfc_w, &latencies_acc_read_thread, read_threads](){
+  // at here, insert_and_update_thread
+
+  for(size_t t = 0; t < read_threads; t++){ // update&read
+    threads.emplace_back([t,&wait, &bfc_w, &latencies_acc_read](){
       while (wait){;}
       chrono::duration<double> latency_iter_acc{};
       size_t iter_count = 0;
@@ -202,10 +204,16 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       auto end_iter = start_iter;
 
       for(;;){
-        auto before = chrono::steady_clock::now();
         // drones / read_threads
         // get obstacle id by each slot
-        size_t per_read_thread = FLAGS_drone / read_threads;
+        size_t per_read_thread = FLAGS_drone / FLAGS_thread;
+        for(size_t d = t * per_read_thread; d < (t+1) * per_read_thread; d++){
+          auto now = chrono::steady_clock::now();
+          double now_sec = chrono::duration<double>(now.time_since_epoch()).count(); // from sec
+
+          bfc_w.update(d, now_sec);
+        }
+        auto before = chrono::steady_clock::now();
         for(size_t d = t * per_read_thread; d < (t+1) * per_read_thread; d++){
           bfc_w.read(d, obstacle_arr[d]);
         }
@@ -224,15 +232,15 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         }
       }
 
-      latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
+      latencies_acc_read.record(t, latency_iter_acc / (double) iter_count);
     });
   }
 
-  CountAccum<chrono::duration<double>> latencies_acc_write_thread(write_threads);
+  CountAccum<chrono::duration<double>> latencies_acc_write(write_threads);
 
-  for(size_t t = 0; t < write_threads; t++){
+  for(size_t t = 0; t < write_threads; t++){ // insert&update
     threads.emplace_back([t, &bfc_w, &wait,
-                           &latencies_acc_write_thread, read_threads](){
+                           &latencies_acc_write, read_threads, write_threads](){
       std::random_device rnd;
       Xoroshiro128Plus r(read_threads + t);
       while (wait){;}
@@ -242,27 +250,22 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       size_t iter_count = 0;
       chrono::duration<double> latency_iter_acc{};
 
-      size_t obstacle_acc = 1;
+      // need to make unique id per thread
+      size_t obstacle_acc = t+1;
 
       for(;;){
         size_t id = r.next() % FLAGS_drone;
 
-        if(t == 0){
-          auto now = chrono::steady_clock::now();
-          double ins_sec = chrono::duration<double>(now.time_since_epoch()).count(); // from sec
-          // After setting CTI, update the obstacle arr.
-          bfc_w.insert(obstacle_acc, id, ins_sec);
-        }
+        auto now = chrono::steady_clock::now();
+        double now_sec = chrono::duration<double>(now.time_since_epoch()).count(); // from sec
+        // After setting CTI, update the obstacle arr.
+        bfc_w.insert(obstacle_acc, id, now_sec);
 
-        asm volatile("" ::: "memory"); // force not to reorder.
-
-        auto before = chrono::steady_clock::now();
-        double sec = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
-        bfc_w.update(id, sec); // fix
+        now = chrono::steady_clock::now();
+        now_sec = chrono::duration<double>(now.time_since_epoch()).count(); // from sec
+        bfc_w.update(id, now_sec); // fix
         auto after = chrono::steady_clock::now();
-        latency_iter_acc += after - before;
-
-        asm volatile("" ::: "memory"); // force not to reorder.
+        latency_iter_acc += after - now;
 
         // before here, we need to set
         //      map
@@ -271,23 +274,32 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         //  :2
         //  o1
         // d2->map is obsolete
+        // this will be a problem when tf uses interpolation
 
-        if(t == 0){
-          for(size_t i = 0; i < FLAGS_drone; i++){
-            obstacle_arr[i] = obstacle_acc;
-          }
+        // insert thread: insert(o->d) and update(d->map)
+        // update&read thread: update and read
+        //  map
+        // :1   :1
+        // d1     d2
+        //
+        //  map
+        // :1,3   :1
+        // d1     d2
+        // :2
+        // o1
+        //
+        //  map
+        // :1   :1
+        // d1     d2
+        //
+
+        for(size_t i = 0; i < FLAGS_drone; i++){
+          obstacle_arr[i] = obstacle_acc;
         }
 
         this_thread::sleep_for(operator""ms(WAIT_MILL_SEC));
 
-        if(t == 0){
-          before = chrono::steady_clock::now();
-          sec = chrono::duration<double>(before.time_since_epoch()).count(); // from sec
-
-          bfc_w.insert(obstacle_acc, id, sec); // at here, this is just an update
-
-          obstacle_acc++;
-        }
+        obstacle_acc+=write_threads;
 
         iter_count++;
 
@@ -298,7 +310,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         }
       }
 
-      latencies_acc_write_thread.record(t, latency_iter_acc / (double) iter_count);
+      latencies_acc_write.record(t, latency_iter_acc / (double) iter_count);
     });
   }
 
@@ -323,8 +335,8 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   auto finish = chrono::high_resolution_clock::now();
 
   RunResult result{};
-  result.readLatency = latencies_acc_read_thread.average();
-  result.writeLatency = latencies_acc_write_thread.average();
+  result.readLatency = latencies_acc_read.average();
+  result.writeLatency = latencies_acc_write.average();
 
   return result;
 }
