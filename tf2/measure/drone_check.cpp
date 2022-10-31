@@ -207,15 +207,16 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
         // drones / read_threads
         // get obstacle id by each slot
         size_t per_read_thread = FLAGS_drone / FLAGS_thread;
+        auto before = chrono::steady_clock::now();
         for(size_t d = t * per_read_thread; d < (t+1) * per_read_thread; d++){
+          size_t obs = obstacle_arr[d];
+
           auto now = chrono::steady_clock::now();
           double now_sec = chrono::duration<double>(now.time_since_epoch()).count(); // from sec
 
           bfc_w.update(d, now_sec);
-        }
-        auto before = chrono::steady_clock::now();
-        for(size_t d = t * per_read_thread; d < (t+1) * per_read_thread; d++){
-          bfc_w.read(d, obstacle_arr[d]);
+
+          bfc_w.read(d, obs);
         }
         auto after = chrono::steady_clock::now();
 

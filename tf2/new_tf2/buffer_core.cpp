@@ -240,6 +240,11 @@ namespace new_tf2{
         TimeCache* child = getOrInsertTimeCache(e.child_frame_id, stat);
         TimeCache* parent = getOrInsertTimeCache(e.header.frame_id, stat);
 
+        if(parent == nullptr or child == nullptr){
+          printf("");
+          assert(false);
+        }
+
         if(un_locker.wLockedSize() == 0){
           while (!un_locker.tryWLockIfNot(&child->lock)){
             if(stat){
@@ -305,6 +310,7 @@ namespace new_tf2{
     }
     // cache not exist, so insert new TimeCache
     auto tmp = new TimeCache();
+    tmp->frameName = frame;
     // Insert may fail due to concurrent threads.
     // If failed, retrieve again.
     auto pair = frames.emplace(frame, tmp);
@@ -486,6 +492,7 @@ namespace new_tf2{
         return tf2_msgs::TF2Error::NO_ERROR;
       }
       if(parent == top_parent){
+        frame = parent;
         break;
       }
 
