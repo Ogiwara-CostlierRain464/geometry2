@@ -391,6 +391,17 @@ int main(int argc, char* argv[]){
     cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_result.readLatency).count() << "ms" << endl;
   }
 
+  output << FLAGS_thread << " "; // 1
+  output << FLAGS_drone << " "; // 2
+  output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 3
+  output << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << " "; // 4
+  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 5
+
+  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 6
+  output << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << " "; // 7
+  output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 8
+
+  output << endl;
   output.close();
 
   // Fast exit, no need to wait memory delete.
