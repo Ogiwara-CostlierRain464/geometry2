@@ -351,6 +351,7 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("drone: %d", FLAGS_drone);
   CONSOLE_BRIDGE_logInform("Output: %s", FLAGS_output.c_str());
   CONSOLE_BRIDGE_logInform("Only: %s", FLAGS_only.c_str());
+  CONSOLE_BRIDGE_logInform("Loop sec: %d", FLAGS_loop_sec);
 
   console_bridge::setLogLevel(console_bridge::CONSOLE_BRIDGE_LOG_ERROR);
 
