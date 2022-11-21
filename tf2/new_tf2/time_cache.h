@@ -148,15 +148,99 @@ namespace new_tf2{
 
   class TimeCache{
   public:
-    // lock, auth, frame_name, storage
     static const int64_t DEFAULT_MAX_STORAGE_TIME = 60ULL * 1'000'000'000LL;
+
+    explicit TimeCache(const ros::Duration &max_storage_time_ = ros::Duration().fromNSec(DEFAULT_MAX_STORAGE_TIME))
+    : max_storage_time(max_storage_time_){}
 
     RWLock lock{};
     VRWLock v_lock{};
-    // for simplicity, at first we don't use deque.
-    TransformStorage storage{};
+
+    typedef std::deque<TransformStorage,
+      aligned_allocator<TransformStorage, 128>> Deque;
+
+    Deque storage{};
     std::string authority;
     std::string frameName; // may need to comment out for performance
+    ros::Duration max_storage_time;
+
+    inline bool getData(const ros::Time &time,
+                        TransformStorage & data_out,
+                        std::string* error_str = nullptr){
+      TransformStorage* p_temp_1;
+      TransformStorage* p_temp_2;
+
+      int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
+      if (num_nodes == 0)
+      {
+        return false;
+      }
+      else if (num_nodes == 1)
+      {
+        data_out = *p_temp_1;
+      }
+      else if (num_nodes == 2)
+      {
+        if( p_temp_1->parent == p_temp_2->parent)
+        {
+          interpolate(*p_temp_1, *p_temp_2, time, data_out);
+        }
+        else
+        {
+          data_out = *p_temp_1;
+        }
+      }
+      else
+      {
+        assert(0);
+      }
+
+      return true;
+    }
+
+    bool insertData(const TransformStorage& new_data);
+    TimeCache* getParent(const ros::Time& time, std::string* error_str);
+    inline std::pair<ros::Time, TimeCache*> getLatestTimeAndParent(){
+      if(storage.empty()){
+        return std::make_pair(ros::Time(), nullptr);
+      }
+
+      const auto &ts = storage.front();
+      return std::make_pair(ts.stamp, ts.parent);
+    }
+
+    inline ros::Time getLatestTimestamp(){
+      if (storage.empty()) return {}; //empty list case
+      return storage.front().stamp;
+    }
+
+    inline uint8_t findClosest(TransformStorage* &one, TransformStorage* &two,
+                               ros::Time target_time, std::string* error_str);
+    inline void interpolate(const TransformStorage& one,
+                            const TransformStorage& two,
+                            const ros::Time &time,
+                            TransformStorage& output){
+      // Check for zero distance case
+      if(two.stamp == one.stamp){
+        output = two;
+        return;
+      }
+
+      double ratio = (time - one.stamp).toSec() / (two.stamp - one.stamp).toSec();
+      tf2::Vector3 tmp;
+      tf2::Vector3 one_vec(one.vec[0], one.vec[1], one.vec[2]);
+      tf2::Vector3 two_vec(two.vec[0], two.vec[1], two.vec[2]);
+
+      tmp.setInterpolate3(one_vec, two_vec, ratio);
+      output.vec[0] = tmp[0];
+      output.vec[1] = tmp[1];
+      output.vec[2] = tmp[2];
+
+      output.rotation = tf2::slerp(one.rotation, two.rotation, ratio);
+      output.stamp = time;
+      output.parent = one.parent;
+    }
+    void pruneList();
   };
 }
 

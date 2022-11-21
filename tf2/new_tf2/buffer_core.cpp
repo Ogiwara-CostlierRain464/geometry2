@@ -130,18 +130,46 @@ namespace new_tf2{
     {
     }
 
+    inline TimeCache* gather(TimeCache* cache,
+                             const ros::Time &time,
+                             std::string* error_string)
+    {
+      TransformStorage st;
+      if (!cache->getData(time, st, error_string))
+      {
+        return nullptr;
+      }
+
+      // For performance reason, we avoid to copy whole TransformStorage struct, but only copy
+      // required fields.
+      st_rotation_.m_floats[0] = st.rotation.m_floats[0];
+      st_rotation_.m_floats[1] = st.rotation.m_floats[1];
+      st_rotation_.m_floats[2] = st.rotation.m_floats[2];
+      st_rotation_.m_floats[3] = st.rotation.m_floats[3];
+
+      st_translation_.m_floats[0] = st.vec[0];
+      st_translation_.m_floats[1] = st.vec[1];
+      st_translation_.m_floats[2] = st.vec[2];
+
+      return st.parent;
+    }
+
     inline TimeCache* gatherLatest(TimeCache* cache)
     {
-      const tf2::Quaternion &rotation = cache->storage.rotation;
-      st_rotation_.m_floats[0] = rotation.m_floats[0];
-      st_rotation_.m_floats[1] = rotation.m_floats[1];
-      st_rotation_.m_floats[2] = rotation.m_floats[2];
-      st_rotation_.m_floats[3] = rotation.m_floats[3];
-      double *vec = cache->storage.vec;
-      st_translation_.m_floats[0] = vec[0];
-      st_translation_.m_floats[1] = vec[1];
-      st_translation_.m_floats[2] = vec[2];
-      return cache->storage.parent;
+      if(cache->storage.empty()){
+        return nullptr;
+      }
+      // For performance reason, we avoid to copy whole TransformStorage struct, but only copy
+      // required fields.
+      auto st = cache->storage.front();
+      st_rotation_.m_floats[0] = st.rotation.m_floats[0];
+      st_rotation_.m_floats[1] = st.rotation.m_floats[1];
+      st_rotation_.m_floats[2] = st.rotation.m_floats[2];
+      st_rotation_.m_floats[3] = st.rotation.m_floats[3];
+      st_translation_.m_floats[0] = st.vec[0];
+      st_translation_.m_floats[1] = st.vec[1];
+      st_translation_.m_floats[2] = st.vec[2];
+      return st.parent;
     }
 
     inline void accum(bool source)
@@ -273,7 +301,7 @@ namespace new_tf2{
         auto parent = std::get<1>(e);
         auto cti = std::get<2>(e);
 
-        child->storage = TransformStorage(cti, parent);
+        child->insertData(TransformStorage(cti, parent));
         child->authority = authority;
       }
     }else if(cc == Silo){
@@ -293,7 +321,7 @@ namespace new_tf2{
         auto parent = std::get<1>(e);
         auto cti = std::get<2>(e);
 
-        child->storage = TransformStorage(cti, parent);
+        child->insertData(TransformStorage(cti, parent));
         child->authority = authority;
 
         child->v_lock.wUnLock();
@@ -422,7 +450,7 @@ namespace new_tf2{
       }
 
       if(stat){
-        stat->timestamps.push_back(frame->storage.stamp.toNSec());
+        stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
       }
 
       auto parent = f.gatherLatest(frame);
@@ -468,7 +496,7 @@ namespace new_tf2{
       }
 
       if(stat)
-        stat->timestamps.push_back(frame->storage.stamp.toNSec());
+        stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
 
       auto parent = f.gatherLatest(frame);
 
