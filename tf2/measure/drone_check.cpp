@@ -242,7 +242,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   for(size_t t = 0; t < write_threads; t++){ // insert&update
     threads.emplace_back([t, &bfc_w, &wait,
                            &latencies_acc_write, read_threads, write_threads](){
-      std::random_device rnd;
       Xoroshiro128Plus r(read_threads + t);
       while (wait){;}
 
