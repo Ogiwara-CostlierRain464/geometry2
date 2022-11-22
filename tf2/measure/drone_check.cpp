@@ -27,7 +27,7 @@ DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
 DEFINE_uint64(drone, 1'000, "Drone num");
 DEFINE_string(output, "/tmp/f.dat", "Output file");
 DEFINE_uint64(loop_sec, 10, "loop second");
-DEFINE_string(only, "111", "Bit representation of enabled methods.");
+DEFINE_string(only, "1111", "Bit representation of enabled methods.");
 #define READ_RATIO 0.5
 #define WAIT_MILL_SEC 5
 
@@ -100,22 +100,29 @@ struct BufferCoreWrapper<OldBufferCore>{
 };
 
 enum NewAccess{
-  TwoPL, Silo
+  Par, TwoPL, Silo
 };
 
 template <>
 struct BufferCoreWrapper<NewBuffer>{
   NewBuffer bfc;
+  NewAccess access;
 
   explicit BufferCoreWrapper(NewAccess access):
+  access(access),
   bfc(access == Silo ? new_tf2::Silo : new_tf2::TwoPhaseLock){}
 
   void init(){
     make_drone_group(bfc);
   }
   void read(size_t drone_id, size_t obstacle)const{
-    bfc.lookupLatestTransformXact("drone" + to_string(drone_id),
-                                  to_string(obstacle));
+    if(access == Par){
+      bfc.lookupTransform("drone" + to_string(drone_id),
+                                    to_string(obstacle), ros::Time(0));
+    }else{
+      bfc.lookupLatestTransformXact("drone" + to_string(drone_id),
+                                    to_string(obstacle));
+    }
   }
 
   void update(size_t drone_id, double sec){
@@ -359,7 +366,7 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
-  std::bitset<3> bs(FLAGS_only);
+  std::bitset<4> bs(FLAGS_only);
 
   RunResult old_result{};
   if(bs[0]){
@@ -371,8 +378,18 @@ int main(int argc, char* argv[]){
     cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(old_result.readLatency).count() << "ms" << endl;
   }
 
-  RunResult _2pl_result{};
+  RunResult par_result{};
   if(bs[1]){
+    BufferCoreWrapper<NewBuffer> bfc_w(NewAccess::Par);
+    par_result = run(bfc_w);
+
+    cout << "Par: " << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(par_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(par_result.readLatency).count() << "ms" << endl;
+  }
+
+  RunResult _2pl_result{};
+  if(bs[2]){
     BufferCoreWrapper<NewBuffer> bfc_w(NewAccess::TwoPL);
     _2pl_result = run(bfc_w);
 
@@ -382,7 +399,7 @@ int main(int argc, char* argv[]){
   }
 
   RunResult silo_result{};
-  if(bs[2]){
+  if(bs[3]){
     BufferCoreWrapper<NewBuffer> bfc_w(NewAccess::Silo);
     silo_result = run(bfc_w);
 
@@ -394,12 +411,14 @@ int main(int argc, char* argv[]){
   output << FLAGS_thread << " "; // 1
   output << FLAGS_drone << " "; // 2
   output << chrono::duration<double, std::milli>(old_result.readLatency).count() << " "; // 3
-  output << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << " "; // 4
-  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 5
+  output << chrono::duration<double, std::milli>(par_result.readLatency).count() << " "; // 4
+  output << chrono::duration<double, std::milli>(_2pl_result.readLatency).count() << " "; // 5
+  output << chrono::duration<double, std::milli>(silo_result.readLatency).count() << " "; // 6
 
-  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 6
-  output << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << " "; // 7
-  output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 8
+  output << chrono::duration<double, std::milli>(old_result.writeLatency).count() << " "; // 7
+  output << chrono::duration<double, std::milli>(par_result.writeLatency).count() << " "; // 8
+  output << chrono::duration<double, std::milli>(_2pl_result.writeLatency).count() << " "; // 9
+  output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 10
 
   output << endl;
   output.close();

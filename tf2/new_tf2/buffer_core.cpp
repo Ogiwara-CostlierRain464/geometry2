@@ -269,7 +269,6 @@ namespace new_tf2{
         TimeCache* parent = getOrInsertTimeCache(e.header.frame_id, stat);
 
         if(parent == nullptr or child == nullptr){
-          printf("");
           assert(false);
         }
 
@@ -777,11 +776,6 @@ namespace new_tf2{
         stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
       }
 
-      while(!frame->lock.r_trylock()){
-        if(stat){
-          stat->tryReadLockCount++;
-        }
-      }
       auto parent = f.gather(frame, time, &extrapolation_error_string);
       frame->lock.r_unlock();
 
@@ -817,7 +811,6 @@ namespace new_tf2{
           stat->tryReadLockCount++;
         }
       }
-
       if(stat){
         stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
       }
