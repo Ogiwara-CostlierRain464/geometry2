@@ -391,6 +391,39 @@ namespace new_tf2{
     return out;
   }
 
+  geometry_msgs::TransformStamped
+  BufferCore::lookupTransform(const std::string& target_frame,
+                  const std::string& source_frame,
+                  const ros::Time& time,
+                  tf2::ReadStat *stat)const noexcept(false){
+    if(target_frame == source_frame){
+      assert(false && "Skip impl");
+    }
+    TimeCache *source = validateFrame("lookupLatest", source_frame);
+    TimeCache *target = validateFrame("lookupLatest", target_frame);
+    assert(source != nullptr);
+    assert(target != nullptr);
+    assert(source != target);
+    TransformAccum accum;
+    int ret = walkToTopParent(accum, time, target, source, stat);
+    if(ret != tf2_msgs::TF2Error::NO_ERROR){
+      switch (ret) {
+        default:
+          assert(false);
+      }
+    }
+
+    geometry_msgs::TransformStamped out;
+    transformTF2ToMsg(accum.result_quat,
+                      accum.result_vec,
+                      out,
+                      accum.time,
+                      target_frame,
+                      source_frame);
+    return out;
+  }
+
+
   TimeCache*
   BufferCore::validateFrame(
     const char* function_name_arg,
@@ -417,6 +450,163 @@ namespace new_tf2{
     }else{
       return itr->second;
     }
+  }
+
+  struct TimeAndFrameComparator
+  {
+    TimeAndFrameComparator(TimeCache* frame_)
+      : frame(frame_)
+    {}
+
+    bool operator()(const std::pair<ros::Time, TimeCache*>& rhs) const
+    {
+      return rhs.second == frame;
+    }
+
+    TimeCache* frame;
+  };
+
+
+  int BufferCore::getLatestCommonTime(TimeCache* target,
+                                      TimeCache* source,
+                                      ros::Time & time,
+                                      tf2::ReadStat *stat) const noexcept
+  {
+    // Error if one of the frames do not exist.
+    if (target == nullptr || source == nullptr) return tf2_msgs::TF2Error::LOOKUP_ERROR;
+
+    if (target == source)
+    {
+      if(cc == TwoPhaseLock){
+        source->lock.r_lock();
+        time = source->getLatestTimestamp();
+        source->lock.r_unlock();
+      }else if(cc == Silo){
+        assert(false);
+      }
+
+      return tf2_msgs::TF2Error::NO_ERROR;
+    }
+
+    std::vector<std::pair<ros::Time, TimeCache*>> lct_cache;
+
+    // Walk the tree to its root from the source frame, accumulating the list of parent/time as well as the latest time
+    // in the target is a direct parent
+    TimeCache* frame = source;
+    std::pair<ros::Time, TimeCache*> temp;
+    uint32_t depth = 0;
+    ros::Time common_time = ros::TIME_MAX;
+
+    for(;;){
+      while(!frame->lock.r_trylock()){
+        if(stat){
+          stat->tryReadLockCount++;
+        }
+      }
+
+      if(stat){
+        stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
+      }
+
+      auto p = frame->getLatestTimeAndParent();
+      frame->lock.r_unlock();
+
+      if(p.second == nullptr){
+        break;
+      }
+
+      if(!p.first.isZero()){
+        common_time = std::min(p.first, common_time);
+      }
+
+      lct_cache.push_back(p);
+
+      if(p.second == target){
+        time = common_time;
+        if(time == ros::TIME_MAX){
+          time = ros::Time();
+        }
+        return tf2_msgs::TF2Error::NO_ERROR;
+      }
+
+      frame = p.second;
+      ++depth;
+      if(depth > MAX_GRAPH_DEPTH){
+        return tf2_msgs::TF2Error::LOOKUP_ERROR;
+      }
+    }
+
+    frame = target;
+    depth = 0;
+    common_time = ros::TIME_MAX;
+    TimeCache* common_parent = nullptr;
+    for(;;){
+      while(!frame->lock.r_trylock()){
+        if(stat){
+          stat->tryReadLockCount++;
+        }
+      }
+
+      if(stat){
+        stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
+      }
+
+      auto p = frame->getLatestTimeAndParent();
+      frame->lock.r_unlock();
+
+      if(p.second == nullptr){
+        break;
+      }
+      if(!p.first.isZero()){
+        common_time = std::min(p.first, common_time);
+      }
+
+      auto it = std::find_if(lct_cache.begin(), lct_cache.end(), TimeAndFrameComparator(p.second));
+      if(it != lct_cache.end()){ // found a common parent
+        common_parent = it->second;
+        break;
+      }
+
+      if(p.second == source){
+        time = common_time;
+        if(time == ros::TIME_MAX){
+          time = ros::Time();
+        }
+        return tf2_msgs::TF2Error::NO_ERROR;
+      }
+
+      frame = p.second;
+      ++depth;
+      if(depth > MAX_GRAPH_DEPTH){
+        return tf2_msgs::TF2Error::LOOKUP_ERROR;
+      }
+    }
+
+    if(common_parent == nullptr){
+      return tf2_msgs::TF2Error::CONNECTIVITY_ERROR;
+    }
+
+    // Loop through the source -> root list until we hit the common parent
+    {
+      auto it = lct_cache.begin();
+      auto end = lct_cache.end();
+      for(; it != end; ++it){
+        if(!it->first.isZero()){
+          common_time = std::min(common_time, it->first);
+        }
+        if(it->second == common_parent){
+          break;
+        }
+      }
+    }
+
+    if (common_time == ros::TIME_MAX)
+    {
+      common_time = ros::Time();
+    }
+
+    time = common_time;
+    return tf2_msgs::TF2Error::NO_ERROR;
   }
 
 
@@ -542,6 +732,126 @@ namespace new_tf2{
       }
       read_checker.clear();
       goto retry;
+    }
+
+    f.finalize(FullPath, ros::Time(0));
+
+    return tf2_msgs::TF2Error::NO_ERROR;
+  }
+
+  int BufferCore::walkToTopParent(
+    TransformAccum &f,
+    ros::Time time,
+    TimeCache* target,
+    TimeCache* source,
+    tf2::ReadStat *stat
+  ) const noexcept{
+    assert(target != nullptr);
+    assert(source != nullptr);
+
+    if(target == source){
+      f.finalize(Identity, ros::Time(0));
+      return tf2_msgs::TF2Error::NO_ERROR;
+    }
+
+    if(time == ros::Time()){
+      int ret = getLatestCommonTime(target, source, time, stat);
+      if(ret != tf2_msgs::TF2Error::NO_ERROR){
+        return ret;
+      }
+    }
+
+    TimeCache* frame = source;
+    TimeCache* top_parent = frame;
+    uint64_t depth = 0;
+
+    std::string extrapolation_error_string;
+    bool extrapolation_might_have_occurred = false;
+    for (;;){
+      while(!frame->lock.r_trylock()){
+        if(stat){
+          stat->tryReadLockCount++;
+        }
+      }
+      if(stat){
+        stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
+      }
+
+      while(!frame->lock.r_trylock()){
+        if(stat){
+          stat->tryReadLockCount++;
+        }
+      }
+      auto parent = f.gather(frame, time, &extrapolation_error_string);
+      frame->lock.r_unlock();
+
+      if(parent == nullptr){
+        top_parent = frame;
+        extrapolation_might_have_occurred = true;
+        break;
+      }
+
+      f.accum(true);
+
+      if(parent == target){
+        f.finalize(TargetParentOfSource, ros::Time(0));
+        return tf2_msgs::TF2Error::NO_ERROR;
+      }
+
+      top_parent = frame;
+      frame = parent;
+
+      ++depth;
+      if(depth > MAX_GRAPH_DEPTH){
+        return tf2_msgs::TF2Error::LOOKUP_ERROR;
+      }
+    }
+
+    frame = target;
+    depth = 0;
+    std::vector<TimeCache*> reverse_frame_chain;
+
+    for(;;){
+      while(!frame->lock.r_trylock()){
+        if(stat){
+          stat->tryReadLockCount++;
+        }
+      }
+
+      if(stat){
+        stat->timestamps.push_back(frame->getLatestTimestamp().toNSec());
+      }
+      auto parent = f.gather(frame, time, &extrapolation_error_string);
+      frame->lock.r_unlock();
+
+      if(parent == nullptr){
+        return tf2_msgs::TF2Error::EXTRAPOLATION_ERROR;
+      }
+
+      f.accum(false);
+
+      if(parent == source){
+        f.finalize(SourceParentOfTarget, ros::Time(0));
+        return tf2_msgs::TF2Error::NO_ERROR;
+      }
+      if(parent == top_parent){
+        frame = parent;
+        break;
+      }
+
+      frame = parent;
+      ++depth;
+      if(depth > MAX_GRAPH_DEPTH){
+        return tf2_msgs::TF2Error::LOOKUP_ERROR;
+      }
+    }
+
+    if(frame != top_parent){
+      if(extrapolation_might_have_occurred){
+        return tf2_msgs::TF2Error::EXTRAPOLATION_ERROR;
+      }
+
+      return tf2_msgs::TF2Error::CONNECTIVITY_ERROR;
     }
 
     f.finalize(FullPath, ros::Time(0));

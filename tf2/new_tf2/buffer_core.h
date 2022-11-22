@@ -38,6 +38,11 @@ namespace new_tf2{
                     const std::string& source_frame,
                     tf2::ReadStat *stat = nullptr) const noexcept(false);
 
+    geometry_msgs::TransformStamped
+    lookupTransform(const std::string& target_frame,
+                    const std::string& source_frame,
+                    const ros::Time& time, tf2::ReadStat *stat = nullptr) const noexcept(false);
+
 
   private:
     tbb::concurrent_unordered_map<std::string, TimeCache*> frames;
@@ -47,12 +52,26 @@ namespace new_tf2{
     TimeCache* validateFrame(const char* function_name_arg, const std::string& frame_id) const;
     TimeCache* getFrame(const std::string &frame) const;
 
+    int getLatestCommonTime(TimeCache* target,
+                            TimeCache* source,
+                            ros::Time& time,
+                            tf2::ReadStat *stat = nullptr) const noexcept;
+
+
     int walkToTopParentLatest(
       TransformAccum &f,
       TimeCache* target,
       TimeCache* source,
       tf2::ReadStat *stat
       ) const noexcept;
+
+    int walkToTopParent(
+      TransformAccum &f,
+      ros::Time time,
+      TimeCache* target,
+      TimeCache* source,
+      tf2::ReadStat *stat
+    ) const noexcept;
   };
 }
 
