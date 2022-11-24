@@ -1954,6 +1954,9 @@ retry:
 
   void BufferCore::testTransformableRequests()
   {
+    if(transformable_requests_.empty()){
+      return;
+    }
 
     boost::mutex::scoped_lock lock(transformable_requests_mutex_);
     auto it = transformable_requests_.begin();

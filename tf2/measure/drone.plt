@@ -17,7 +17,7 @@ if(out_offset == 7){
     set ylabel "write latency (ms)" font "arial,20"
 }
 
-plot data using 1:out_offset w lp ls 1 title "TF",
-     data using 1:out_offset+1 w lp ls 2 title "TF-Par",
-     data using 1:out_offset+2 w lp ls 3 title "TF-2PL",
-     data using 1:out_offset+3 w lp ls 4 title "TF-Silo"
+plot data using 1:out_offset w lp ls 1 title "TF", \
+     data using 1:out_offset+1 w lp ls 2 title "TF-Par", \
+     data using 1:out_offset+2 w lp ls 3 title "TF-2PL", \
+     data using 1:out_offset+3 w lp ls 4 title "TF-Silo" \
