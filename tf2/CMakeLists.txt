@@ -46,6 +46,9 @@ file(GLOB_RECURSE OLD_INCLUDE old_tf2/*.h)
 file(GLOB_RECURSE NEW_SRC new_tf2/*.cpp)
 file(GLOB_RECURSE NEW_INCLUDE new_tf2/*.h)
 
+file(GLOB_RECURSE OLD_SILO_SRC old_silo/*.cpp)
+file(GLOB_RECURSE OLD_SILO_INCLUDE old_silo/*.h)
+
 add_executable(speed_check
   ${SRC}
   ${INCLUDE}
@@ -56,6 +59,8 @@ add_executable(speed_check
   measure/speed_check.cpp
   silo_tf2/silo_buffer_core.cpp
   silo_tf2/silo_buffer_core.h
+  ${OLD_SILO_SRC}
+  ${OLD_SILO_INCLUDE}
 )
 target_link_libraries(speed_check
   ${Boost_LIBRARIES}

@@ -17,9 +17,11 @@
 #include "../new_tf2/buffer_core.h"
 #include "tf2/buffer_core.h"
 #include "../include/tf2/xoroshiro128_plus.h"
+#include "../old_silo/silo_buffer_core.h"
 
 using old_tf2::OldBufferCore;
 using silo_tf2::SiloBufferCore;
+using OldSilo = old_silo::SiloBufferCore;
 using tf2::BufferCore;
 using tf2::ReadStat;
 using tf2::WriteStat;
@@ -240,6 +242,50 @@ struct BufferCoreWrapper<SiloBufferCore>{
     }
   }
 };
+
+template <>
+struct BufferCoreWrapper<OldSilo>{
+
+  OldSilo bfc{};
+
+  void init(){
+    make_snake(bfc);
+  }
+  void read(size_t link, size_t until, ReadStat *out_stat) const{
+    bfc.lookupLatestTransform("link" + to_string(link),
+                                  "link" + to_string(until), out_stat);
+
+  }
+  void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){
+    assert(until > link);
+    {
+      // which write direction is proper?
+      vector<TransformStamped> vec{};
+//      for(size_t j = until; j > link; j--){
+//        vec.push_back(trans("link" + to_string(j-1),
+//                            "link" + to_string(j),
+//                            nano_time));
+//      }
+      if(FLAGS_opposite_write_direction){
+        for(size_t j = link; j < until; j++){
+          vec.push_back(trans("link" + to_string(j),
+                              "link" + to_string(j+1),
+                              sec));
+        }
+      }else{
+        for(size_t j = until; j > link; j--){
+          vec.push_back(trans("link" + to_string(j-1),
+                              "link" + to_string(j),
+                              sec));
+        }
+      }
+
+      bfc.setTransforms(vec, "me", false, out_stat);
+      iter_acc++;
+    }
+  }
+};
+
 
 enum NewAccessType{
   TwoPL, Silo
@@ -608,7 +654,7 @@ int main(int argc, char* argv[]){
 
   RunResult silo_result{};
   if(bs[3]){
-    BufferCoreWrapper<SiloBufferCore> bfc_w{};
+    BufferCoreWrapper<OldSilo> bfc_w{};
     silo_result = run(bfc_w);
 
     cout << "TF-Silo:" << endl;
