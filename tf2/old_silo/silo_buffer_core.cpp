@@ -347,9 +347,11 @@ namespace old_silo
       if (frame == target_id)
       {
         if(!read_checker.check()){
-          stat->abortCount++;
+          if(stat){
+            stat->abortCount++;
+            stat->timestamps.clear();
+          }
           read_checker.clear();
-          stat->timestamps.clear();
           goto retry;
         }
 
@@ -409,9 +411,11 @@ namespace old_silo
       if (frame == source_id)
       {
         if(!read_checker.check()){
-          stat->abortCount++;
+          if(stat){
+            stat->abortCount++;
+            stat->timestamps.clear();
+          }
           read_checker.clear();
-          stat->timestamps.clear();
           goto retry;
         }
 
@@ -456,9 +460,12 @@ namespace old_silo
     }
 
     if(!read_checker.check()){
-      stat->abortCount++;
+      if(stat){
+        stat->abortCount++;
+        stat->timestamps.clear();
+      }
+
       read_checker.clear();
-      stat->timestamps.clear();
       goto retry;
     }
 
