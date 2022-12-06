@@ -58,3 +58,8 @@ To get at least one result with `*-data.bash` files, you need a computer which h
 Q5. I want to use this package in real workload.
 
 A5. You have to recompile tf2_py, tf2_ros, rviz, and tf with `-MMD -MP` flag, and reinstall them.
+
+# Note for Docker
+- use `docker run -it --privilaged  geometry2` to use perf inside Docker container.
+- use `perf` for performance checking.
+- use `catkin_make -DCMAKE_BUILD_TYPE=Debug` to build the package with Debug mode.
