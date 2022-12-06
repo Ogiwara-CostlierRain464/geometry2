@@ -683,6 +683,17 @@ retry:
       return tf2_msgs::TF2Error::NO_ERROR;
     }
 
+    ros::Time common_time;
+    if(!use_latest){
+      int ret = getLatestCommonTimeXact(target_id, source_id, common_time, nullptr,
+                              cc == TwoPhaseLock
+                              ? (void*)&un_locker
+                              : (void*)&read_checker, stat);
+      if(ret != tf2_msgs::TF2Error::NO_ERROR){
+        return ret;
+      }
+    }
+
     // Walk the tree to its root from the source frame, accumulating the transform
     CompactFrameID frame = source_id;
     CompactFrameID top_parent = frame;
@@ -711,7 +722,12 @@ retry:
         stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      CompactFrameID parent = f.gatherLatest(cache);
+      CompactFrameID parent;
+      if(use_latest){
+        parent = f.gatherLatest(cache);
+      }else{
+        parent = f.gather(cache, common_time, nullptr, stat);
+      }
 
       if (parent == 0)
       {
@@ -778,7 +794,12 @@ retry:
         stat->timestamps.push_back(cache->getLatestTimestamp().toNSec());
       }
 
-      CompactFrameID parent = f.gatherLatest(cache);
+      CompactFrameID parent;
+      if(use_latest){
+        parent = f.gatherLatest(cache);
+      }else{
+        parent = f.gather(cache, common_time, nullptr, stat);
+      }
 
       if (parent == 0)
       {
@@ -1037,6 +1058,7 @@ retry:
   geometry_msgs::TransformStamped BufferCore::lookupLatestTransformXact(
     const std::string& target_frame,
     const std::string& source_frame,
+    bool use_latest,
     ReadStat *stat) const noexcept(false)
   {
     if (target_frame == source_frame) {
@@ -1076,7 +1098,7 @@ retry:
 
     std::string error_string;
     TransformAccum accum;
-    int retval = walkToTopParentLatest(accum, target_id, source_id, &error_string, stat);
+    int retval = walkToTopParentLatest(accum, target_id, source_id, &error_string, use_latest ,stat);
     if (retval != tf2_msgs::TF2Error::NO_ERROR)
     {
       switch (retval)

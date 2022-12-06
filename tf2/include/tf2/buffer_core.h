@@ -160,7 +160,7 @@ namespace tf2
      * tf2::ExtrapolationException, tf2::InvalidArgumentException
      */
     geometry_msgs::TransformStamped
-    lookupLatestTransformXact(const std::string& target_frame, const std::string& source_frame, ReadStat *stat = nullptr) const noexcept(false);
+    lookupLatestTransformXact(const std::string& target_frame, const std::string& source_frame, bool use_latest, ReadStat *stat = nullptr) const noexcept(false);
 
     void justReadFrames(const std::vector<std::string> &frames, ReadStat *stat = nullptr) const;
 

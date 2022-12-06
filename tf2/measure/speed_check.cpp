@@ -145,9 +145,9 @@ struct BufferCoreWrapper<BufferCore>{
       if(out_stat){
         out_stat->timestamps.push_back(trans.header.stamp.toNSec());
       }
-    }else{
+    }else{ // TF_2PL
       bfc.lookupLatestTransformXact("link" + to_string(link),
-                                "link" + to_string(until), out_stat);
+                                "link" + to_string(until), false, out_stat);
     }
   }
   void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){
