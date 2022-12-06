@@ -35,7 +35,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "001100", "Bit representation of enabled methods. New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "0001100", "Bit representation of enabled methods. 2PL sync ,New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -116,7 +116,7 @@ struct BufferCoreWrapper<OldBufferCore>{
 };
 
 enum AccessType{
-  TF_Par, TF_2PL
+  TF_Par, TF_2PL, TF_2PL_SYNC
 };
 
 template <>
@@ -145,9 +145,14 @@ struct BufferCoreWrapper<BufferCore>{
       if(out_stat){
         out_stat->timestamps.push_back(trans.header.stamp.toNSec());
       }
-    }else{ // TF_2PL
+    }else if(accessType == TF_2PL){
       bfc.lookupLatestTransformXact("link" + to_string(link),
-                                "link" + to_string(until), false, out_stat);
+                                "link" + to_string(until), true, out_stat);
+    }else if(accessType == TF_2PL_SYNC){
+      bfc.lookupLatestTransformXact("link" + to_string(link),
+                                    "link" + to_string(until), false, out_stat);
+    }else{
+      assert(false);
     }
   }
   void write(size_t link, size_t until, double sec, WriteStat *out_stat, size_t &iter_acc){
@@ -168,7 +173,7 @@ struct BufferCoreWrapper<BufferCore>{
           iter_acc++;
         }
       }
-    }else{
+    }else if(accessType == TF_2PL or accessType == TF_2PL_SYNC){
       // which write direction is proper?
       vector<TransformStamped> vec{};
 //      for(size_t j = until; j > link; j--){
@@ -609,7 +614,7 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
-  std::bitset<6> bs(FLAGS_only);
+  std::bitset<7> bs(FLAGS_only);
 
   RunResult old_result{};
   if(bs[0]){
@@ -699,6 +704,20 @@ int main(int argc, char* argv[]){
     cout << "\t" << "delay: " << chrono::duration<double, std::milli>(new_silo_result.delay).count() << "ms" << endl;
     cout << "\t" << "var: " << chrono::duration<double, std::milli>(new_silo_result.var).count() << "ms" << endl;
 //    cout << "\t" << "insert failes: " << new_result. << " times" << endl;
+  }
+
+  if(bs[2]){
+    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_2PL_SYNC);
+    RunResult _2pl_sync_result = run(bfc_w);
+
+    cout << "2PL-Sync:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(_2pl_sync_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << _2pl_sync_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(_2pl_sync_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(_2pl_sync_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(_2pl_sync_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(_2pl_sync_result.var).count() << "ms" << endl;
+    cout << "\t" << "aborts: " << _2pl_sync_result.aborts << " times" << endl;
   }
 
   if(FLAGS_frequency != 0){
