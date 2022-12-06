@@ -70,6 +70,10 @@ struct ReadChecker{
     : mutexes(mutexes_){}
 
   void addRLock(uint32_t frame_id){
+    if(vHistory.count(frame_id) != 0){
+      // already r_locked
+      return;
+    }
     auto v = mutexes[frame_id].virtualRLock();
     vHistory[frame_id] = v;
   }

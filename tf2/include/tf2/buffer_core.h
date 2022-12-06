@@ -431,6 +431,9 @@ private:
      * zero if fails to cross */
     int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, ReadStat *stat = nullptr) const noexcept;
 
+    int getLatestCommonTimeXact(CompactFrameID target_frame, CompactFrameID source_frame, ros::Time& time, std::string* error_string, void* unlocker ,ReadStat *stat = nullptr) const noexcept;
+
+
     template<typename F>
     int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string) const noexcept;
 
@@ -440,7 +443,7 @@ private:
     int walkToTopParent(F& f, ros::Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, std::vector<CompactFrameID> *frame_chain, ReadStat *stat = nullptr) const noexcept;
 
     template<typename F>
-    int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, ReadStat *stat = nullptr) const noexcept;
+    int walkToTopParentLatest(F& f, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string, bool use_latest, ReadStat *stat = nullptr) const noexcept;
 
     void testTransformableRequests();
     bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id,

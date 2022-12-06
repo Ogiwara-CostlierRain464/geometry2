@@ -669,6 +669,7 @@ namespace tf2
   template<typename F>
   int BufferCore::walkToTopParentLatest(F& f, CompactFrameID target_id,
                                   CompactFrameID source_id, std::string* error_string,
+                                  bool use_latest,
                                   ReadStat *stat) const noexcept
   {
 retry:
@@ -1692,6 +1693,209 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
     time = common_time;
     return tf2_msgs::TF2Error::NO_ERROR;
   }
+
+  int BufferCore::getLatestCommonTimeXact(CompactFrameID target_id, CompactFrameID source_id, ros::Time & time, std::string * error_string, void* unlocker, ReadStat *stat) const noexcept
+  {
+    ScopedWriteSetUnLocker *un_locker;
+    ReadChecker *read_checker;
+    if(cc == TwoPhaseLock){
+      un_locker = static_cast<ScopedWriteSetUnLocker *>(unlocker);
+    }else if(cc == Silo){
+      read_checker = static_cast<ReadChecker *>(unlocker);
+    }
+
+    // Error if one of the frames don't exist.
+    if (source_id == 0 || target_id == 0) return tf2_msgs::TF2Error::LOOKUP_ERROR;
+
+    if (source_id == target_id)
+    {
+      TimeCacheInterfacePtr cache = getFrame(source_id);
+      //Set time to latest timestamp of frameid in case of target and source frame id are the same
+      if (cache) {
+        if(cc == TwoPhaseLock){
+          un_locker->rLockIfNot(source_id);
+          time = cache->getLatestTimestamp();
+        }else if(cc == Silo){
+          read_checker->addRLock(source_id);
+          time = cache->getLatestTimestamp();
+        }
+      }else
+        time = ros::Time();
+      return tf2_msgs::TF2Error::NO_ERROR;
+    }
+
+    std::vector<P_TimeAndFrameID> lct_cache;
+
+    // Walk the tree to its root from the source frame, accumulating the list of parent/time as well as the latest time
+    // in the target is a direct parent
+    CompactFrameID frame = source_id;
+    P_TimeAndFrameID temp;
+    uint32_t depth = 0;
+    ros::Time common_time = ros::TIME_MAX;
+    while (frame != 0)
+    {
+      TimeCacheInterfacePtr cache = getFrame(frame);
+
+      if (!cache)
+      {
+        // There will be no cache for the very root of the tree
+        break;
+      }
+
+      P_TimeAndFrameID latest;
+      if(cc == TwoPhaseLock){
+        while (!un_locker->tryWLockIfNot(frame)){
+          if(stat){
+            stat->tryReadLockCount++;
+          }
+
+        }
+        latest = cache->getLatestTimeAndParent();
+      }else if(cc == Silo){
+        read_checker->addRLock(frame);
+        latest = cache->getLatestTimeAndParent();
+      }
+
+      if (latest.second == 0)
+      {
+        // Just break out here... there may still be a path from source -> target
+        break;
+      }
+
+      if (!latest.first.isZero())
+      {
+        common_time = std::min(latest.first, common_time);
+      }
+
+      lct_cache.push_back(latest);
+
+      frame = latest.second;
+
+      // Early out... target frame is a direct parent of the source frame
+      if (frame == target_id)
+      {
+        time = common_time;
+        if (time == ros::TIME_MAX)
+        {
+          time = ros::Time();
+        }
+        return tf2_msgs::TF2Error::NO_ERROR;
+      }
+
+      ++depth;
+      if (depth > MAX_GRAPH_DEPTH)
+      {
+        if (error_string)
+        {
+          std::stringstream ss;
+          ss<<"The tf tree is invalid because it contains a loop." << std::endl
+            << allFramesAsStringNoLock() << std::endl;
+          *error_string = ss.str();
+        }
+        return tf2_msgs::TF2Error::LOOKUP_ERROR;
+      }
+    }
+
+    // Now walk to the top parent from the target frame, accumulating the latest time and looking for a common parent
+    frame = target_id;
+    depth = 0;
+    common_time = ros::TIME_MAX;
+    CompactFrameID common_parent = 0;
+    while (true)
+    {
+      TimeCacheInterfacePtr cache = getFrame(frame);
+
+      if (!cache)
+      {
+        break;
+      }
+
+      P_TimeAndFrameID latest;
+      if(cc == TwoPhaseLock){
+        un_locker->rLockIfNot(frame);
+        latest = cache->getLatestTimeAndParent();
+      }else if(cc == Silo){
+        read_checker->addRLock(frame);
+        latest = cache->getLatestTimeAndParent();
+      }
+
+      if (latest.second == 0)
+      {
+        break;
+      }
+
+      if (!latest.first.isZero())
+      {
+        common_time = std::min(latest.first, common_time);
+      }
+
+      auto it = std::find_if(lct_cache.begin(), lct_cache.end(), TimeAndFrameIDFrameComparator(latest.second));
+      if (it != lct_cache.end()) // found a common parent
+      {
+        common_parent = it->second;
+        break;
+      }
+
+      frame = latest.second;
+
+      // Early out... source frame is a direct parent of the target frame
+      if (frame == source_id)
+      {
+        time = common_time;
+        if (time == ros::TIME_MAX)
+        {
+          time = ros::Time();
+        }
+        return tf2_msgs::TF2Error::NO_ERROR;
+      }
+
+      ++depth;
+      if (depth > MAX_GRAPH_DEPTH)
+      {
+        if (error_string)
+        {
+          std::stringstream ss;
+          ss<<"The tf tree is invalid because it contains a loop." << std::endl
+            << allFramesAsStringNoLock() << std::endl;
+          *error_string = ss.str();
+        }
+        return tf2_msgs::TF2Error::LOOKUP_ERROR;
+      }
+    }
+
+    if (common_parent == 0)
+    {
+      createConnectivityErrorString(source_id, target_id, error_string);
+      return tf2_msgs::TF2Error::CONNECTIVITY_ERROR;
+    }
+
+    // Loop through the source -> root list until we hit the common parent
+    {
+      auto it = lct_cache.begin();
+      auto end = lct_cache.end();
+      for (; it != end; ++it)
+      {
+        if (!it->first.isZero())
+        {
+          common_time = std::min(common_time, it->first);
+        }
+
+        if (it->second == common_parent)
+        {
+          break;
+        }
+      }
+    }
+
+    if (common_time == ros::TIME_MAX)
+    {
+      common_time = ros::Time();
+    }
+
+    time = common_time;
+    return tf2_msgs::TF2Error::NO_ERROR;
+  }
+
 
   std::string BufferCore::allFramesAsYAML(double current_time) const noexcept
   {
