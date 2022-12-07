@@ -50,6 +50,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <iostream>
+#include <tbb/concurrent_vector.h>
 
 namespace geometry_msgs
 {
@@ -282,10 +283,12 @@ public:
   }
   ros::Time getOldestTimestamp();
 
-
+  typedef tbb::concurrent_vector<tf2::TransformStorage,
+  aligned_allocator<tf2::TransformStorage, 128>> CC_Storage;
   typedef std::deque<tf2::TransformStorage,
   aligned_allocator<tf2::TransformStorage, 128>> L_TransformStorage;
-  L_TransformStorage storage_;
+
+  CC_Storage storage_;
   ros::Duration max_storage_time_;
   bool is_static;
 

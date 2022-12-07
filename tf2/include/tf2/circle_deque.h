@@ -2,6 +2,7 @@
 #define GEOMETRY2_CIRCLE_DEQUE_H
 
 #include <iostream>
+#include <atomic>
 using namespace std;
 
 // Maximum size of array or Dequeue
@@ -12,9 +13,9 @@ class Deque{
 public:
   T arr[MAX];
 private:
-  int front;
-  int rear;
-  int size;
+  atomic_int front;
+  atomic_int rear;
+  atomic_int size;
 
 public:
   Deque(int size)

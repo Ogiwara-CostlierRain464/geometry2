@@ -35,7 +35,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "00001100", "Bit representation of enabled methods. Silo sync, 2PL sync, New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "11000000", "Bit representation of enabled methods. Silo sync, 2PL sync, New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");

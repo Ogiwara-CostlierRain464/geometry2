@@ -135,7 +135,7 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
 
   //At least 2 values stored
   //Find the first value less than the target value
-  L_TransformStorage::iterator storage_it;
+  CC_Storage ::iterator storage_it;
   tf2::TransformStorage storage_target_time;
   storage_target_time.stamp_ = target_time;
 
@@ -201,7 +201,7 @@ bool TimeCache::insertData(const tf2::TransformStorage& new_data)
       break;
     storage_it++;
   }
-  storage_.insert(storage_it, new_data);
+  storage_.push_back(new_data);
 
   pruneList();
   return true;
@@ -233,7 +233,7 @@ void TimeCache::pruneList()
 
   while(!storage_.empty() && storage_.back().stamp_ + max_storage_time_ < latest_time)
   {
-    storage_.pop_back();
+    //storage_.pop_back();
   }
 
 }
