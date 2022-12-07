@@ -495,7 +495,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
       read_wait_count.record(t, (double) read_wait_count_acc / (double) iter_count);
       deque_count_thread.record(t, (double) deque_count_acc / (double) iter_count);
-      abort_acc_read_thread.record(t, (double) abort_iter_acc / (double) iter_count);
+      abort_acc_read_thread.record(t, (double) abort_iter_acc);
     });
   }
 
@@ -675,7 +675,9 @@ int main(int argc, char* argv[]){
 
     cout << "TF-Silo:" << endl;
     cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_result.time).count() << "ms" << endl;
-    cout << "\t" << "throughput: " << silo_result.throughput << endl;
+    cout << "\t" << "throughput sum: " << silo_result.throughput
+    << " r: " << silo_result.readThroughput
+    << " w: " << silo_result.writeThroughput << endl;
     cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_result.readLatency).count() << "ms" << endl;
     cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << "ms" << endl;
     cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_result.delay).count() << "ms" << endl;
@@ -737,12 +739,14 @@ int main(int argc, char* argv[]){
 
     cout << "Silo-Sync:" << endl;
     cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_sync_result.time).count() << "ms" << endl;
-    cout << "\t" << "throughput: " << silo_sync_result.throughput << endl;
+    cout << "\t" << "throughput sum: " << silo_sync_result.throughput
+         << " r: " << silo_sync_result.readThroughput
+         << " w: " << silo_sync_result.writeThroughput << endl;
     cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_sync_result.readLatency).count() << "ms" << endl;
     cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_sync_result.writeLatency).count() << "ms" << endl;
     cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_sync_result.delay).count() << "ms" << endl;
     cout << "\t" << "var: " << chrono::duration<double, std::milli>(silo_sync_result.var).count() << "ms" << endl;
-    cout << "\t" << "aborts: " << silo_sync_result.aborts << " times" << endl;
+    cout << "\t" << "read aborts: " << silo_sync_result.readAborts << " times" << endl;
   }
 
   if(bs[8]){
@@ -751,12 +755,14 @@ int main(int argc, char* argv[]){
 
     cout << "Silo-Latest:" << endl;
     cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_latest_result.time).count() << "ms" << endl;
-    cout << "\t" << "throughput: " << silo_latest_result.throughput << endl;
+    cout << "\t" << "throughput sum: " << silo_latest_result.throughput
+         << " r: " << silo_latest_result.readThroughput
+         << " w: " << silo_latest_result.writeThroughput << endl;
     cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_latest_result.readLatency).count() << "ms" << endl;
     cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_latest_result.writeLatency).count() << "ms" << endl;
     cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_latest_result.delay).count() << "ms" << endl;
     cout << "\t" << "var: " << chrono::duration<double, std::milli>(silo_latest_result.var).count() << "ms" << endl;
-    cout << "\t" << "aborts: " << silo_latest_result.aborts << " times" << endl;
+    cout << "\t" << "read aborts: " << silo_latest_result.readAborts << " times" << endl;
   }
 
   if(FLAGS_frequency != 0){
@@ -799,12 +805,8 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.writeLatency).count() << " "; // 31
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
   output << par_result.tryWrites << " "; // 33
-  output << new_2pl_result.readThroughput << " "; // 34
-  output << new_2pl_result.writeThroughput <<  " "; // 35
-  output << new_2pl_result.throughput << " "; // 36
-  output << new_silo_result.readThroughput << " "; // 37
-  output << new_silo_result.writeThroughput <<  " "; // 38
-  output << new_silo_result.throughput << " "; // 39
+
+
 
   output << endl;
   output.close();

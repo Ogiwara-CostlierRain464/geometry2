@@ -195,15 +195,9 @@ bool TimeCache::insertData(const tf2::TransformStorage& new_data)
     }
   }
 
-  while(storage_it != storage_.end())
-  {
-    if (storage_it->stamp_ <= new_data.stamp_)
-      break;
-    storage_it++;
-  }
   storage_.push_back(new_data);
 
-  pruneList();
+  //pruneList();
   return true;
 }
 
