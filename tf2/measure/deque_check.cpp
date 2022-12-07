@@ -221,7 +221,7 @@ int main(int argc, char* argv[]){
   static_assert(alignof(tf2::TransformStorage) == 128, "");
   static_assert(sizeof (tf2::TransformStorage) == 128, "");
   // 176
-  static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
+  //static_assert(sizeof(tf2::TimeCache) == sizeof(A), "");
 
 
   cout << "thread: " << FLAGS_thread << endl;
