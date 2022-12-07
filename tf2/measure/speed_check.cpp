@@ -35,7 +35,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "11000000", "Bit representation of enabled methods. Silo sync, 2PL sync, New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "011000000", "Bit representation of enabled methods. Silo latest, Silo sync, 2PL sync, New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec,10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -116,7 +116,7 @@ struct BufferCoreWrapper<OldBufferCore>{
 };
 
 enum AccessType{
-  TF_Par, TF_2PL, TF_2PL_SYNC, TF_Silo_SYNC
+  TF_Par, TF_2PL, TF_2PL_SYNC, TF_Silo_SYNC, TF_Silo_Latest
 };
 
 template <>
@@ -126,7 +126,7 @@ struct BufferCoreWrapper<BufferCore>{
   : accessType(accessType_)
   , bfc(ros::Duration(100),
         1'000'005,
-        accessType_ == TF_Silo_SYNC
+        accessType_ == TF_Silo_SYNC or accessType_ == TF_Silo_Latest
         ? tf2::Silo
         : tf2::TwoPhaseLock){}
 
@@ -154,7 +154,10 @@ struct BufferCoreWrapper<BufferCore>{
     }else if(accessType == TF_2PL_SYNC or accessType == TF_Silo_SYNC){
       bfc.lookupLatestTransformXact("link" + to_string(link),
                                     "link" + to_string(until), false, out_stat);
-    }else{
+    }else if(accessType == TF_Silo_Latest){
+      bfc.lookupLatestTransformXact("link" + to_string(link),
+                                    "link" + to_string(until), true, out_stat);
+    }else {
       assert(false);
     }
   }
@@ -619,7 +622,7 @@ int main(int argc, char* argv[]){
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
-  std::bitset<8> bs(FLAGS_only);
+  std::bitset<9> bs(FLAGS_only);
 
   RunResult old_result{};
   if(bs[0]){
@@ -737,6 +740,20 @@ int main(int argc, char* argv[]){
     cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_sync_result.delay).count() << "ms" << endl;
     cout << "\t" << "var: " << chrono::duration<double, std::milli>(silo_sync_result.var).count() << "ms" << endl;
     cout << "\t" << "aborts: " << silo_sync_result.aborts << " times" << endl;
+  }
+
+  if(bs[8]){
+    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo_Latest);
+    RunResult silo_latest_result = run(bfc_w);
+
+    cout << "Silo-Latest:" << endl;
+    cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_latest_result.time).count() << "ms" << endl;
+    cout << "\t" << "throughput: " << silo_latest_result.throughput << endl;
+    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_latest_result.readLatency).count() << "ms" << endl;
+    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_latest_result.writeLatency).count() << "ms" << endl;
+    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_latest_result.delay).count() << "ms" << endl;
+    cout << "\t" << "var: " << chrono::duration<double, std::milli>(silo_latest_result.var).count() << "ms" << endl;
+    cout << "\t" << "aborts: " << silo_latest_result.aborts << " times" << endl;
   }
 
   if(FLAGS_frequency != 0){
