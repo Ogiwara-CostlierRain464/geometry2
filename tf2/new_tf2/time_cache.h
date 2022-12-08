@@ -7,7 +7,6 @@
 #include "transform_storage.h"
 #include "rwlock.h"
 #include "virtual_rwlock.h"
-#include <boost/circular_buffer.hpp>
 
 namespace new_tf2{
 
@@ -157,7 +156,7 @@ namespace new_tf2{
     RWLock lock{};
     VRWLock v_lock{};
 
-    typedef boost::circular_buffer<TransformStorage,
+    typedef std::deque<TransformStorage,
       aligned_allocator<TransformStorage, 128>> Deque;
 
     Deque storage{50};

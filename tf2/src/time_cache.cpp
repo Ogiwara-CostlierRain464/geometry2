@@ -135,11 +135,10 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
 
   //At least 2 values stored
   //Find the first value less than the target value
-  L_TransformStorage::iterator storage_it;
   tf2::TransformStorage storage_target_time;
   storage_target_time.stamp_ = target_time;
 
-  storage_it = std::lower_bound(
+  auto storage_it = std::lower_bound(
     storage_.begin(),
     storage_.end(),
     storage_target_time, std::greater<tf2::TransformStorage>());

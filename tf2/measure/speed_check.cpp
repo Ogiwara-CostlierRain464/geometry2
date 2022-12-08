@@ -10,6 +10,7 @@
 #include <bits/stdc++.h>
 #include <fstream>
 #include <limits>
+#include <sys/mman.h>
 
 #include "tf2/stat.h"
 #include "../old_tf2/old_buffer_core.h"
@@ -589,7 +590,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   return result;
 }
 
-#include <sys/mman.h>
 void lock_memory()
 {
   // Lock all current and future pages

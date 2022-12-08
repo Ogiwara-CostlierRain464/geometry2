@@ -207,7 +207,9 @@ public:
   TimeCache(const TimeCache& other) = delete;
   TimeCache(TimeCache&& other) = delete;
 
-  inline bool getData(ros::Time time,
+  uint8_t findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str);
+
+  bool getData(ros::Time time,
                       tf2::TransformStorage & data_out,
                       std::string* error_str = nullptr,
                       ReadStat *stat = nullptr){
@@ -284,16 +286,18 @@ public:
   }
   ros::Time getOldestTimestamp();
 
+  //typedef std::deque<tf2::TransformStorage,
+  //  aligned_allocator<tf2::TransformStorage, 128>> L_TransformStorage;
   typedef boost::circular_buffer<tf2::TransformStorage,
     aligned_allocator<tf2::TransformStorage, 128>> L_TransformStorage;
 
-  L_TransformStorage storage_{50};
+  boost::circular_buffer<tf2::TransformStorage,
+    aligned_allocator<tf2::TransformStorage, 128>> storage_;
   ros::Duration max_storage_time_;
   bool is_static;
 
   /// A helper function for getData
   //Assumes storage is already locked for it
-  inline uint8_t findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str);
   inline void interpolate(const tf2::TransformStorage& one,
                           const tf2::TransformStorage& two,
                           ros::Time time, tf2::TransformStorage& output){
