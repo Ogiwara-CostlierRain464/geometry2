@@ -7,6 +7,7 @@
 #include "transform_storage.h"
 #include "rwlock.h"
 #include "virtual_rwlock.h"
+#include <boost/circular_buffer.hpp>
 
 namespace new_tf2{
 
@@ -156,10 +157,10 @@ namespace new_tf2{
     RWLock lock{};
     VRWLock v_lock{};
 
-    typedef std::deque<TransformStorage,
+    typedef boost::circular_buffer<TransformStorage,
       aligned_allocator<TransformStorage, 128>> Deque;
 
-    Deque storage{};
+    Deque storage{50};
     std::string authority;
     std::string frameName; // may need to comment out for performance
     ros::Duration max_storage_time;

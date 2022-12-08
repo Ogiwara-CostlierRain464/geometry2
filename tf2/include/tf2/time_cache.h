@@ -51,6 +51,7 @@
 #include <vector>
 #include <iostream>
 #include <tbb/concurrent_vector.h>
+#include <boost/circular_buffer.hpp>
 
 namespace geometry_msgs
 {
@@ -283,12 +284,10 @@ public:
   }
   ros::Time getOldestTimestamp();
 
-  typedef tbb::concurrent_vector<tf2::TransformStorage,
-  aligned_allocator<tf2::TransformStorage, 128>> CC_Storage;
-  typedef std::deque<tf2::TransformStorage,
-  aligned_allocator<tf2::TransformStorage, 128>> L_TransformStorage;
+  typedef boost::circular_buffer<tf2::TransformStorage,
+    aligned_allocator<tf2::TransformStorage, 128>> L_TransformStorage;
 
-  CC_Storage storage_;
+  L_TransformStorage storage_{50};
   ros::Duration max_storage_time_;
   bool is_static;
 

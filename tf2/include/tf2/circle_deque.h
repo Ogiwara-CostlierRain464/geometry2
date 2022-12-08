@@ -6,7 +6,7 @@
 using namespace std;
 
 // Maximum size of array or Dequeue
-#define MAX 200
+#define MAX 100
 
 template <class T>
 class Deque{

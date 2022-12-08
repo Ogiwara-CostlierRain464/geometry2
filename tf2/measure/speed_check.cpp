@@ -589,6 +589,31 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   return result;
 }
 
+#include <sys/mman.h>
+void lock_memory()
+{
+  // Lock all current and future pages
+  if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+    throw std::runtime_error("mlockall failed. Error code " + std::string(strerror(errno)));
+  }
+
+  // Turn off malloc trimming.
+  if (mallopt(M_TRIM_THRESHOLD, -1) == 0) {
+    throw std::runtime_error(
+      "mallopt for trim threshold failed. Error code " +
+      std::string(strerror(errno)));
+  }
+
+  // Turn off mmap usage.
+  if (mallopt(M_MMAP_MAX, 0) == 0) {
+    mallopt(M_TRIM_THRESHOLD, 128 * 1024);
+    munlockall();
+    throw std::runtime_error(
+      "mallopt for mmap failed. Error code " + std::string(
+        strerror(errno)));
+  }
+}
+
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -618,6 +643,7 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Loop sec: %d", FLAGS_loop_sec);
   CONSOLE_BRIDGE_logInform("Make read stat: %s", FLAGS_make_read_stat ? "true" : "false");
 
+  lock_memory();
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
