@@ -7,6 +7,7 @@
 #include "transform_storage.h"
 #include "rwlock.h"
 #include "virtual_rwlock.h"
+#include <boost/circular_buffer.hpp>
 
 namespace new_tf2{
 
@@ -156,7 +157,7 @@ namespace new_tf2{
     RWLock lock{};
     VRWLock v_lock{};
 
-    typedef std::deque<TransformStorage,
+    typedef boost::circular_buffer<TransformStorage,
       aligned_allocator<TransformStorage, 128>> Deque;
 
     Deque storage{50};
@@ -164,7 +165,7 @@ namespace new_tf2{
     std::string frameName; // may need to comment out for performance
     ros::Duration max_storage_time;
 
-    inline bool getData(const ros::Time &time,
+    bool getData(const ros::Time &time,
                         TransformStorage & data_out,
                         std::string* error_str = nullptr){
       TransformStorage* p_temp_1;
@@ -214,7 +215,7 @@ namespace new_tf2{
       return storage.front().stamp;
     }
 
-    inline uint8_t findClosest(TransformStorage* &one, TransformStorage* &two,
+    uint8_t findClosest(TransformStorage* &one, TransformStorage* &two,
                                ros::Time target_time, std::string* error_str);
     inline void interpolate(const TransformStorage& one,
                             const TransformStorage& two,
