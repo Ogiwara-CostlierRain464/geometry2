@@ -643,7 +643,7 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Loop sec: %d", FLAGS_loop_sec);
   CONSOLE_BRIDGE_logInform("Make read stat: %s", FLAGS_make_read_stat ? "true" : "false");
 
-  lock_memory();
+  //lock_memory();
 
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 

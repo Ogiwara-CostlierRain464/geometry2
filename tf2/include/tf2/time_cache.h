@@ -273,7 +273,7 @@ public:
       return std::make_pair(ros::Time(), 0);
     }
 
-    const tf2::TransformStorage& ts = storage_.front();
+    const tf2::TransformStorage& ts = storage_.first();
     return std::make_pair(ts.stamp_, ts.frame_id_);
   }
 

@@ -12,21 +12,10 @@ private:
   std::atomic_int front_cnt{-1};
 
 public:
-  // may fail due to concurrent push
-  bool tryPush(const tf2::TransformStorage &e){
-    int expected = front_cnt.load(std::memory_order_acquire);
-    int desired = expected+1;
-    arr[desired] = e;
-    if(front_cnt.compare_exchange_strong(
-        expected, desired,
-        std::memory_order_acq_rel, std::memory_order_acquire)){
-      // `front` is now `desired`.
-      // overwrite
-      arr[desired] = e;
-      return true;
-    }else{
-      return false; // fail to seek front
-    }
+
+  void insert(const tf2::TransformStorage &e){
+    arr[front_cnt+1] = e;
+    front_cnt++;
   }
 
   bool empty() const{
@@ -48,13 +37,25 @@ public:
   void findTwoClose(const ros::Time &target,
                     tf2::TransformStorage *one,
                     tf2::TransformStorage *two){
-    // assert this is not empty.
-    // assert at least two values,
-    // and the target time is within the range
-    for(int i = 0; i < front_cnt; i++){
-      if(target >= arr[i].stamp_){
-        one = &arr[i];
-        two = &arr[i+1];
+
+    // linear search
+    // bound from up and down
+    int one_id, two_id;
+    ros::Time one_t = ros::TIME_MIN, two_t = ros::TIME_MAX;
+
+    int front_snap = front_cnt;
+    for(int i = 0; i < front_snap; i++){
+      auto &time = arr[i].stamp_;
+      if(target < time){
+        if(time < two_t){
+          two_id = i;
+          two_t = time;
+        }
+      }else{ // target >= time
+        if(time > one_t){
+          one_id = i;
+          one_t = time;
+        }
       }
     }
   }

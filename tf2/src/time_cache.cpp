@@ -167,16 +167,13 @@ bool TimeCache::insertData(const tf2::TransformStorage& new_data)
 {
   if(is_static){
     if(storage_.empty()){
-      storage_.tryPush(new_data);
+      storage_.insert(new_data);
     }else{
       storage_.front() = new_data;
     }
     return true;
   }
-
-  while (!storage_.tryPush(new_data)){
-    ;
-  }
+  storage_.insert(new_data);
 
   return true;
 }
