@@ -219,7 +219,7 @@ public:
 
     if(is_static){
       if(!storage_.empty()){
-        data_out = storage_.front();
+        data_out = storage_.first();
       }else{
         data_out = TransformStorage{};
       }
@@ -264,7 +264,7 @@ public:
   inline P_TimeAndFrameID getLatestTimeAndParent()
   {
     if(is_static){
-      CompactFrameID id = storage_.empty() ? 0 : storage_.front().frame_id_;
+      CompactFrameID id = storage_.empty() ? 0 : storage_.first().frame_id_;
       return std::make_pair(ros::Time(), id);
     }
 
@@ -273,7 +273,7 @@ public:
       return std::make_pair(ros::Time(), 0);
     }
 
-    const tf2::TransformStorage& ts = storage_.first();
+    const tf2::TransformStorage& ts = storage_.latest();
     return std::make_pair(ts.stamp_, ts.frame_id_);
   }
 
@@ -282,7 +282,7 @@ public:
   inline ros::Time getLatestTimestamp(){
     if(is_static) return {};
     if (storage_.empty()) return ros::Time(); //empty list case
-    return storage_.front().stamp_;
+    return storage_.latest().stamp_;
   }
   ros::Time getOldestTimestamp();
 

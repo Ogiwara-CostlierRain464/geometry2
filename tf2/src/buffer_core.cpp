@@ -738,7 +738,7 @@ retry:
       }
 
       // Early out... target frame is a direct parent of the source frame
-      if (frame == target_id)
+      if (parent == target_id)
       {
         if(cc == Silo and !read_checker.check()){
           if(stat){

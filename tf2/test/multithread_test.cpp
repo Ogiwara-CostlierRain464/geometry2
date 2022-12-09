@@ -604,6 +604,28 @@ TEST_F(MultithreadTest, full_jitter){
   //for(;;){ j.randomSleep(); }
 }
 
+#include "../include/tf2/cc_queue.h"
+
+TEST_F(MultithreadTest, cc_queue){
+  CCQueue<10> q;
+  EXPECT_TRUE(q.empty());
+  TransformStorage a{};
+  a.stamp_.sec = 1;
+  q.insert(a);
+  a.stamp_.sec = 3;
+  q.insert(a);
+  a.stamp_.sec = 2;
+  q.insert(a);
+  EXPECT_EQ(q.size(), 3);
+  ros::Time b{2.5};
+  TransformStorage *one, *two;
+  q.findTwoClose(b, one, two);
+  EXPECT_EQ(one->stamp_.sec, 2);
+  EXPECT_EQ(two->stamp_.sec, 3);
+  auto latest = q.latest();
+  EXPECT_EQ(latest.stamp_.sec, 3);
+}
+
 
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);

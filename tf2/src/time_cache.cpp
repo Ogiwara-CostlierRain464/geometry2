@@ -88,14 +88,14 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
   //If time == 0 return the latest
   if (target_time.isZero())
   {
-    one = &storage_.front();
+    one = &storage_.latest();
     return 1;
   }
 
   // One value stored
   if (storage_.size() == 1)
   {
-    tf2::TransformStorage& ts = storage_.front();
+    tf2::TransformStorage& ts = storage_.latest();
     if (ts.stamp_ == target_time)
     {
       one = &ts;
@@ -108,12 +108,12 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
     }
   }
 
-  ros::Time latest_time = storage_.front().stamp_;
+  ros::Time latest_time = storage_.latest().stamp_;
   ros::Time earliest_time = storage_.first().stamp_;
 
   if (target_time == latest_time)
   {
-    one = &storage_.front();
+    one = &storage_.latest();
     return 1;
   }
   else if (target_time == earliest_time)
@@ -137,8 +137,6 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
   //Find the first value less than the target value
   storage_.findTwoClose(target_time, one, two);
   return 2;
-
-
 }
 
 tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
@@ -147,7 +145,7 @@ tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
     if(storage_.empty()){
       return 0;
     }else{
-      return storage_.front().frame_id_;
+      return storage_.first().frame_id_;
     }
   }
 
@@ -169,7 +167,7 @@ bool TimeCache::insertData(const tf2::TransformStorage& new_data)
     if(storage_.empty()){
       storage_.insert(new_data);
     }else{
-      storage_.front() = new_data;
+      storage_.first() = new_data;
     }
     return true;
   }
