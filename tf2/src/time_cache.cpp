@@ -93,9 +93,9 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
   }
 
   // One value stored
-  if (++storage_.begin() == storage_.end())
+  if (storage_.size() == 1)
   {
-    tf2::TransformStorage& ts = *storage_.begin();
+    tf2::TransformStorage& ts = storage_.front();
     if (ts.stamp_ == target_time)
     {
       one = &ts;
@@ -108,17 +108,17 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
     }
   }
 
-  ros::Time latest_time = (*storage_.begin()).stamp_;
-  ros::Time earliest_time = (*(storage_.rbegin())).stamp_;
+  ros::Time latest_time = storage_.front().stamp_;
+  ros::Time earliest_time = storage_.first().stamp_;
 
   if (target_time == latest_time)
   {
-    one = &(*storage_.begin());
+    one = &storage_.front();
     return 1;
   }
   else if (target_time == earliest_time)
   {
-    one = &(*storage_.rbegin());
+    one = &storage_.first();
     return 1;
   }
     // Catch cases that would require extrapolation
@@ -135,17 +135,7 @@ uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorag
 
   //At least 2 values stored
   //Find the first value less than the target value
-  tf2::TransformStorage storage_target_time;
-  storage_target_time.stamp_ = target_time;
-
-  auto storage_it = std::lower_bound(
-    storage_.begin(),
-    storage_.end(),
-    storage_target_time, std::greater<tf2::TransformStorage>());
-
-  //Finally the case were somewhere in the middle  Guarenteed no extrapolation :-)
-  one = &*(storage_it); //Older
-  two = &*(--storage_it); //Newer
+  storage_.findTwoClose(target_time, one, two);
   return 2;
 
 
@@ -177,26 +167,17 @@ bool TimeCache::insertData(const tf2::TransformStorage& new_data)
 {
   if(is_static){
     if(storage_.empty()){
-      storage_.push_back(new_data);
+      storage_.tryPush(new_data);
     }else{
       storage_.front() = new_data;
     }
     return true;
   }
 
-  auto storage_it = storage_.begin();
-
-  if(storage_it != storage_.end())
-  {
-    if (storage_it->stamp_ > new_data.stamp_ + max_storage_time_)
-    {
-      return false;
-    }
+  while (!storage_.tryPush(new_data)){
+    ;
   }
 
-  storage_.push_back(new_data);
-
-  //pruneList();
   return true;
 }
 
@@ -217,18 +198,8 @@ ros::Time TimeCache::getOldestTimestamp()
 {
   if(is_static) return {};
   if (storage_.empty()) return ros::Time(); //empty list case
-  return storage_.back().stamp_;
+  return storage_.first().stamp_;
 }
 
-void TimeCache::pruneList()
-{
-  ros::Time latest_time = storage_.begin()->stamp_;
-
-  while(!storage_.empty() && storage_.back().stamp_ + max_storage_time_ < latest_time)
-  {
-    //storage_.pop_back();
-  }
-
-}
 
 }
