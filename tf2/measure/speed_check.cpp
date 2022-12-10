@@ -563,6 +563,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   }
 
   bfc_w.init();
+  cout << "bfc init" << endl;
   asm volatile("" ::: "memory"); // force not to reorder.
   auto start = chrono::high_resolution_clock::now();
   wait = false;

@@ -5,7 +5,7 @@
 #include <atomic>
 #include "transform_storage.h"
 
-#define CC_ARR_SIZE 20
+#define CC_ARR_SIZE 5
 
 class CCNode{
 public:
@@ -18,6 +18,19 @@ public:
     arr[cur+1] = e;
     cur++;
   }
+
+//  void copyAndInsert(const tf2::TransformStorage &e){
+//    int insert_point;
+//    for(int i = 0; i <= cur; i++){
+//      if(e.stamp_ >= arr[i].stamp_){
+//        insert_point = i;
+//      }
+//    }
+//
+//    for(int i = cur; i <= ){
+//
+//    }
+//  }
 
   bool isFull() const{
     return size() == CC_ARR_SIZE;
@@ -78,6 +91,9 @@ public:
   }
 
   tf2::TransformStorage& latest(){
+
+
+
     return current->latest();
   }
 
@@ -112,7 +128,10 @@ public:
         }
       }
 
-      if(cur_node->next == nullptr){
+      if(cur_node->next != nullptr){
+        cur_node = cur_node->next;
+      }else{
+        // no next
         break;
       }
     }
