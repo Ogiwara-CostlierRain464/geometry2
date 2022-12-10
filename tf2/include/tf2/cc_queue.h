@@ -81,6 +81,7 @@ public:
 //      current = current->next;
 //    }
     firstNode.arr[0] = e;
+    firstNode.cur = 0;
   }
 
   bool empty() const{
