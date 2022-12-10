@@ -9,7 +9,7 @@ template <int S>
 class CCQueue{
 private:
   std::array<tf2::TransformStorage, S> arr{};
-  std::atomic_int front_cnt{-1};
+  std::atomic_int front_cnt{-1}; // what happen when exceeded?
 
 public:
 
