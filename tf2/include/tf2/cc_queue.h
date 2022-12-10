@@ -80,8 +80,10 @@ public:
 //      fulledNodeNum++;
 //      current = current->next;
 //    }
-    firstNode.arr[0] = e;
-    firstNode.cur = 0;
+    if(firstNode.cur == -1){
+      firstNode.arr[0] = e;
+      firstNode.cur = 0;
+    }
   }
 
   bool empty() const{
