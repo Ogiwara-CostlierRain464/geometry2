@@ -114,6 +114,13 @@ public:
 
     CCNode* cur_node = &firstNode;
     for(;;){
+      if(target > cur_node->latest().stamp_ ){
+        assert(cur_node->next != nullptr);
+        cur_node = cur_node->next;
+        continue;
+      }
+
+
       for(int i = 0; i <= cur_node->cur; i++){
         auto &time = cur_node->arr[i].stamp_;
         if(target < time){

@@ -241,8 +241,9 @@ public:
     }
     else if (num_nodes == 2)
     {
-      if( p_temp_1->frame_id_ == p_temp_2->frame_id_)
-      {
+      if(p_temp_1->stamp_ == p_temp_2->stamp_){
+        data_out = *p_temp_1;
+      }else if( p_temp_1->frame_id_ == p_temp_2->frame_id_){
         interpolate(*p_temp_1, *p_temp_2, time, data_out);
       }
       else
