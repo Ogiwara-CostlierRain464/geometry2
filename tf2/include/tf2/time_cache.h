@@ -286,7 +286,7 @@ public:
   }
   ros::Time getOldestTimestamp();
 
-  CCQueue<50> storage_;
+  CCQueue storage_{};
   ros::Duration max_storage_time_;
   bool is_static;
 

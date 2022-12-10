@@ -607,7 +607,7 @@ TEST_F(MultithreadTest, full_jitter){
 #include "../include/tf2/cc_queue.h"
 
 TEST_F(MultithreadTest, cc_queue){
-  CCQueue<10> q;
+  CCQueue q{};
   EXPECT_TRUE(q.empty());
   TransformStorage a{};
   a.stamp_.sec = 1;
