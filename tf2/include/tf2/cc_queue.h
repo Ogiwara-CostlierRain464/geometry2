@@ -5,7 +5,7 @@
 #include <atomic>
 #include "transform_storage.h"
 
-#define CC_ARR_SIZE 5
+#define CC_ARR_SIZE 50
 
 class CCNode{
 public:
