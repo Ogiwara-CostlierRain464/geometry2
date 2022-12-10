@@ -5,7 +5,7 @@
 #include <atomic>
 #include "transform_storage.h"
 
-#define CC_ARR_SIZE 50
+#define CC_ARR_SIZE 5
 
 class CCNode{
 public:
@@ -74,12 +74,13 @@ private:
   int fulledNodeNum = 0;
 public:
   void insert(const tf2::TransformStorage &e){
-    bool node_changed = false;
-    current->copyAndInsert(e, node_changed);
-    if(node_changed){
-      fulledNodeNum++;
-      current = current->next;
-    }
+//    bool node_changed = false;
+//    current->copyAndInsert(e, node_changed);
+//    if(node_changed){
+//      fulledNodeNum++;
+//      current = current->next;
+//    }
+    firstNode.arr[0] = e;
   }
 
   bool empty() const{
@@ -106,46 +107,8 @@ public:
   void findTwoClose(const ros::Time &target,
                     tf2::TransformStorage* &one,
                     tf2::TransformStorage* &two){
-
-    // linear search
-    // bound from up and down
-    tf2::TransformStorage *one_tmp, *two_tmp;
-    ros::Time one_t = ros::TIME_MIN, two_t = ros::TIME_MAX;
-
-    CCNode* cur_node = &firstNode;
-    for(;;){
-      if(target > cur_node->latest().stamp_ ){
-        assert(cur_node->next != nullptr);
-        cur_node = cur_node->next;
-        continue;
-      }
-
-
-      for(int i = 0; i <= cur_node->cur; i++){
-        auto &time = cur_node->arr[i].stamp_;
-        if(target < time){
-          if(time < two_t){
-            two_tmp = &cur_node->arr[i];
-            two_t = time;
-          }
-        }else{ // target >= time
-          if(time > one_t){
-            one_tmp = &cur_node->arr[i];
-            one_t = time;
-          }
-        }
-      }
-
-      if(cur_node->next != nullptr){
-        cur_node = cur_node->next;
-      }else{
-        // no next
-        break;
-      }
-    }
-
-    one = one_tmp;
-    two = two_tmp;
+    one = &firstNode.arr[0];
+    two = &firstNode.arr[0];
   }
 
   void clear(){
