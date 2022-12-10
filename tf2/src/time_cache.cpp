@@ -40,201 +40,161 @@
 
 namespace tf2{
 
-  TimeCache::TimeCache(bool is_static, ros::Duration max_storage_time)
-    : max_storage_time_(max_storage_time), is_static(is_static)
-  {}
+TimeCache::TimeCache(bool is_static, ros::Duration max_storage_time)
+  : max_storage_time_(max_storage_time), is_static(is_static)
+{}
 
-  namespace cache { // Avoid ODR collisions https://github.com/ros/geometry2/issues/175
+namespace cache { // Avoid ODR collisions https://github.com/ros/geometry2/issues/175
 // hoisting these into separate functions causes an ~8% speedup.  Removing calling them altogether adds another ~10%
-    void createExtrapolationException1(ros::Time t0, ros::Time t1, std::string* error_str)
-    {
-      if (error_str)
-      {
-        std::stringstream ss;
-        ss << "Lookup would require extrapolation at time " << t0 << ", but only time " << t1 << " is in the buffer";
-        *error_str = ss.str();
-      }
-    }
-
-    void createExtrapolationException2(ros::Time t0, ros::Time t1, std::string* error_str)
-    {
-      if (error_str)
-      {
-        std::stringstream ss;
-        ss << "Lookup would require extrapolation into the future.  Requested time " << t0 << " but the latest data is at time " << t1;
-        *error_str = ss.str();
-      }
-    }
-
-    void createExtrapolationException3(ros::Time t0, ros::Time t1, std::string* error_str)
-    {
-      if (error_str)
-      {
-        std::stringstream ss;
-        ss << "Lookup would require extrapolation into the past.  Requested time " << t0 << " but the earliest data is at time " << t1;
-        *error_str = ss.str();
-      }
-    }
-  } // namespace cache
-
-  uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str)
+  void createExtrapolationException1(ros::Time t0, ros::Time t1, std::string* error_str)
   {
-    //No values stored
-    if (storage_.empty())
+    if (error_str)
     {
-      return 0;
+      std::stringstream ss;
+      ss << "Lookup would require extrapolation at time " << t0 << ", but only time " << t1 << " is in the buffer";
+      *error_str = ss.str();
     }
-
-    //If time == 0 return the latest
-    if (target_time.isZero())
-    {
-      one = &storage_.front();
-      return 1;
-    }
-
-    // One value stored
-    if (++storage_.begin() == storage_.end())
-    {
-      tf2::TransformStorage& ts = *storage_.begin();
-      if (ts.stamp_ == target_time)
-      {
-        one = &ts;
-        return 1;
-      }
-      else
-      {
-        cache::createExtrapolationException1(target_time, ts.stamp_, error_str);
-        return 0;
-      }
-    }
-
-    ros::Time latest_time = (*storage_.begin()).stamp_;
-    ros::Time earliest_time = (*(storage_.rbegin())).stamp_;
-
-    if (target_time == latest_time)
-    {
-      one = &(*storage_.begin());
-      return 1;
-    }
-    else if (target_time == earliest_time)
-    {
-      one = &(*storage_.rbegin());
-      return 1;
-    }
-      // Catch cases that would require extrapolation
-    else if (target_time > latest_time)
-    {
-      cache::createExtrapolationException2(target_time, latest_time, error_str);
-      return 0;
-    }
-    else if (target_time < earliest_time)
-    {
-      cache::createExtrapolationException3(target_time, earliest_time, error_str);
-      return 0;
-    }
-
-    //At least 2 values stored
-    //Find the first value less than the target value
-    tf2::TransformStorage storage_target_time;
-    storage_target_time.stamp_ = target_time;
-
-    auto storage_it = std::lower_bound(
-      storage_.begin(),
-      storage_.end(),
-      storage_target_time, std::greater<tf2::TransformStorage>());
-
-    //Finally the case were somewhere in the middle  Guarenteed no extrapolation :-)
-    one = &*(storage_it); //Older
-    two = &*(--storage_it); //Newer
-    return 2;
-
-
   }
 
-  tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
+  void createExtrapolationException2(ros::Time t0, ros::Time t1, std::string* error_str)
   {
-    if(is_static){
-      if(storage_.empty()){
-        return 0;
-      }else{
-        return storage_.front().frame_id_;
-      }
-    }
-
-    tf2::TransformStorage* p_temp_1;
-    tf2::TransformStorage* p_temp_2;
-
-    int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
-    if (num_nodes == 0)
+    if (error_str)
     {
-      return 0;
+      std::stringstream ss;
+      ss << "Lookup would require extrapolation into the future.  Requested time " << t0 << " but the latest data is at time " << t1;
+      *error_str = ss.str();
     }
-
-    return p_temp_1->frame_id_;
   }
 
-  bool TimeCache::insertData(const tf2::TransformStorage& new_data)
+  void createExtrapolationException3(ros::Time t0, ros::Time t1, std::string* error_str)
   {
-    if(is_static){
-      if(storage_.empty()){
-        storage_.push_back(new_data);
-      }else{
-        storage_.front() = new_data;
-      }
-      return true;
-    }
-
-    auto storage_it = storage_.begin();
-
-    if(storage_it != storage_.end())
+    if (error_str)
     {
-      if (storage_it->stamp_ > new_data.stamp_ + max_storage_time_)
-      {
-        return false;
-      }
+      std::stringstream ss;
+      ss << "Lookup would require extrapolation into the past.  Requested time " << t0 << " but the earliest data is at time " << t1;
+      *error_str = ss.str();
     }
+  }
+} // namespace cache
 
-    while(storage_it != storage_.end())
+uint8_t TimeCache::findClosest(tf2::TransformStorage*& one, tf2::TransformStorage*& two, ros::Time target_time, std::string* error_str)
+{
+  //No values stored
+  if (storage_.empty())
+  {
+    return 0;
+  }
+
+  //If time == 0 return the latest
+  if (target_time.isZero())
+  {
+    one = &storage_.latest();
+    return 1;
+  }
+
+  // One value stored
+  if (storage_.size() == 1)
+  {
+    tf2::TransformStorage& ts = storage_.latest();
+    if (ts.stamp_ == target_time)
     {
-      if (storage_it->stamp_ <= new_data.stamp_)
-        break;
-      storage_it++;
+      one = &ts;
+      return 1;
     }
-    storage_.insert(storage_it, new_data);
+    else
+    {
+      cache::createExtrapolationException1(target_time, ts.stamp_, error_str);
+      return 0;
+    }
+  }
 
-    //pruneList();
+  ros::Time latest_time = storage_.latest().stamp_;
+  ros::Time earliest_time = storage_.first().stamp_;
+
+  if (target_time == latest_time)
+  {
+    one = &storage_.latest();
+    return 1;
+  }
+  else if (target_time == earliest_time)
+  {
+    one = &storage_.first();
+    return 1;
+  }
+    // Catch cases that would require extrapolation
+  else if (target_time > latest_time)
+  {
+    cache::createExtrapolationException2(target_time, latest_time, error_str);
+    return 0;
+  }
+  else if (target_time < earliest_time)
+  {
+    cache::createExtrapolationException3(target_time, earliest_time, error_str);
+    return 0;
+  }
+
+  //At least 2 values stored
+  //Find the first value less than the target value
+  storage_.findTwoClose(target_time, one, two);
+  return 2;
+}
+
+tf2::CompactFrameID TimeCache::getParent(ros::Time time, std::string* error_str)
+{
+  if(is_static){
+    if(storage_.empty()){
+      return 0;
+    }else{
+      return storage_.first().frame_id_;
+    }
+  }
+
+  tf2::TransformStorage* p_temp_1;
+  tf2::TransformStorage* p_temp_2;
+
+  int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
+  if (num_nodes == 0)
+  {
+    return 0;
+  }
+
+  return p_temp_1->frame_id_;
+}
+
+bool TimeCache::insertData(const tf2::TransformStorage& new_data)
+{
+  if(is_static){
+    if(storage_.empty()){
+      storage_.insert(new_data);
+    }else{
+      storage_.first() = new_data;
+    }
     return true;
   }
+  storage_.insert(new_data);
 
-  void TimeCache::clearList()
-  {
-    if(is_static)return;
+  return true;
+}
 
-    storage_.clear();
-  }
+void TimeCache::clearList()
+{
+  if(is_static)return;
 
-  unsigned int TimeCache::getListLength()
-  {
-    if(is_static)return 1;
-    return storage_.size();
-  }
+  storage_.clear();
+}
 
-  ros::Time TimeCache::getOldestTimestamp()
-  {
-    if(is_static) return {};
-    if (storage_.empty()) return ros::Time(); //empty list case
-    return storage_.back().stamp_;
-  }
+unsigned int TimeCache::getListLength()
+{
+  if(is_static)return 1;
+  return storage_.size();
+}
 
-  void TimeCache::pruneList()
-  {
-    ros::Time latest_time = storage_.begin()->stamp_;
+ros::Time TimeCache::getOldestTimestamp()
+{
+  if(is_static) return {};
+  if (storage_.empty()) return ros::Time(); //empty list case
+  return storage_.first().stamp_;
+}
 
-    while(!storage_.empty() && storage_.back().stamp_ + max_storage_time_ < latest_time)
-    {
-      //storage_.pop_back();
-    }
-
-  }
 
 }
