@@ -5,7 +5,7 @@
 #include <atomic>
 #include "transform_storage.h"
 
-#define CC_ARR_SIZE 5
+#define CC_ARR_SIZE 50
 
 class CCNode{
 public:
@@ -106,39 +106,16 @@ public:
   void findTwoClose(const ros::Time &target,
                     tf2::TransformStorage* &one,
                     tf2::TransformStorage* &two){
+    tf2::TransformStorage storage_target_time;
+    storage_target_time.stamp_ = target;
 
-    // linear search
-    // bound from up and down
-    tf2::TransformStorage *one_tmp, *two_tmp;
-    ros::Time one_t = ros::TIME_MIN, two_t = ros::TIME_MAX;
+    auto storage_it = std::lower_bound(
+      current->arr.begin(),
+      current->arr.end(),
+      storage_target_time, std::greater<tf2::TransformStorage>());
 
-    CCNode* cur_node = &firstNode;
-    for(;;){
-      for(int i = 0; i <= cur_node->cur; i++){
-        auto &time = cur_node->arr[i].stamp_;
-        if(target < time){
-          if(time < two_t){
-            two_tmp = &cur_node->arr[i];
-            two_t = time;
-          }
-        }else{ // target >= time
-          if(time > one_t){
-            one_tmp = &cur_node->arr[i];
-            one_t = time;
-          }
-        }
-      }
-
-      if(cur_node->next != nullptr){
-        cur_node = cur_node->next;
-      }else{
-        // no next
-        break;
-      }
-    }
-
-    one = one_tmp;
-    two = two_tmp;
+    one = &*(storage_it); //Older
+    two = &*(--storage_it); //Newer
   }
 
   void clear(){
