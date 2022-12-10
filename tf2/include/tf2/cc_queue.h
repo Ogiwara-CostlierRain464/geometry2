@@ -11,26 +11,48 @@ class CCNode{
 public:
   std::atomic_int cur{-1};
   std::array<tf2::TransformStorage, CC_ARR_SIZE> arr{};
-  CCNode *next = nullptr;
-  CCNode *back = nullptr;
+  CCNode *next{nullptr};
 
-  void insert(const tf2::TransformStorage &e){
-    arr[cur+1] = e;
-    cur++;
+  void copyAndInsert(const tf2::TransformStorage &e, bool &node_changed){
+    bool insert_middle = true;
+    int insert_point = cur+1;
+    for(int i = 0; i <= cur; i++){
+      if(e.stamp_ < arr[i].stamp_){
+        insert_point = i;
+        break;
+      }
+    }
+
+    if(insert_point == CC_ARR_SIZE){
+      auto tmp = new CCNode{};
+      tmp->arr[0] = e;
+      tmp->cur = 0;
+      next = tmp;
+      node_changed = true;
+    }else{
+      assert(insert_middle);
+      int i = cur;
+      for(;;){
+        if(i+1 == CC_ARR_SIZE){
+          // need to move to next node!
+          auto tmp = new CCNode{};
+          tmp->arr[0] = arr[i];
+          tmp->cur = 0;
+          next = tmp;
+          node_changed = true;
+        }else{
+          arr[i+1] = arr[i];
+        }
+        i--;
+        if(i < insert_point){
+          break;
+        }
+      }
+
+      arr[insert_point] = e;
+      cur++;
+    }
   }
-
-//  void copyAndInsert(const tf2::TransformStorage &e){
-//    int insert_point;
-//    for(int i = 0; i <= cur; i++){
-//      if(e.stamp_ >= arr[i].stamp_){
-//        insert_point = i;
-//      }
-//    }
-//
-//    for(int i = cur; i <= ){
-//
-//    }
-//  }
 
   bool isFull() const{
     return size() == CC_ARR_SIZE;
@@ -41,40 +63,22 @@ public:
   }
 
   tf2::TransformStorage& latest(){
-    int id;
-    ros::Time tmp = ros::TIME_MIN;
-    int cur_snap = cur;
-    for(int i = 0; i <= cur_snap; i++){
-      if(arr[i].stamp_ >= tmp){
-        id = i;
-        tmp = arr[i].stamp_;
-      }
-    }
-
-    return arr[id];
+    return arr[cur];
   }
 };
 
 class CCQueue{
 private:
   CCNode firstNode{};
-  CCNode *current = &firstNode;
+  CCNode *current{&firstNode};
   int fulledNodeNum = 0;
 public:
   void insert(const tf2::TransformStorage &e){
-    if(current->isFull()){
-      auto next = new CCNode{};
-      next->insert(e);
-      next->back = current;
-      current->next = next;
-      // after new node is installed properly,
-      // expose to read threads.
-      // Note: write thread does not run concurrently,
-      // So compare&swap is not required.
-      current = next;
+    bool node_changed = false;
+    current->copyAndInsert(e, node_changed);
+    if(node_changed){
       fulledNodeNum++;
-    }else{
-      current->insert(e);
+      current = current->next;
     }
   }
 
@@ -83,7 +87,7 @@ public:
   }
 
   int size() const{
-    return 50 * fulledNodeNum + current->size();
+    return CC_ARR_SIZE * fulledNodeNum + current->size();
   }
 
   tf2::TransformStorage& front(){
@@ -91,9 +95,6 @@ public:
   }
 
   tf2::TransformStorage& latest(){
-
-
-
     return current->latest();
   }
 

@@ -626,6 +626,33 @@ TEST_F(MultithreadTest, cc_queue){
   EXPECT_EQ(latest.stamp_.sec, 3);
 }
 
+TEST_F(MultithreadTest, cc_queue_2){
+  CCQueue q{};
+  EXPECT_TRUE(q.empty());
+  TransformStorage a{};
+  a.stamp_.sec = 1;
+  q.insert(a);
+  a.stamp_.sec = 3;
+  q.insert(a);
+  a.stamp_.sec = 2;
+  q.insert(a);
+  a.stamp_.sec = 5;
+  q.insert(a);
+  a.stamp_.sec = 4;
+  q.insert(a);
+  a.stamp_.sec = 6;
+  q.insert(a);
+  EXPECT_EQ(q.size(), 6);
+  ros::Time b{2.5};
+  TransformStorage *one, *two;
+  q.findTwoClose(b, one, two);
+  EXPECT_EQ(one->stamp_.sec, 2);
+  EXPECT_EQ(two->stamp_.sec, 3);
+  auto latest = q.latest();
+  EXPECT_EQ(latest.stamp_.sec, 6);
+}
+
+
 
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
