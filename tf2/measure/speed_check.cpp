@@ -441,6 +441,9 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   CountAccum<double> abort_acc_read_thread(read_threads);
 
 
+  bfc_w.init();
+  cout << "bfc init" << endl;
+
   for(size_t t = 0; t < read_threads; t++){
     threads.emplace_back([t,&wait, &bfc_w, &delay_acc_thread,
                           &vars_acc_thread, &latencies_acc_read_thread,
@@ -562,8 +565,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
     }
   }
 
-  bfc_w.init();
-  cout << "bfc init" << endl;
   asm volatile("" ::: "memory"); // force not to reorder.
   auto start = chrono::high_resolution_clock::now();
   wait = false;
