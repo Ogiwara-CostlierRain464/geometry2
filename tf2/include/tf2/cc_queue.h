@@ -135,8 +135,8 @@ public:
   }
 
   void findTwoClose(const ros::Time &target,
-                    tf2::TransformStorage &one,
-                    tf2::TransformStorage &two){
+                    tf2::TransformStorage* &one,
+                    tf2::TransformStorage* &two){
     // linear search
     // bound from up and down
     tf2::TransformStorage *one_tmp, *two_tmp;
@@ -159,8 +159,8 @@ public:
       }
     }
 
-    one = *one_tmp;
-    two = *two_tmp;
+    one = one_tmp;
+    two = two_tmp;
   }
 
   void clear(){
