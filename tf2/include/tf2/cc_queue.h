@@ -133,7 +133,7 @@ public:
       std::greater<tf2::TransformStorage>());
 
     one = &*(it); //Older
-    two = &*(--it); //Newer
+    two = &*(++it); //Newer
   }
 
   void clear(){
