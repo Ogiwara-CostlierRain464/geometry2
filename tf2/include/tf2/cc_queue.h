@@ -83,6 +83,14 @@ public:
     if(firstNode.cur == -1){
       firstNode.arr[0] = e;
       firstNode.cur = 0;
+    }else{
+      if(firstNode.cur == CC_ARR_SIZE - 1){
+        // max
+        firstNode.arr[CC_ARR_SIZE-1] = e;
+      }else{
+        firstNode.arr[firstNode.cur+1] = e;
+        firstNode.cur++;
+      }
     }
   }
 
