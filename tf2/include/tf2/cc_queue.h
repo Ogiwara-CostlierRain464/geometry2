@@ -5,7 +5,7 @@
 #include <atomic>
 #include "transform_storage.h"
 
-#define CC_ARR_SIZE 20
+#define CC_ARR_SIZE 10
 
 class CCQueue{
 private:

@@ -5,8 +5,10 @@ set size ratio 0.75
 
 old_label = "TF"
 snapshot_label = "TF-Par"
-latest_label = "TF-2PL"
-silo_label = "TF-Silo"
+tpl_label = "TF-2PL-latest"
+silo_label = "TF-Silo-latest"
+tpl_label_2 = "TF-2PL"
+silo_label_2 = "TF-Silo"
 
 set linetype 1 lc rgb "dark-magenta" lw 2 pt 1 ps 1.5
 set linetype 2 lc rgb "#009e73" lw 2 pt 2 ps 1.5
@@ -40,7 +42,7 @@ if(out_offset == 14){
 
 if(out_offset == 10){
   set ylabel "abort ratio(abort count/task)" font "arial,20"
-  plot data using var:10 w lp ls 3 title latest_label, data using var:29 w lp ls 4 title silo_label
+  plot data using var:10 w lp ls 3 title tpl_label, data using var:29 w lp ls 4 title silo_label
   exit
 }
 if(out_offset == 18){
@@ -56,12 +58,13 @@ if(out_offset == 24){
 }
 
 if(only == 3){
-  plot data using var:out_offset+1 w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title latest_label, data using var:silo_var w lp ls 4 title silo_label
+  plot data using var:out_offset+1 w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title tpl_label, data using var:silo_var w lp ls 4 title silo_label
   exit
 }
 if(only == 5){
-  plot data using var:out_offset w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title latest_label, data using var:silo_var w lp ls 4 title silo_label
+  plot data using var:out_offset w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title tpl_label, data using var:silo_var w lp ls 4 title silo_label
   exit
 }
 
-plot data using var:out_offset w lp ls 1 title old_label, data using var:out_offset+1 w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title latest_label, data using var:silo_var w lp ls 4 title silo_label
+plot data using var:out_offset w lp ls 1 title old_label, data using var:out_offset+1 w lp ls 2 title snapshot_label, data using var:out_offset+2 w lp ls 3 title tpl_label, data using var:silo_var w lp ls 4 title silo_label
+

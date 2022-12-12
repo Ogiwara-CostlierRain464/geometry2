@@ -8,7 +8,6 @@
 #include <cstdlib>
 #include <console_bridge/console.h>
 #include <bits/stdc++.h>
-#include <fstream>
 #include <limits>
 #include <sys/mman.h>
 
@@ -31,14 +30,14 @@ using namespace std;
 using NewBuffer = new_tf2::BufferCore;
 
 DEFINE_uint64(thread, std::thread::hardware_concurrency(), "Thread size");
-DEFINE_uint64(joint, 1'000, "Joint size");
+DEFINE_uint64(joint, 1'000'000, "Joint size");
 DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "111001000", "Bit representation of enabled methods. Silo latest, Silo sync, 2PL sync, New Silo, New 2PL, Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "101010", "Bit representation of enabled methods. Silo sync, 2PL sync, Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
-DEFINE_uint64(loop_sec,10, "Loop second");
+DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
 DEFINE_bool(make_read_stat, false, "When true, make statistics. To enhance performance, turned off.");
 
@@ -499,7 +498,7 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
       latencies_acc_read_thread.record(t, latency_iter_acc / (double) iter_count);
       read_wait_count.record(t, (double) read_wait_count_acc / (double) iter_count);
       deque_count_thread.record(t, (double) deque_count_acc / (double) iter_count);
-      abort_acc_read_thread.record(t, (double) abort_iter_acc);
+      abort_acc_read_thread.record(t, (double) abort_iter_acc / (double) iter_count);
     });
   }
 
@@ -592,29 +591,6 @@ RunResult run(BufferCoreWrapper<T> &bfc_w){
   return result;
 }
 
-void lock_memory()
-{
-  // Lock all current and future pages
-  if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-    throw std::runtime_error("mlockall failed. Error code " + std::string(strerror(errno)));
-  }
-
-  // Turn off malloc trimming.
-  if (mallopt(M_TRIM_THRESHOLD, -1) == 0) {
-    throw std::runtime_error(
-      "mallopt for trim threshold failed. Error code " +
-      std::string(strerror(errno)));
-  }
-
-  // Turn off mmap usage.
-  if (mallopt(M_MMAP_MAX, 0) == 0) {
-    mallopt(M_TRIM_THRESHOLD, 128 * 1024);
-    munlockall();
-    throw std::runtime_error(
-      "mallopt for mmap failed. Error code " + std::string(
-        strerror(errno)));
-  }
-}
 
 int main(int argc, char* argv[]){
   gflags::SetUsageMessage("speed check");
@@ -645,15 +621,13 @@ int main(int argc, char* argv[]){
   CONSOLE_BRIDGE_logInform("Loop sec: %d", FLAGS_loop_sec);
   CONSOLE_BRIDGE_logInform("Make read stat: %s", FLAGS_make_read_stat ? "true" : "false");
 
-  //lock_memory();
-
   console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_ERROR);
 
   ofstream output{};
   output.open(FLAGS_output.c_str(), std::ios_base::app);
 
   cout << std::setprecision(std::numeric_limits<double>::digits10);
-  std::bitset<9> bs(FLAGS_only);
+  std::bitset<6> bs(FLAGS_only);
 
   RunResult old_result{};
   if(bs[0]){
@@ -713,43 +687,10 @@ int main(int argc, char* argv[]){
     cout << "\t" << "read aborts: " << silo_result.readAborts << " times" << endl;
   }
 
-  RunResult new_2pl_result{};
+  RunResult _2pl_sync_result{};
   if(bs[4]){
-    BufferCoreWrapper<NewBuffer> bfc_w(NewAccessType::TwoPL);
-    new_2pl_result = run(bfc_w);
-
-    cout << "New 2PL:" << endl;
-    cout << "\t" << "time: " << chrono::duration<double, std::milli>(new_2pl_result.time).count() << "ms" << endl;
-    cout << "\t" << "r-throughput: " << new_2pl_result.readThroughput << endl;
-    cout << "\t" << "w-throughput: " << new_2pl_result.writeThroughput << endl;
-    cout << "\t" << "throughput: " << new_2pl_result.throughput << endl;
-    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(new_2pl_result.readLatency).count() << "ms" << endl;
-    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(new_2pl_result.writeLatency).count() << "ms" << endl;
-    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(new_2pl_result.delay).count() << "ms" << endl;
-    cout << "\t" << "var: " << chrono::duration<double, std::milli>(new_2pl_result.var).count() << "ms" << endl;
-//    cout << "\t" << "insert failes: " << new_result. << " times" << endl;
-  }
-
-  RunResult new_silo_result{};
-  if(bs[5]){
-    BufferCoreWrapper<NewBuffer> bfc_w(NewAccessType::Silo);
-    new_silo_result = run(bfc_w);
-
-    cout << "New Silo:" << endl;
-    cout << "\t" << "time: " << chrono::duration<double, std::milli>(new_silo_result.time).count() << "ms" << endl;
-    cout << "\t" << "r-throughput: " << new_silo_result.readThroughput << endl;
-    cout << "\t" << "w-throughput: " << new_silo_result.writeThroughput << endl;
-    cout << "\t" << "throughput: " << new_silo_result.throughput << endl;
-    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(new_silo_result.readLatency).count() << "ms" << endl;
-    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(new_silo_result.writeLatency).count() << "ms" << endl;
-    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(new_silo_result.delay).count() << "ms" << endl;
-    cout << "\t" << "var: " << chrono::duration<double, std::milli>(new_silo_result.var).count() << "ms" << endl;
-//    cout << "\t" << "insert failes: " << new_result. << " times" << endl;
-  }
-
-  if(bs[6]){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_2PL_SYNC);
-    RunResult _2pl_sync_result = run(bfc_w);
+    _2pl_sync_result = run(bfc_w);
 
     cout << "2PL-Sync:" << endl;
     cout << "\t" << "time: " << chrono::duration<double, std::milli>(_2pl_sync_result.time).count() << "ms" << endl;
@@ -761,9 +702,10 @@ int main(int argc, char* argv[]){
     cout << "\t" << "aborts: " << _2pl_sync_result.aborts << " times" << endl;
   }
 
-  if(bs[7]){
+  RunResult silo_sync_result{};
+  if(bs[5]){
     BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo_SYNC);
-    RunResult silo_sync_result = run(bfc_w);
+    silo_sync_result = run(bfc_w);
 
     cout << "Silo-Sync:" << endl;
     cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_sync_result.time).count() << "ms" << endl;
@@ -775,22 +717,6 @@ int main(int argc, char* argv[]){
     cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_sync_result.delay).count() << "ms" << endl;
     cout << "\t" << "var: " << chrono::duration<double, std::milli>(silo_sync_result.var).count() << "ms" << endl;
     cout << "\t" << "read aborts: " << silo_sync_result.readAborts << " times" << endl;
-  }
-
-  if(bs[8]){
-    BufferCoreWrapper<BufferCore> bfc_w(AccessType::TF_Silo_Latest);
-    RunResult silo_latest_result = run(bfc_w);
-
-    cout << "Silo-Latest:" << endl;
-    cout << "\t" << "time: " << chrono::duration<double, std::milli>(silo_latest_result.time).count() << "ms" << endl;
-    cout << "\t" << "throughput sum: " << silo_latest_result.throughput
-         << " r: " << silo_latest_result.readThroughput
-         << " w: " << silo_latest_result.writeThroughput << endl;
-    cout << "\t" << "read latency: " << chrono::duration<double, std::milli>(silo_latest_result.readLatency).count() << "ms" << endl;
-    cout << "\t" << "write latency: " << chrono::duration<double, std::milli>(silo_latest_result.writeLatency).count() << "ms" << endl;
-    cout << "\t" << "delay: " << chrono::duration<double, std::milli>(silo_latest_result.delay).count() << "ms" << endl;
-    cout << "\t" << "var: " << chrono::duration<double, std::milli>(silo_latest_result.var).count() << "ms" << endl;
-    cout << "\t" << "read aborts: " << silo_latest_result.readAborts << " times" << endl;
   }
 
   if(FLAGS_frequency != 0){
@@ -834,6 +760,15 @@ int main(int argc, char* argv[]){
   output << chrono::duration<double, std::milli>(silo_result.delay).count() << " "; // 32
   output << par_result.tryWrites << " "; // 33
 
+  output << _2pl_sync_result.throughput << " "; // 34
+  output << chrono::duration<double, std::milli>(_2pl_sync_result.readLatency).count() << " "; // 35
+  output << _2pl_sync_result.aborts << " "; // 36
+  output << chrono::duration<double, std::milli>(_2pl_sync_result.delay).count() << " "; // 37
+
+  output << silo_sync_result.throughput << " "; // 38
+  output << chrono::duration<double, std::milli>(silo_sync_result.readLatency).count() << " "; // 39
+  output << silo_sync_result.aborts << " "; // 40
+  output << chrono::duration<double, std::milli>(silo_sync_result.delay).count() << " "; // 41
 
 
   output << endl;
