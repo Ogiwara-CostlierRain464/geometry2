@@ -205,6 +205,8 @@ namespace tf2
         frames_[i]->storage_.arr[j] = tmp;
       }
     }
+
+    printf("warm up done\n");
   }
 
   BufferCore::~BufferCore()
