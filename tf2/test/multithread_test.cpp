@@ -652,6 +652,27 @@ TEST_F(MultithreadTest, cc_queue_2){
   EXPECT_EQ(latest.stamp_.sec, 6);
 }
 
+TEST_F(MultithreadTest, iter){
+  ros::Time target{1};
+  std::vector<tf2::TransformStorage> vec{};
+  tf2::TransformStorage tmp{};
+  tmp.stamp_ = ros::Time(1);
+  vec.push_back(tmp);
+  tmp.stamp_ = ros::Time(2);
+  vec.push_back(tmp);
+
+  TransformStorage storage_target_time;
+  storage_target_time.stamp_ = target;
+
+  // 1 < 2
+  auto storage_it = std::lower_bound(
+    vec.begin(),
+    vec.end(),
+    storage_target_time, std::greater<tf2::TransformStorage>());
+
+  EXPECT_EQ(storage_it, vec.end());
+}
+
 
 
 int main(int argc, char **argv){
