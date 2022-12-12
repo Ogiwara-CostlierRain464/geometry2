@@ -15,7 +15,7 @@ if [ "$1" = "data" ]; then
 fi
 
 if [ "$1" = "plot" ]; then
-  gnuplot -e "data='/tmp/fig-stat.dat'; filename='/tmp/fig9.pdf'; type=2; only=1" print.plt
-  gnuplot -e "data='/tmp/fig-stat.dat'; filename='/tmp/fig12.pdf'; type=2; only=2" print.plt
+  gnuplot -e "data='/tmp/fig-stat.dat'; filename='/tmp/fig9.pdf'; type=2; only=3" print.plt
+  gnuplot -e "data='/tmp/fig-stat.dat'; filename='/tmp/fig12.pdf'; type=2; only=4" print.plt
   gnuplot -e "data='/tmp/fig-stat.dat'; filename='/tmp/fig14.pdf'; type=3; only=0" print.plt
 fi

@@ -1,19 +1,19 @@
-set terminal pdf size 4in,3in font "arial,18"
+set terminal pdf size 4in,3in font "arial,16"
 set output filename
-set key left top font "arial,14"
+set key left top font "arial,11"
 set size ratio 0.75
 
 tf = "TF"
-tpl = "TF-2PL"
-silo = "TF-Silo"
-tpl_latest = "TF-2PL-latest"
-silo_latest = "TF-Silo-latest"
+tpl = "2PL"
+silo = "Silo"
+tpl_latest = "2PL-latest"
+silo_latest = "Silo-latest"
 
 set linetype 1 lc rgb "dark-magenta" lw 2 pt 1 ps 1.5
 set linetype 2 lc rgb "#009e73" lw 2 pt 2 ps 1.5
 set linetype 3 lc rgb "#56b4e9" lw 2 pt 3 ps 1.5
 set linetype 4 lc rgb "#e69f00" lw 2 pt 4 ps 1.5
-set linetype 5 lc rgb "brown" lw 2 pt 5 ps 1.5
+set linetype 5 lc rgb "brown" lw 2 pt 6 ps 1.5
 
 tf_throughput = 7
 tf_latency = 11
@@ -75,12 +75,24 @@ if(type == 3){
     tpl_latest_var = tpl_latest_delay
     silo_latest_var = silo_latest_delay
 }
+# TF, TF-2PL, TF-Silo
 if(only == 1){
     plot data using 1:tf_var w lp ls 1 title tf, data using 1:tpl_var w lp ls 2 title tpl, data using 1:silo_var w lp ls 3 title silo
     exit
 }
+# TF, TF-2PL-latest, TF-Silo-latest
 if(only == 2){
     plot data using 1:tf_var w lp ls 1 title tf, data using 1:tpl_latest_var w lp ls 4 title tpl_latest, data using 1:silo_latest_var w lp ls 5 title silo_latest
+    exit
+}
+# TF-2PL, TF-Silo
+if(only == 3){
+    plot data using 1:tpl_var w lp ls 2 title tpl, data using 1:silo_var w lp ls 3 title silo
+    exit
+}
+# TF-2PL-latest, TF-Silo-latest
+if(only == 4){
+    plot data using 1:tpl_latest_var w lp ls 4 title tpl_latest, data using 1:silo_latest_var w lp ls 5 title silo_latest
     exit
 }
 

@@ -8,7 +8,7 @@ if [ "$1" = "data" ]; then
       --read_ratio=1 \
       --read_len=16 \
       --write_len=16 \
-      --output="/tmp/fig5-6.dat" \
+      --output="/tmp/fig6-7.dat" \
       --only="111111" \
       --frequency=0 \
       --loop_sec=60 \
@@ -18,6 +18,6 @@ if [ "$1" = "data" ]; then
 fi
 
 if [ "$1" = "plot" ]; then
-  gnuplot -e "data='/tmp/fig5-6.dat'; filename='/tmp/fig5.pdf'; type=0; only=0" print.plt
-  gnuplot -e "data='/tmp/fig5-6.dat'; filename='/tmp/fig6.pdf'; type=1; only=0" print.plt
+  gnuplot -e "data='/tmp/fig6-7.dat'; filename='/tmp/fig6.pdf'; type=0; only=0" print.plt
+  gnuplot -e "data='/tmp/fig6-7.dat'; filename='/tmp/fig7.pdf'; type=1; only=0" print.plt
 fi
