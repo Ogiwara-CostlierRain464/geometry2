@@ -726,7 +726,7 @@ retry:
       if(use_latest){
         parent = f.gatherLatest(cache);
       }else{
-        parent = f.gather(cache, common_time, nullptr, stat);
+        parent = f.gather(cache, common_time, error_string, stat);
       }
 
       if (parent == 0)
@@ -798,7 +798,7 @@ retry:
       if(use_latest){
         parent = f.gatherLatest(cache);
       }else{
-        parent = f.gather(cache, common_time, nullptr, stat);
+        parent = f.gather(cache, common_time, error_string, stat);
       }
 
       if (parent == 0)
