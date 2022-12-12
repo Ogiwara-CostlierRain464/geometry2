@@ -125,7 +125,7 @@ struct BufferCoreWrapper<BufferCore>{
   explicit BufferCoreWrapper(AccessType accessType_)
   : accessType(accessType_)
   , bfc(ros::Duration(100),
-        1'000'005,
+        1'000'000,
         accessType_ == TF_Silo_SYNC or accessType_ == TF_Silo_Latest
         ? tf2::Silo
         : tf2::TwoPhaseLock){}
@@ -135,8 +135,8 @@ struct BufferCoreWrapper<BufferCore>{
 
   void init(){
     bfc.clear();
-    bfc.warmUpPages();
     make_snake(bfc);
+    bfc.warmUpPages();
   }
   void read(size_t link, size_t until, ReadStat *out_stat) const{
     if(accessType == TF_Par){

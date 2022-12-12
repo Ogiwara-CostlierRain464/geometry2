@@ -191,33 +191,20 @@ namespace tf2
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
+  }
 
-    // warm up
-    for(size_t i = 0; i < max_node_size; i++){
+  void BufferCore::warmUpPages() noexcept{
+    for(size_t i = 0; i < max_node_size_; i++){
+      if(frames_[i] == nullptr){
+        break;
+      }
+
       for(size_t j = 0; j < frames_[i]->storage_.size(); j++){
         tf2::TransformStorage tmp{};
         tmp.stamp_ = ros::Time(0);
         frames_[i]->storage_.arr[j] = tmp;
       }
     }
-  }
-
-  void BufferCore::warmUpPages() noexcept{
-//    for(size_t i = 0; i < max_node_size_; i++){
-//      frames_[i]->storage_.emplace_back();
-//      frames_[i]->storage_.front().rotation_.m_floats[0] = 0.5;
-//      frames_[i]->storage_.front().vec[0]= 0.5;
-//      frames_[i]->storage_.pop_front();
-//      if(cc == TwoPhaseLock){
-//        frame_rw_lock_[i].w_lock();
-//        frame_rw_lock_[i].w_unlock();
-//      }else if(cc == Silo){
-//        frame_vrw_lock_[i].wLock();
-//        frame_vrw_lock_[i].wUnLock();
-//      }
-//      frameIDs_reverse[i] = "";
-//      frame_authority_[i] = "";
-//    }
   }
 
   BufferCore::~BufferCore()
