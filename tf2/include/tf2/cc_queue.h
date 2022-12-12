@@ -15,30 +15,41 @@ public:
   std::array<tf2::TransformStorage, CC_ARR_SIZE> arr{};
 
   void insert(const tf2::TransformStorage &e){
-    // copy and insert.
-    int insert_point = cur+1;
-    for(int i = cur; i >= 0; i--){
-      if(e.stamp_ < arr[i].stamp_){
-        insert_point = i;
-        break;
-      }
+    if(e.stamp_ < arr[cur].stamp_){
+      return;
     }
-    if(insert_point == CC_ARR_SIZE){
+    if(cur == CC_ARR_SIZE - 1){
       printf("ARR MAX CAPACITY\n");
-      exit(0);
-    }else{
-      int i = cur;
-      for(;;){
-        arr[i+1] = arr[i];
-        i--;
-        if(i < insert_point){
-          break;
-        }
-      }
+      exit(-1);
     }
 
-    arr[insert_point] = e;
+    arr[cur+1] = e;
     cur++;
+
+//    // copy and insert.
+//    int insert_point = cur+1;
+//    for(int i = cur; i >= 0; i--){
+//      if(e.stamp_ < arr[i].stamp_){
+//        insert_point = i;
+//        break;
+//      }
+//    }
+//    if(insert_point == CC_ARR_SIZE){
+//      printf("ARR MAX CAPACITY\n");
+//      exit(0);
+//    }else{
+//      int i = cur;
+//      for(;;){
+//        arr[i+1] = arr[i];
+//        i--;
+//        if(i < insert_point){
+//          break;
+//        }
+//      }
+//    }
+//
+//    arr[insert_point] = e;
+//    cur++;
   }
 
   bool empty() const{

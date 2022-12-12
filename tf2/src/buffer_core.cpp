@@ -1784,6 +1784,7 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
       if (latest.second == 0)
       {
+        assert(false);
         // Just break out here... there may still be a path from source -> target
         break;
       }
