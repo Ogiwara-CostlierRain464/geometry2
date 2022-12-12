@@ -5,10 +5,8 @@ set size ratio 0.75
 
 old_label = "TF"
 snapshot_label = "TF-Par"
-tpl_label = "TF-2PL-latest"
-silo_label = "TF-Silo-latest"
-tpl_label_2 = "TF-2PL"
-silo_label_2 = "TF-Silo"
+tpl_label = "TF-2PL"
+silo_label = "TF-Silo"
 
 set linetype 1 lc rgb "dark-magenta" lw 2 pt 1 ps 1.5
 set linetype 2 lc rgb "#009e73" lw 2 pt 2 ps 1.5

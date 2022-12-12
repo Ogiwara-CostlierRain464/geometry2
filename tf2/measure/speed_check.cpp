@@ -767,7 +767,7 @@ int main(int argc, char* argv[]){
 
   output << silo_sync_result.throughput << " "; // 38
   output << chrono::duration<double, std::milli>(silo_sync_result.readLatency).count() << " "; // 39
-  output << silo_sync_result.aborts << " "; // 40
+  output << silo_sync_result.readAborts << " "; // 40
   output << chrono::duration<double, std::milli>(silo_sync_result.delay).count() << " "; // 41
 
 
