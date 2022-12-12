@@ -233,7 +233,6 @@ public:
     int num_nodes = findClosest(p_temp_1, p_temp_2, time, error_str);
     if (num_nodes == 0)
     {
-      assert(false && "Num nodes is 0");
       return false;
     }
     else if (num_nodes == 1)
@@ -256,8 +255,6 @@ public:
     {
       assert(0);
     }
-
-    assert(data_out.frame_id_ != 0);
 
     return true;
   }

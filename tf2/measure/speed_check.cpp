@@ -35,7 +35,7 @@ DEFINE_double(read_ratio, 0.5, "Read ratio, within [0,1]");
 DEFINE_uint64(read_len, 16, "Number of reading joint size ∈ [0, joint]");
 DEFINE_uint64(write_len, 16, "Number of writing joint size ∈ [0, joint]");
 DEFINE_string(output, "/tmp/a.dat", "Output file");
-DEFINE_string(only, "100000", "Bit representation of enabled methods. Silo sync, 2PL sync, Silo, 2PL, Par, and Old from left to right bit.");
+DEFINE_string(only, "101010", "Bit representation of enabled methods. Silo sync, 2PL sync, Silo, 2PL, Par, and Old from left to right bit.");
 DEFINE_double(frequency, 0, "Frequency, when 0 then disabled");
 DEFINE_uint64(loop_sec, 10, "Loop second");
 DEFINE_bool(opposite_write_direction, true, "When true, opposite write direction");
@@ -125,7 +125,7 @@ struct BufferCoreWrapper<BufferCore>{
   explicit BufferCoreWrapper(AccessType accessType_)
   : accessType(accessType_)
   , bfc(ros::Duration(100),
-        1'000'000,
+        1'000'005,
         accessType_ == TF_Silo_SYNC or accessType_ == TF_Silo_Latest
         ? tf2::Silo
         : tf2::TwoPhaseLock){}
@@ -135,8 +135,8 @@ struct BufferCoreWrapper<BufferCore>{
 
   void init(){
     bfc.clear();
-    make_snake(bfc);
     bfc.warmUpPages();
+    make_snake(bfc);
   }
   void read(size_t link, size_t until, ReadStat *out_stat) const{
     if(accessType == TF_Par){

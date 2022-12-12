@@ -5,51 +5,24 @@
 #include <atomic>
 #include "transform_storage.h"
 
-#define CC_ARR_SIZE 5
+#define CC_ARR_SIZE 10
 
 class CCQueue{
 private:
   std::atomic_int cur{-1};
   bool filled = false;
-public:
   std::array<tf2::TransformStorage, CC_ARR_SIZE> arr{};
 
+public:
   void insert(const tf2::TransformStorage &e){
-    if(e.stamp_ < arr[cur].stamp_){
-      return;
-    }
     if(cur == CC_ARR_SIZE - 1){
-      printf("ARR MAX CAPACITY\n");
-      exit(-1);
+      filled = true;
+      arr[1] = e;
+      cur = 1;
+    }else{
+      arr[cur+1] = e;
+      cur++;
     }
-
-    arr[cur+1] = e;
-    cur++;
-
-//    // copy and insert.
-//    int insert_point = cur+1;
-//    for(int i = cur; i >= 0; i--){
-//      if(e.stamp_ < arr[i].stamp_){
-//        insert_point = i;
-//        break;
-//      }
-//    }
-//    if(insert_point == CC_ARR_SIZE){
-//      printf("ARR MAX CAPACITY\n");
-//      exit(0);
-//    }else{
-//      int i = cur;
-//      for(;;){
-//        arr[i+1] = arr[i];
-//        i--;
-//        if(i < insert_point){
-//          break;
-//        }
-//      }
-//    }
-//
-//    arr[insert_point] = e;
-//    cur++;
   }
 
   bool empty() const{
@@ -79,45 +52,30 @@ public:
   void findTwoClose(const ros::Time &target,
                     tf2::TransformStorage* &one,
                     tf2::TransformStorage* &two){
-
-
-    tf2::TransformStorage storage_target_time;
-    storage_target_time.stamp_ = target;
-
-    auto storage_it = std::lower_bound(
-      arr.begin(),
-      arr.begin() + cur,
-      storage_target_time, std::greater<tf2::TransformStorage>());
-
-    if(storage_it == arr.end()){
-      printf("BBBBBB");
-    }
-
-    one = &*(storage_it);
-    two = &*(++storage_it);
-
     // linear search
     // bound from up and down
-//    tf2::TransformStorage *one_tmp, *two_tmp;
-//    ros::Time one_t = ros::TIME_MIN, two_t = ros::TIME_MAX;
-//
-//    int seek_till = filled ? CC_ARR_SIZE : cur.load();
-//
-//    for(int i = 0; i <= seek_till; i++){
-//      auto &time = arr[i].stamp_;
-//      if(target < time){
-//        if(time < two_t){
-//          two_tmp = &arr[i];
-//          two_t = time;
-//        }
-//      }else{ // target >= time
-//        if(time > one_t){
-//          one_tmp = &arr[i];
-//          one_t = time;
-//        }
-//      }
-//    }
+    tf2::TransformStorage *one_tmp, *two_tmp;
+    ros::Time one_t = ros::TIME_MIN, two_t = ros::TIME_MAX;
 
+    int seek_till = filled ? CC_ARR_SIZE : cur.load();
+
+    for(int i = 0; i <= seek_till; i++){
+      auto &time = arr[i].stamp_;
+      if(target < time){
+        if(time < two_t){
+          two_tmp = &arr[i];
+          two_t = time;
+        }
+      }else{ // target >= time
+        if(time > one_t){
+          one_tmp = &arr[i];
+          one_t = time;
+        }
+      }
+    }
+
+    one = one_tmp;
+    two = two_tmp;
   }
 
   void clear(){

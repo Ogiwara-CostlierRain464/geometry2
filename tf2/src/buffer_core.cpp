@@ -194,18 +194,21 @@ namespace tf2
   }
 
   void BufferCore::warmUpPages() noexcept{
-    for(size_t i = 0; i < max_node_size_; i++){
-      if(frames_[i] == nullptr){
-        break;
-      }
-
-      for(size_t j = 0; j < frames_[i]->storage_.size(); j++){
-        tf2::TransformStorage tmp{};
-        frames_[i]->storage_.arr[j].stamp_.nsec++;
-      }
-    }
-
-    printf("warm up done\n");
+//    for(size_t i = 0; i < max_node_size_; i++){
+//      frames_[i]->storage_.emplace_back();
+//      frames_[i]->storage_.front().rotation_.m_floats[0] = 0.5;
+//      frames_[i]->storage_.front().vec[0]= 0.5;
+//      frames_[i]->storage_.pop_front();
+//      if(cc == TwoPhaseLock){
+//        frame_rw_lock_[i].w_lock();
+//        frame_rw_lock_[i].w_unlock();
+//      }else if(cc == Silo){
+//        frame_vrw_lock_[i].wLock();
+//        frame_vrw_lock_[i].wUnLock();
+//      }
+//      frameIDs_reverse[i] = "";
+//      frame_authority_[i] = "";
+//    }
   }
 
   BufferCore::~BufferCore()
@@ -769,10 +772,6 @@ retry:
       }
     }
 
-    printf("SHOULD NOT BE HERE\n");
-    assert(false);
-    exit(-1);
-
     // Now walk to the top parent from the target frame, accumulating its transform
     frame = target_id;
     depth = 0;
@@ -897,8 +896,6 @@ retry:
       TransformStorage st;
       if (!cache->getData(time, st, error_string, stat))
       {
-        printf("getData failed\n");
-        assert(false);
         return 0;
       }
 
@@ -1783,7 +1780,6 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
 
       if (latest.second == 0)
       {
-        assert(false);
         // Just break out here... there may still be a path from source -> target
         break;
       }
@@ -1821,10 +1817,6 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
         return tf2_msgs::TF2Error::LOOKUP_ERROR;
       }
     }
-
-    printf("SHOULD NOT BE HERE\n");
-    assert(false);
-    exit(-1);
 
     // Now walk to the top parent from the target frame, accumulating the latest time and looking for a common parent
     frame = target_id;

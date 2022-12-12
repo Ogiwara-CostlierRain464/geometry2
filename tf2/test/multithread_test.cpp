@@ -652,60 +652,6 @@ TEST_F(MultithreadTest, cc_queue_2){
   EXPECT_EQ(latest.stamp_.sec, 6);
 }
 
-TEST_F(MultithreadTest, iter){
-  ros::Time target{1};
-  std::vector<tf2::TransformStorage> vec{};
-  tf2::TransformStorage tmp{};
-  tmp.stamp_ = ros::Time(1);
-  vec.push_back(tmp);
-  tmp.stamp_ = ros::Time(2);
-  vec.push_back(tmp);
-
-  TransformStorage storage_target_time;
-  storage_target_time.stamp_ = target;
-
-  // 1 < 2
-  auto storage_it = std::lower_bound(
-    vec.begin(),
-    vec.end(),
-    storage_target_time, std::greater<tf2::TransformStorage>());
-
-  EXPECT_EQ(storage_it, vec.end());
-}
-
-TEST_F(MultithreadTest, arr){
-  ros::Time target{};
-  target.sec = 145546; target.nsec = 62768207;
-  std::array<tf2::TransformStorage, 5> arr{};
-  tf2::TransformStorage tmp{};
-  tmp.stamp_.sec = 145541; tmp.stamp_.nsec = 582608596;
-  arr[0] = tmp;
-  tmp.stamp_.sec = 145546; tmp.stamp_.nsec = 93903906;
-  arr[1] = tmp;
-
-  TransformStorage storage_target_time;
-  storage_target_time.stamp_ = target;
-
-  // 1 < 2
-  auto storage_it = std::lower_bound(
-    arr.begin(),
-    arr.begin() + 1,
-    storage_target_time, std::greater<tf2::TransformStorage>());
-
-  EXPECT_EQ(storage_it->stamp_.sec, 145541);
-}
-
-TEST_F(MultithreadTest, time){
-  ros::Time target{};
-  target.sec = 145546; target.nsec = 62768207;
-  tf2::TransformStorage a, b;
-  ros::Time two{};
-  two.sec = 145546; two.nsec = 93903906;
-  a.stamp_ = target; b.stamp_ = two;
-
-  EXPECT_TRUE(b > a);
-}
-
 
 
 int main(int argc, char **argv){
