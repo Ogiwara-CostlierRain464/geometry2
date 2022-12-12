@@ -191,6 +191,15 @@ namespace tf2
 
     frameIDs_["NO_PARENT"] = 0;
     frameIDs_reverse[0] = "NO_PARENT";
+
+    // warm up
+    for(size_t i = 0; i < max_node_size; i++){
+      for(size_t j = 0; j < frames_[i]->storage_.size(); j++){
+        tf2::TransformStorage tmp{};
+        tmp.stamp_ = ros::Time(0);
+        frames_[i]->storage_.arr[j] = tmp;
+      }
+    }
   }
 
   void BufferCore::warmUpPages() noexcept{

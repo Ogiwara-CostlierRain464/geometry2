@@ -11,9 +11,9 @@ class CCQueue{
 private:
   std::atomic_int cur{-1};
   bool filled = false;
+public:
   std::array<tf2::TransformStorage, CC_ARR_SIZE> arr{};
 
-public:
   void insert(const tf2::TransformStorage &e){
     // copy and insert.
     int insert_point = cur+1;
