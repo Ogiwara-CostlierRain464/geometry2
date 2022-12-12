@@ -201,8 +201,7 @@ namespace tf2
 
       for(size_t j = 0; j < frames_[i]->storage_.size(); j++){
         tf2::TransformStorage tmp{};
-        tmp.stamp_ = ros::Time(0);
-        frames_[i]->storage_.arr[j] = tmp;
+        frames_[i]->storage_.arr[j].stamp_.nsec++;
       }
     }
 
