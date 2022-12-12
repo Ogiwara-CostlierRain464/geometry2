@@ -256,6 +256,8 @@ public:
       assert(0);
     }
 
+    assert(data_out.frame_id_ != 0);
+
     return true;
   }
 

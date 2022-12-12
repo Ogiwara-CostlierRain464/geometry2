@@ -772,6 +772,10 @@ retry:
       }
     }
 
+    printf("SHOULD NOT BE HERE\n");
+    assert(false);
+    exit(-1);
+
     // Now walk to the top parent from the target frame, accumulating its transform
     frame = target_id;
     depth = 0;
@@ -896,6 +900,8 @@ retry:
       TransformStorage st;
       if (!cache->getData(time, st, error_string, stat))
       {
+        printf("getData failed\n");
+        assert(false);
         return 0;
       }
 
@@ -1817,6 +1823,10 @@ geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
         return tf2_msgs::TF2Error::LOOKUP_ERROR;
       }
     }
+
+    printf("SHOULD NOT BE HERE\n");
+    assert(false);
+    exit(-1);
 
     // Now walk to the top parent from the target frame, accumulating the latest time and looking for a common parent
     frame = target_id;

@@ -5,7 +5,7 @@
 #include <atomic>
 #include "transform_storage.h"
 
-#define CC_ARR_SIZE 500
+#define CC_ARR_SIZE 5
 
 class CCQueue{
 private:
@@ -24,7 +24,7 @@ public:
       }
     }
     if(insert_point == CC_ARR_SIZE){
-      printf("FAIL\n");
+      printf("ARR MAX CAPACITY\n");
       exit(0);
     }else{
       int i = cur;
@@ -75,7 +75,7 @@ public:
 
     auto storage_it = std::lower_bound(
       arr.begin(),
-      arr.end(),
+      arr.begin() + cur,
       storage_target_time, std::greater<tf2::TransformStorage>());
 
     if(storage_it == arr.end()){
