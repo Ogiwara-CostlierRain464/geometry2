@@ -44,6 +44,14 @@ namespace new_tf2{
                     const ros::Time& time, tf2::ReadStat *stat = nullptr) const noexcept(false);
 
 
+    std::map<std::string, TransformStorage>
+    select(const std::vector<std::string>& keys) noexcept;
+
+    void
+    insert(const std::map<std::string, TransformStorage>& kvs) noexcept;
+
+    void
+    commit(const std::map<std::string, bool> &kvs);
   private:
     tbb::concurrent_unordered_map<std::string, TimeCache*> frames;
     CCMethod cc;

@@ -851,4 +851,39 @@ namespace new_tf2{
 
     return tf2_msgs::TF2Error::NO_ERROR;
   }
+
+  std::map<std::string, TransformStorage>
+  BufferCore::select(const std::vector<std::string>& keys) noexcept{
+    std::map<std::string, TransformStorage> ret;
+    for(auto &key: keys){
+      auto cache = getOrInsertTimeCache(key);
+      cache->lock.r_lock();
+      auto latest = cache->storage.front();
+      ret.insert(std::make_pair(key, latest));
+    }
+
+    return ret;
+  }
+
+  void
+  BufferCore::insert(
+    const std::map<std::string, TransformStorage>& kvs) noexcept{
+    for(auto &pair: kvs){
+      auto cache = getOrInsertTimeCache(pair.first);
+      cache->lock.w_lock();
+      cache->insertData(pair.second);
+    }
+  }
+
+  void
+  BufferCore::commit(const std::map<std::string, bool> &kvs){
+    for(auto &pair: kvs){
+      auto cache = getOrInsertTimeCache(pair.first);
+      if(pair.second){ // write lock
+        cache->lock.w_unlock();
+      }else{
+        cache->lock.r_unlock();
+      }
+    }
+  }
 }
